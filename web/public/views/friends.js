@@ -8,6 +8,7 @@ import {
   respondFriendRequest,
   fetchFriendships,
   watchFriendships,
+  logActivity,
 } from '../db.js';
 
 export default async function render(root) {
@@ -96,10 +97,12 @@ export default async function render(root) {
       `);
       card.querySelector('[data-accept]').onclick = async () => {
         await respondFriendRequest(r.id, true);
+        logActivity({ category: 'Friends', title: `Friend request accepted · ${name}`, badge: 'Success' });
         renderRequests();
       };
       card.querySelector('[data-decline]').onclick = async () => {
         await respondFriendRequest(r.id, false);
+        logActivity({ category: 'Friends', title: `Friend request declined · ${name}` });
         renderRequests();
       };
       list.appendChild(card);
@@ -145,6 +148,7 @@ export default async function render(root) {
           card.querySelector('.chip').onclick = async () => {
             try {
               await sendFriendRequest(p.id);
+              logActivity({ category: 'Friends', title: `Friend request sent · ${p.display_name}` });
               toast(`Request sent to ${p.display_name}.`);
             } catch (_) {
               toast('Could not send request (maybe already sent).');

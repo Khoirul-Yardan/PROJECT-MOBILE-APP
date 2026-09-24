@@ -7,7 +7,13 @@ import 'services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SupabaseService.init();
+  try {
+    await SupabaseService.init();
+  } catch (_) {
+    // The web layer (WebView) owns the real session and works standalone;
+    // this native mirror is only needed for Bot BPJS's activity_log writes,
+    // so a failed/offline init here must not block the app from launching.
+  }
   runApp(const AiHubApp());
 }
 

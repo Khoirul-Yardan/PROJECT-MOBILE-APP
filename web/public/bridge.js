@@ -16,20 +16,49 @@
 const pending = new Map();
 let seq = 0;
 
+// If native never replies (crashed handler, dropped message, stale shell
+// version that doesn't recognize a newer call type), the caller must not
+// hang forever — resolve the same way as "no native shell attached" so
+// every call site's existing null-check handles it without extra code.
+const CALL_TIMEOUT_MS = 8000;
+
 function hasBridge() {
   return typeof NativeBridge !== 'undefined' && !!NativeBridge.postMessage;
 }
 
 function call(type, payload) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (!hasBridge()) {
       console.warn('[bridge] no native shell attached — call ignored', type, payload);
       resolve(null);
       return;
     }
     const id = `req_${++seq}`;
-    pending.set(id, { resolve, reject });
-    NativeBridge.postMessage(JSON.stringify({ id, type, payload: payload || {} }));
+    const timer = setTimeout(() => {
+      if (!pending.has(id)) return;
+      pending.delete(id);
+      console.warn('[bridge] native shell did not reply in time — treating as unavailable', type, payload);
+      resolve(null);
+    }, CALL_TIMEOUT_MS);
+    pending.set(id, {
+      resolve: (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      reject: (err) => {
+        clearTimeout(timer);
+        console.warn('[bridge] native call failed', type, err);
+        resolve(null);
+      },
+    });
+    try {
+      NativeBridge.postMessage(JSON.stringify({ id, type, payload: payload || {} }));
+    } catch (e) {
+      clearTimeout(timer);
+      pending.delete(id);
+      console.warn('[bridge] failed to post message to native shell', type, e);
+      resolve(null);
+    }
   });
 }
 
