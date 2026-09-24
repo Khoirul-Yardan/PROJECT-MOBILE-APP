@@ -1,0 +1,6 @@
+node_modules/
+.dart_tool/
+build/
+.idea/
+*.lock
+.env

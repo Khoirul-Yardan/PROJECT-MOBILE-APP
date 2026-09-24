@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 9+ blocks plain HTTP by default (good — matches NFR-09's "WebView
+  traffic must be HTTPS with a whitelisted domain"). The one exception here
+  is `localhost`, purely for local development against the `web/` Docker
+  container over `adb reverse` — a real deployment points WebHubConfig at an
+  HTTPS domain instead (see web_hub_config.dart), where this exception
+  doesn't even apply.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
