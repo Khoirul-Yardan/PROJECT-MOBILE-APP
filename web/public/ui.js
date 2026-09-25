@@ -23,8 +23,8 @@ export function toast(message) {
   let el = document.getElementById('toast');
   if (!el) {
     el = h(`<div id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
-      background:#101d3d;color:#fff;padding:10px 18px;border-radius:20px;font-size:12px;
-      z-index:999;opacity:0;transition:opacity .2s;"></div>`);
+      background:#23262b;color:#fffcf6;padding:10px 18px;border-radius:3px;font-size:12px;
+      z-index:999;opacity:0;transition:opacity .2s;border:1px solid #ad4426;"></div>`);
     document.body.appendChild(el);
   }
   el.textContent = message;
@@ -37,25 +37,20 @@ export function initial(name) {
   return name && name.length ? name[0].toUpperCase() : '?';
 }
 
-/** The AI Hub hexagon mark — mirrors the native splash screen's logo. */
+/**
+ * The AI Hub mark — a compass/waypoint stamp, not another gradient
+ * blob. Flat ink lines with a single rust accent needle; reads clearly
+ * at 20px (nav icon) and 96px (splash) without a gradient defs block.
+ * Mirrors the native splash screen mark in app/lib — see theme.dart.
+ */
 export function logoSvg(size = 44) {
   return `
     <svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none">
-      <defs>
-        <linearGradient id="hubGrad" x1="0" y1="0" x2="100" y2="100">
-          <stop offset="0" stop-color="#20d7e5" />
-          <stop offset=".5" stop-color="#6588ff" />
-          <stop offset="1" stop-color="#c15aff" />
-        </linearGradient>
-      </defs>
-      <polygon points="50,6 89,28 89,72 50,94 11,72 11,28"
-        stroke="url(#hubGrad)" stroke-width="5.5" stroke-linejoin="round" />
-      <circle cx="50" cy="6" r="5.5" fill="url(#hubGrad)" />
-      <circle cx="89" cy="28" r="5.5" fill="url(#hubGrad)" />
-      <circle cx="89" cy="72" r="5.5" fill="url(#hubGrad)" />
-      <circle cx="50" cy="94" r="5.5" fill="url(#hubGrad)" />
-      <circle cx="11" cy="72" r="5.5" fill="url(#hubGrad)" />
-      <circle cx="11" cy="28" r="5.5" fill="url(#hubGrad)" />
+      <circle cx="50" cy="50" r="41" stroke="#23262b" stroke-width="5.5" />
+      <circle cx="50" cy="50" r="41" stroke="#23262b" stroke-width="1" stroke-dasharray="1 7.2" stroke-linecap="round" opacity=".55" />
+      <path d="M50 22 L61 50 L50 78 L39 50 Z" fill="#ad4426" />
+      <path d="M50 22 L61 50 L50 50 Z" fill="#23262b" />
+      <circle cx="50" cy="50" r="5" fill="#fffcf6" stroke="#23262b" stroke-width="3.5" />
     </svg>
   `;
 }
