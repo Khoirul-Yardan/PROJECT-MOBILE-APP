@@ -12,30 +12,29 @@ export default async function render(root) {
     <div class="page home-page">
       <div class="topbar">
         <div>
-          <p class="muted small" style="margin:0;">Good to see you,</p>
-          <h1 style="margin:2px 0 0;">${name} 👋</h1>
+          <p class="muted small" style="margin:0;">Selamat datang,</p>
+          <h1 style="margin:2px 0 0;">${name}</h1>
         </div>
       </div>
-      <p class="muted small">Your AI workspace is ready.</p>
       <hr class="section-divider" />
 
       <div class="row-between">
-        <span class="section-title" style="margin:0;">Connected Providers</span>
-        <span id="provider-count" class="muted small">…</span>
+        <span class="section-title" style="margin:0;">Penyedia AI Terhubung</span>
+        <span id="provider-count" class="muted small" style="font-family:var(--mono);">…</span>
       </div>
       <div id="providers" class="status-grid" style="margin-top:10px;"></div>
 
       <div class="card system-card">
-        <h3 style="font-size:16px;">System Status</h3>
+        <h3 style="font-size:14px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;">Status Sistem</h3>
         <div class="status-grid" style="margin-top:14px;">
           <button class="status-tile status-tile--vpn" data-go="/vpn">
-            <span>🛡️</span><span class="label">VPN</span><span class="value">Lihat status</span>
+            <span aria-hidden="true">&#9673;</span><span class="label">VPN</span><span class="value">Lihat status</span>
           </button>
           <button class="status-tile status-tile--bots" data-go="/bots">
-            <span>🤖</span><span class="label">Bots</span><span class="value">Bot BPJS</span>
+            <span aria-hidden="true">&#9635;</span><span class="label">Bots</span><span class="value">Bot BPJS</span>
           </button>
           <button class="status-tile status-tile--friends" data-go="/friends">
-            <span>👥</span><span class="label">Friends</span><span class="value">Kelola</span>
+            <span aria-hidden="true">&#9670;</span><span class="label">Teman</span><span class="value">Kelola</span>
           </button>
         </div>
       </div>
@@ -43,11 +42,11 @@ export default async function render(root) {
       <button type="button" class="card tappable chat-cta" id="chat-cta">
         <div class="row-between">
           <div>
-            <h3>Smarter tools.<br/>A brighter you.</h3>
+            <span class="eyebrow" style="color:#cfc9bc;">Percakapan AI</span>
+            <h3 style="margin-top:6px;">Mulai obrolan baru</h3>
           </div>
-          <span aria-hidden="true" style="font-size:28px;">✨</span>
         </div>
-        <span class="cta-label">Open AI Chat &rarr;</span>
+        <span class="cta-label">Buka Chat &rarr;</span>
       </button>
     </div>
   `);
@@ -67,10 +66,10 @@ export default async function render(root) {
     if (has) connected++;
     const tile = h(`
       <div class="card provider-card">
-        <div class="provider-icon" aria-hidden="true">${id === 'openai' ? '🌀' : id === 'anthropic' ? '☀️' : 'G'}</div>
+        <div class="provider-icon" aria-hidden="true" style="font-family:var(--mono);font-weight:700;">${id === 'openai' ? 'O' : id === 'anthropic' ? 'C' : 'G'}</div>
         <div class="provider-name">${info.label}</div>
-        <div class="small" style="color:${has ? 'var(--success)' : 'var(--text-muted)'};margin-top:3px;">
-          ${has ? 'Connected' : 'Not connected'}
+        <div class="small" style="color:${has ? 'var(--ok)' : 'var(--ink-faint)'};margin-top:3px;">
+          ${has ? 'Terhubung' : 'Belum terhubung'}
         </div>
       </div>
     `);

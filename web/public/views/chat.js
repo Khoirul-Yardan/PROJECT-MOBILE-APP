@@ -11,29 +11,29 @@ export default async function render(root) {
   let unwatch = null;
 
   const aiMessages = [
-    { text: 'Hi! Add your API key in Settings, then ask me anything.', fromMe: false },
+    { text: 'Hai! Tambahkan kunci API di Pengaturan, lalu tanyakan apa saja.', fromMe: false },
   ];
   const aiEchoByPeer = new Map();
 
   const el = h(`
     <div class="page chat-page">
       <div class="topbar">
-        <h1 id="chat-title">AI Chat</h1>
+        <h1 id="chat-title">Chat AI</h1>
       </div>
       <div id="picker" class="tabs"></div>
       <div class="row chat-toolbar">
-        <select id="provider" aria-label="AI provider">
+        <select id="provider" aria-label="Penyedia AI">
           ${Object.entries(PROVIDERS).map(([id, i]) => `<option value="${id}">${i.label}</option>`).join('')}
         </select>
         <label id="ai-toggle-wrap" class="row" style="display:none;gap:6px;">
-          <span style="font-size:15px;">✨</span>
-          <span class="switch"><input id="ai-toggle" type="checkbox" aria-label="Enable AI assistance"/><span class="track"></span></span>
+          <span class="muted small" style="font-family:var(--mono);">AI</span>
+          <span class="switch"><input id="ai-toggle" type="checkbox" aria-label="Aktifkan bantuan AI"/><span class="track"></span></span>
         </label>
       </div>
-      <div id="messages" class="chat-scroll" role="log" aria-label="Messages" aria-live="polite"></div>
+      <div id="messages" class="chat-scroll" role="log" aria-label="Pesan" aria-live="polite"></div>
       <div class="chat-input-row">
-        <textarea id="input" aria-label="Message" rows="1" placeholder="Ask anything..."></textarea>
-        <button id="send" class="send-btn" aria-label="Send message">➤</button>
+        <textarea id="input" aria-label="Pesan" rows="1" placeholder="Tulis pesan..."></textarea>
+        <button id="send" class="send-btn" aria-label="Kirim pesan">&#8594;</button>
       </div>
     </div>
   `);
@@ -57,11 +57,11 @@ export default async function render(root) {
       .filter((f) => f.status === 'accepted')
       .map((f) => ({ id: f.other_profile?.id ?? (f.requester_id === user.id ? f.addressee_id : f.requester_id), name: f.other_profile?.display_name ?? 'Friend' }));
     pickerEl.innerHTML = '';
-    const aiChip = h(`<button class="chip ${peer === null ? 'active' : ''}">✨ AI Assistant</button>`);
+    const aiChip = h(`<button class="chip ${peer === null ? 'active' : ''}">Asisten AI</button>`);
     aiChip.onclick = () => selectPeer(null);
     pickerEl.appendChild(aiChip);
     for (const f of friends) {
-      const chip = h(`<button class="chip ${peer?.id === f.id ? 'active' : ''}">👤 ${f.name}</button>`);
+      const chip = h(`<button class="chip ${peer?.id === f.id ? 'active' : ''}">${f.name}</button>`);
       chip.onclick = () => selectPeer(f);
       pickerEl.appendChild(chip);
     }
@@ -69,7 +69,7 @@ export default async function render(root) {
 
   function selectPeer(next) {
     peer = next;
-    titleEl.textContent = peer ? peer.name : 'AI Chat';
+    titleEl.textContent = peer ? peer.name : 'Chat AI';
     toggleWrap.style.display = peer ? 'flex' : 'none';
     loadPicker();
     renderMessages();
@@ -80,7 +80,7 @@ export default async function render(root) {
     const cls = fromMe ? 'me' : isError ? 'them error' : isAi ? 'ai-echo' : 'them';
     return h(`
       <div class="bubble ${cls}">
-        ${isAi ? '<span class="tag">AI (only you see this)</span>' : ''}
+        ${isAi ? '<span class="tag">AI (hanya kamu yang lihat)</span>' : ''}
         <span>${escapeHtml(text)}</span>
       </div>
     `);
@@ -105,7 +105,7 @@ export default async function render(root) {
       const echo = aiEchoByPeer.get(peer.id) || [];
       const all = [...remote, ...echo].sort((a, b) => new Date(a.time) - new Date(b.time));
       if (all.length === 0) {
-        messagesEl.appendChild(h(`<div class="empty-state">Say hi to ${peer.name}!</div>`));
+        messagesEl.appendChild(h(`<div class="empty-state">Sapa ${peer.name} untuk mulai mengobrol.</div>`));
       } else {
         all.forEach((m) => messagesEl.appendChild(bubble(m.text, m.fromMe, m)));
       }
@@ -123,7 +123,7 @@ export default async function render(root) {
     const has = await hasApiKey(provider);
     if (!has) {
       aiMessages.push({
-        text: `No API key saved for ${PROVIDERS[provider].label} yet. Add one in Settings.`,
+        text: `Belum ada kunci API tersimpan untuk ${PROVIDERS[provider].label}. Tambahkan di Pengaturan.`,
         fromMe: false,
         isError: true,
       });

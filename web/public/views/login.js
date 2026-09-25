@@ -6,24 +6,21 @@ export default async function render(root) {
   let isRegister = false;
   let loading = false;
 
-  document.body.classList.add('aurora');
-
   const el = h(`
     <div class="page card login-page">
-      <div class="brand-mark login-brand">${logoSvg(44)}<span>AI Hub</span></div>
-      <h1 id="title" class="gradient-text login-title">Welcome back</h1>
-      <p class="eyebrow login-eyebrow">ONE HUB. INFINITE POSSIBILITIES.</p>
-      <p class="muted login-intro">Masuk dengan akun asli agar teman & chat tersimpan untukmu.</p>
+      <div class="brand-mark login-brand">${logoSvg(40)}<span>AI Hub</span></div>
+      <h1 id="title" class="login-title">Masuk</h1>
+      <p class="muted login-intro">Gunakan akun asli agar percakapan, teman, dan sesi tersimpan aman untukmu.</p>
       <div class="field">
         <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="email" placeholder="you@example.com" />
+        <input id="email" type="email" autocomplete="email" placeholder="nama@instansi.go.id" />
       </div>
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password">Kata sandi</label>
         <input id="password" type="password" placeholder="Minimal 6 karakter" />
       </div>
       <p id="error" class="error-text" role="alert" style="display:none;"></p>
-      <button id="submit" class="btn btn-primary">Sign in</button>
+      <button id="submit" class="btn btn-primary">Masuk</button>
       <button id="toggle" class="btn btn-text login-toggle">
         Belum punya akun? Daftar
       </button>
@@ -37,8 +34,8 @@ export default async function render(root) {
   const errorEl = el.querySelector('#error');
 
   function refresh() {
-    titleEl.textContent = isRegister ? 'Create your account' : 'Welcome back';
-    submitEl.textContent = loading ? 'Menyimpan…' : isRegister ? 'Create account' : 'Sign in';
+    titleEl.textContent = isRegister ? 'Buat akun' : 'Masuk';
+    submitEl.textContent = loading ? 'Menyimpan…' : isRegister ? 'Buat akun' : 'Masuk';
     submitEl.disabled = loading;
     toggleEl.textContent = isRegister
       ? 'Sudah punya akun? Masuk'
@@ -92,7 +89,5 @@ export default async function render(root) {
 
   refresh();
 
-  return {
-    dispose: () => document.body.classList.remove('aurora'),
-  };
+  return {};
 }

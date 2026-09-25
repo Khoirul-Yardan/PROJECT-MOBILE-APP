@@ -4,24 +4,21 @@ import { Native } from '../bridge.js';
 import { navigate } from '../router.js';
 
 const TILES = [
-  { icon: '👤', title: 'Profile', subtitle: 'Set your display name, role, and bio.', go: '/settings/profile' },
-  { icon: '🔑', title: 'AI Provider API Keys', subtitle: 'Manage your AI provider keys.', go: '/settings/apikeys' },
-  { icon: '👥', title: 'Friends', subtitle: 'Find people and manage friend requests.', go: '/friends' },
-  { icon: '🛡️', title: 'VPN Credentials', subtitle: 'Update your VPN login details.', go: '/vpn-config' },
-  { icon: '🕘', title: 'Activity Log', subtitle: 'View recent activity.', go: '/settings/activity' },
+  { icon: '&#9633;', title: 'Profil', subtitle: 'Atur nama tampilan, peran, dan bio.', go: '/settings/profile' },
+  { icon: '&#9679;', title: 'Kunci API Penyedia AI', subtitle: 'Kelola kunci API penyedia AI-mu.', go: '/settings/apikeys' },
+  { icon: '&#9670;', title: 'Teman', subtitle: 'Cari orang dan kelola permintaan pertemanan.', go: '/friends' },
+  { icon: '&#9673;', title: 'Kredensial VPN', subtitle: 'Perbarui detail login VPN-mu.', go: '/vpn-config' },
+  { icon: '&#9635;', title: 'Log Aktivitas', subtitle: 'Lihat aktivitas terbaru.', go: '/settings/activity' },
 ];
 
 export default async function render(root) {
   const user = await currentUser();
   const el = h(`
     <div class="page settings-page">
-      <div class="topbar"><h1>Settings</h1></div>
+      <div class="topbar"><h1>Pengaturan</h1></div>
       <div id="tiles" class="list"></div>
       <p class="muted small" style="margin-top:18px;">${user?.email ?? ''}</p>
-      <button id="logout" class="btn btn-danger-outline" style="margin-top:8px;">Log out</button>
-      <p class="center muted small" style="margin-top:20px;letter-spacing:1px;">
-        AI HUB · ONE HUB. INFINITE POSSIBILITIES.
-      </p>
+      <button id="logout" class="btn btn-danger-outline" style="margin-top:8px;">Keluar</button>
     </div>
   `);
   root.appendChild(el);
@@ -30,7 +27,7 @@ export default async function render(root) {
   TILES.forEach((t) => {
     const card = h(`
       <button type="button" class="card tappable row">
-        <div class="avatar" style="background:var(--field);color:var(--text-dark);">${t.icon}</div>
+        <div class="avatar" style="background:var(--surface-sunken);color:var(--ink);font-size:18px;">${t.icon}</div>
         <div style="flex:1;">
           <div class="item-title">${t.title}</div>
           <div class="muted small">${t.subtitle}</div>

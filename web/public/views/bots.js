@@ -3,17 +3,17 @@ import { Native } from '../bridge.js';
 import { logActivity } from '../db.js';
 
 const ITEMS = [
-  { icon: '🎙️', title: 'Bot BPJS', subtitle: 'Dokumentasi perawat-pasien otomatis, siap format form BPJS', category: 'Bots', isBot: true, available: true, color: '#7954ff' },
-  { icon: '❓', title: 'Bot FAQ', subtitle: 'Jawab pertanyaan umum seputar aplikasi', category: 'Bots', isBot: true, available: false, color: '#087cff' },
-  { icon: '🌐', title: 'Bot Penerjemah', subtitle: 'Terjemahkan percakapan lintas bahasa', category: 'Bots', isBot: true, available: false, color: '#20d7e5' },
-  { icon: '🔎', title: 'Research Agent', subtitle: 'Find and analyze information', category: 'Productivity', color: '#20d7e5' },
-  { icon: '💻', title: 'Code Agent', subtitle: 'Write, debug and build faster', category: 'Dev', color: '#087cff' },
-  { icon: '✏️', title: 'Content Agent', subtitle: 'Write, edit and optimize content', category: 'Creative', color: '#087cff' },
-  { icon: '📊', title: 'Data Agent', subtitle: 'Analyze data and create insights', category: 'Productivity', color: '#09ad59' },
-  { icon: '📅', title: 'Planner Agent', subtitle: 'Turn ideas into action plans', category: 'Productivity', color: '#c44eff' },
+  { icon: '&#9679;', title: 'Bot BPJS', subtitle: 'Dokumentasi perawat-pasien otomatis, siap format form BPJS', category: 'Bots', isBot: true, available: true },
+  { icon: '&#9635;', title: 'Bot FAQ', subtitle: 'Jawab pertanyaan umum seputar aplikasi', category: 'Bots', isBot: true, available: false },
+  { icon: '&#9673;', title: 'Bot Penerjemah', subtitle: 'Terjemahkan percakapan lintas bahasa', category: 'Bots', isBot: true, available: false },
+  { icon: '&#9670;', title: 'Research Agent', subtitle: 'Cari dan analisis informasi dari berbagai sumber', category: 'Productivity' },
+  { icon: '&#9633;', title: 'Code Agent', subtitle: 'Tulis, debug, dan bangun kode lebih cepat', category: 'Dev' },
+  { icon: '&#9998;', title: 'Content Agent', subtitle: 'Tulis, sunting, dan optimalkan konten', category: 'Creative' },
+  { icon: '&#9707;', title: 'Data Agent', subtitle: 'Analisis data dan hasilkan insight', category: 'Productivity' },
+  { icon: '&#9737;', title: 'Planner Agent', subtitle: 'Ubah ide menjadi rencana aksi', category: 'Productivity' },
 ];
 
-const TABS = ['All', 'Bots', 'Productivity', 'Creative', 'Dev'];
+const TABS = ['Semua', 'Bots', 'Productivity', 'Creative', 'Dev'];
 
 export default async function render(root) {
   let tab = 0;
@@ -22,8 +22,8 @@ export default async function render(root) {
   const el = h(`
     <div class="page bots-page">
       <div class="topbar"><h1>Bot Hub</h1></div>
-      <p class="muted small">Packaged bots and specialized AI agents for every task.</p>
-      <input id="search" aria-label="Search agents" placeholder="Search agents…" style="margin:12px 0;" />
+      <p class="muted small">Bot siap pakai dan agen AI khusus untuk setiap tugas.</p>
+      <input id="search" aria-label="Cari agen" placeholder="Cari agen…" style="margin:12px 0;" />
       <div id="tabs" class="tabs"></div>
       <div id="grid" class="agent-grid"></div>
       <div id="detail"></div>
@@ -54,7 +54,7 @@ export default async function render(root) {
     );
     gridEl.innerHTML = '';
     if (visible.length === 0) {
-      gridEl.replaceWith(h('<div id="grid" class="empty-state">No agents found.</div>'));
+      gridEl.replaceWith(h('<div id="grid" class="empty-state">Tidak ada agen yang cocok.</div>'));
       return;
     }
     visible.forEach((item) => {
@@ -62,7 +62,7 @@ export default async function render(root) {
         <button type="button" class="card tappable agent-card">
           <div class="agent-heading">
             <span class="agent-icon" aria-hidden="true">${item.icon}</span>
-            ${item.isBot ? `<span class="pill ${item.available ? 'pill--ok' : 'pill--warn'}">${item.available ? 'Bot' : 'Segera'}</span>` : ''}
+            ${item.isBot ? `<span class="pill ${item.available ? 'pill--ok' : 'pill--warn'}">${item.available ? 'Aktif' : 'Segera'}</span>` : ''}
           </div>
           <h3>${item.title}</h3>
           <p>${item.subtitle}</p>
@@ -92,12 +92,12 @@ export default async function render(root) {
   function runAgentSimulation(item, detailEl) {
     const logs =
       item.title === 'Code Agent'
-        ? ['Initializing environment...', 'Cloning repository...', 'Installing dependencies...', 'Running tests...', 'Tests passed (12/12)', 'Generating summary...']
-        : ['Initializing workspace...', 'Loading agent tools...', 'Analyzing the request...', 'Generating summary...', 'Task completed'];
+        ? ['Menyiapkan environment...', 'Meng-clone repository...', 'Memasang dependensi...', 'Menjalankan tes...', 'Tes lolos (12/12)', 'Menyusun ringkasan...']
+        : ['Menyiapkan workspace...', 'Memuat tools agen...', 'Menganalisis permintaan...', 'Menyusun ringkasan...', 'Tugas selesai'];
     detailEl.innerHTML = '';
     const panel = h(`
       <div class="card" style="margin-top:16px;">
-        <h3>${item.title} — Execution</h3>
+        <h3>${item.title} — Log Eksekusi</h3>
         <div id="log" class="list execution-log" role="log" aria-live="polite"></div>
       </div>
     `);
