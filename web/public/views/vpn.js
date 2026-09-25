@@ -9,40 +9,38 @@ export default async function render(root) {
   let connectedSince = null;
 
   const el = h(`
-    <div>
+    <div class="page vpn-page">
       <div class="topbar"><h1>VPN Connection</h1></div>
-      <div style="text-align:center;padding:30px 0;">
-        <div id="status-circle" style="width:150px;height:150px;border-radius:50%;margin:0 auto;
-          display:flex;align-items:center;justify-content:center;flex-direction:column;
-          background:linear-gradient(135deg,#fff,#e7faff,#e3d7ff);border:6px solid var(--border);">
-          <span id="status-icon" style="font-size:34px;">🔓</span>
+      <div class="vpn-hero">
+        <div id="status-circle" role="status" aria-live="polite">
+          <span id="status-icon" aria-hidden="true" style="font-size:34px;">🔓</span>
           <span id="status-text" style="font-weight:700;margin-top:8px;">Disconnected</span>
         </div>
       </div>
-      <div class="card tappable" id="server-card" style="margin-bottom:12px;">
+      <button type="button" class="card tappable" id="server-card" style="margin-bottom:12px;">
         <div class="row">
           <span style="font-size:20px;">🖧</span>
-          <span id="server-text" style="flex:1;font-size:12px;font-weight:600;">Loading…</span>
+          <span id="server-text" class="grow item-title">Loading…</span>
           <span>›</span>
         </div>
-      </div>
+      </button>
       <div class="card">
         <div class="status-grid">
           <div style="text-align:center;">
             <div class="muted small">Host</div>
-            <div id="stat-host" style="font-size:12px;font-weight:600;margin-top:4px;">—</div>
+            <div id="stat-host" class="vpn-stat">—</div>
           </div>
           <div style="text-align:center;">
             <div class="muted small">Protocol</div>
-            <div id="stat-protocol" style="font-size:12px;font-weight:600;margin-top:4px;">—</div>
+            <div id="stat-protocol" class="vpn-stat">—</div>
           </div>
           <div style="text-align:center;">
             <div class="muted small">Since</div>
-            <div id="stat-since" style="font-size:12px;font-weight:600;margin-top:4px;">—</div>
+            <div id="stat-since" class="vpn-stat">—</div>
           </div>
         </div>
       </div>
-      <p class="muted small center" style="margin-top:14px;">
+      <p class="muted small center vpn-note">
         Uses your saved server config. Opening a live network tunnel needs a native
         VPN/SSH plugin — not wired up yet, so no traffic is actually routed.
       </p>

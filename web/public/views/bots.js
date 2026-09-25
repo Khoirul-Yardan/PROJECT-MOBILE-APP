@@ -20,12 +20,12 @@ export default async function render(root) {
   let query = '';
 
   const el = h(`
-    <div>
+    <div class="page bots-page">
       <div class="topbar"><h1>Bot Hub</h1></div>
       <p class="muted small">Packaged bots and specialized AI agents for every task.</p>
-      <input id="search" placeholder="Search agents…" style="margin:12px 0;" />
+      <input id="search" aria-label="Search agents" placeholder="Search agents…" style="margin:12px 0;" />
       <div id="tabs" class="tabs"></div>
-      <div id="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+      <div id="grid" class="agent-grid"></div>
       <div id="detail"></div>
     </div>
   `);
@@ -59,12 +59,14 @@ export default async function render(root) {
     }
     visible.forEach((item) => {
       const card = h(`
-        <div class="card tappable" style="position:relative;">
-          ${item.isBot ? `<span class="pill ${item.available ? 'pill--ok' : 'pill--warn'}" style="position:absolute;top:10px;right:10px;">${item.available ? 'Bot' : 'Segera'}</span>` : ''}
-          <div style="font-size:24px;">${item.icon}</div>
-          <h3 style="margin-top:10px;">${item.title}</h3>
+        <button type="button" class="card tappable agent-card">
+          <div class="agent-heading">
+            <span class="agent-icon" aria-hidden="true">${item.icon}</span>
+            ${item.isBot ? `<span class="pill ${item.available ? 'pill--ok' : 'pill--warn'}">${item.available ? 'Bot' : 'Segera'}</span>` : ''}
+          </div>
+          <h3>${item.title}</h3>
           <p>${item.subtitle}</p>
-        </div>
+        </button>
       `);
       card.onclick = () => openItem(item);
       gridEl.appendChild(card);
@@ -96,7 +98,7 @@ export default async function render(root) {
     const panel = h(`
       <div class="card" style="margin-top:16px;">
         <h3>${item.title} — Execution</h3>
-        <div id="log" class="list" style="margin-top:10px;font-family:monospace;font-size:11px;"></div>
+        <div id="log" class="list execution-log" role="log" aria-live="polite"></div>
       </div>
     `);
     detailEl.appendChild(panel);

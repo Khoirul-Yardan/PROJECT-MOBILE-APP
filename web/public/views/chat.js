@@ -16,24 +16,24 @@ export default async function render(root) {
   const aiEchoByPeer = new Map();
 
   const el = h(`
-    <div>
+    <div class="page chat-page">
       <div class="topbar">
         <h1 id="chat-title">AI Chat</h1>
       </div>
       <div id="picker" class="tabs"></div>
-      <div class="row" style="background:var(--field);border-radius:14px;padding:6px 12px;margin-bottom:14px;">
-        <select id="provider" style="border:none;background:transparent;flex:1;font-weight:600;font-size:13px;">
+      <div class="row chat-toolbar">
+        <select id="provider" aria-label="AI provider">
           ${Object.entries(PROVIDERS).map(([id, i]) => `<option value="${id}">${i.label}</option>`).join('')}
         </select>
         <label id="ai-toggle-wrap" class="row" style="display:none;gap:6px;">
           <span style="font-size:15px;">✨</span>
-          <span class="switch"><input id="ai-toggle" type="checkbox"/><span class="track"></span></span>
+          <span class="switch"><input id="ai-toggle" type="checkbox" aria-label="Enable AI assistance"/><span class="track"></span></span>
         </label>
       </div>
-      <div id="messages" class="chat-scroll"></div>
+      <div id="messages" class="chat-scroll" role="log" aria-label="Messages" aria-live="polite"></div>
       <div class="chat-input-row">
-        <textarea id="input" rows="1" placeholder="Ask anything..."></textarea>
-        <button id="send" class="send-btn">➤</button>
+        <textarea id="input" aria-label="Message" rows="1" placeholder="Ask anything..."></textarea>
+        <button id="send" class="send-btn" aria-label="Send message">➤</button>
       </div>
     </div>
   `);

@@ -7,7 +7,7 @@ export default async function render(root) {
   let cat = 'All';
   let rows = [];
 
-  const el = h(`<div></div>`);
+  const el = h(`<div class="page activity-page"></div>`);
   el.appendChild(header('Activity Log', { back: true }));
   const tabsEl = h('<div class="tabs"></div>');
   CATEGORIES.forEach((c) => {
@@ -36,8 +36,8 @@ export default async function render(root) {
       listEl.appendChild(
         h(`
         <div class="card">
-          <div class="row-between">
-            <span class="pill" style="background:${color}22;color:${color};">${r.category}</span>
+          <div class="row-between activity-meta">
+            <span class="pill" style="color:${color};">${r.category}</span>
             <span class="muted small">${new Date(r.created_at).toLocaleString()}</span>
           </div>
           <h3 style="margin-top:8px;">${r.title}</h3>

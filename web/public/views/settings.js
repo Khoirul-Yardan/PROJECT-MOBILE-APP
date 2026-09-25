@@ -14,7 +14,7 @@ const TILES = [
 export default async function render(root) {
   const user = await currentUser();
   const el = h(`
-    <div>
+    <div class="page settings-page">
       <div class="topbar"><h1>Settings</h1></div>
       <div id="tiles" class="list"></div>
       <p class="muted small" style="margin-top:18px;">${user?.email ?? ''}</p>
@@ -29,14 +29,14 @@ export default async function render(root) {
   const tilesEl = el.querySelector('#tiles');
   TILES.forEach((t) => {
     const card = h(`
-      <div class="card tappable row">
+      <button type="button" class="card tappable row">
         <div class="avatar" style="background:var(--field);color:var(--text-dark);">${t.icon}</div>
         <div style="flex:1;">
-          <div style="font-weight:600;font-size:13px;">${t.title}</div>
+          <div class="item-title">${t.title}</div>
           <div class="muted small">${t.subtitle}</div>
         </div>
-        <span>›</span>
-      </div>
+        <span aria-hidden="true">›</span>
+      </button>
     `);
     card.onclick = () => navigate(t.go);
     tilesEl.appendChild(card);

@@ -17,7 +17,7 @@ export default async function render(root) {
   let searchResults = [];
   let unwatch = null;
 
-  const el = h(`<div></div>`);
+  const el = h(`<div class="page friends-page"></div>`);
   el.appendChild(header('Friends', { back: true }));
   const tabsEl = h(`
     <div class="tabs">
@@ -91,8 +91,8 @@ export default async function render(root) {
         <div class="card row">
           <div class="avatar">${initial(name)}</div>
           <div style="flex:1;font-weight:600;">${name}</div>
-          <button class="btn-text" style="color:var(--success);font-size:20px;" data-accept>✓</button>
-          <button class="btn-text" style="color:var(--danger);font-size:20px;" data-decline>✕</button>
+          <button class="btn-text" style="color:var(--success);font-size:20px;" aria-label="Accept friend request" data-accept>✓</button>
+          <button class="btn-text" style="color:var(--danger);font-size:20px;" aria-label="Decline friend request" data-decline>✕</button>
         </div>
       `);
       card.querySelector('[data-accept]').onclick = async () => {
@@ -114,7 +114,7 @@ export default async function render(root) {
     bodyEl.innerHTML = '';
     const wrap = h(`
       <div>
-        <input id="search" placeholder="Cari nama atau username" />
+        <input id="search" aria-label="Cari nama atau username" placeholder="Cari nama atau username" />
         <div id="results" class="list" style="margin-top:14px;"></div>
       </div>
     `);

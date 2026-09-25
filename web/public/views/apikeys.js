@@ -4,7 +4,7 @@ import { logActivity } from '../db.js';
 import { PROVIDERS } from '../ai.js';
 
 export default async function render(root) {
-  const el = h(`<div></div>`);
+  const el = h(`<div class="page apikeys-page"></div>`);
   el.appendChild(header('AI Provider API Keys', { back: true }));
   root.appendChild(el);
 
@@ -13,11 +13,11 @@ export default async function render(root) {
     const card = h(`
       <div class="card" style="margin-bottom:12px;">
         <div class="row-between">
-          <label style="margin:0;">${info.label}</label>
+          <label for="key-${id}" style="margin:0;">${info.label}</label>
           ${has?.has ? '<span class="pill pill--ok">Saved</span>' : ''}
         </div>
         <div class="field" style="margin-top:10px;margin-bottom:0;">
-          <input type="password" placeholder="Enter your API key" data-key="${id}" />
+          <input id="key-${id}" type="password" placeholder="Enter your API key" data-key="${id}" />
         </div>
         <button class="btn btn-outline" style="margin-top:10px;" data-save="${id}">Save</button>
       </div>

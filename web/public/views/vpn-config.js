@@ -7,31 +7,32 @@ const PROTOCOLS = ['OpenVPN', 'WireGuard', 'SSH (Termius-style)'];
 export default async function render(root) {
   const existing = await Native.getVpnConfig();
 
-  const el = h(`<div></div>`);
+  const el = h(`<div class="page vpn-config-page"></div>`);
   el.appendChild(header('VPN Server', { back: true }));
   el.appendChild(
     h(`
+    <div class="card form-panel">
     <p class="muted small">Enter your VPN/SSH server details (OpenVPN, WireGuard, or an SSH tunnel like Termius).</p>
     <div class="field">
-      <label>Protocol</label>
+      <label for="protocol">Protocol</label>
       <select id="protocol">
         ${PROTOCOLS.map((p) => `<option ${existing?.protocol === p ? 'selected' : ''}>${p}</option>`).join('')}
       </select>
     </div>
     <div class="field">
-      <label>Server host</label>
+      <label for="host">Server host</label>
       <input id="host" placeholder="vpn.example.com or 203.0.113.10" value="${existing?.host ?? ''}" />
     </div>
     <div class="field">
-      <label>Port</label>
+      <label for="port">Port</label>
       <input id="port" type="number" placeholder="1194" value="${existing?.port ?? ''}" />
     </div>
     <div class="field">
-      <label>Username</label>
+      <label for="username">Username</label>
       <input id="username" value="${existing?.username ?? ''}" />
     </div>
     <div class="field">
-      <label>Password</label>
+      <label for="password">Password</label>
       <input id="password" type="password" value="${existing?.password ?? ''}" />
     </div>
     <p class="muted small">
@@ -39,6 +40,7 @@ export default async function render(root) {
       still needs a native VPN/SSH plugin.
     </p>
     <button id="save" class="btn btn-primary" style="margin-top:12px;">Save</button>
+    </div>
   `)
   );
   root.appendChild(el);

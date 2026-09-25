@@ -12,29 +12,31 @@ export default async function render(root) {
   const profile = await myProfile();
   let role = profile?.role || 'general';
 
-  const el = h(`<div></div>`);
+  const el = h(`<div class="page profile-page"></div>`);
   el.appendChild(header('Profil', { back: true }));
   el.appendChild(
     h(`
-    <div style="text-align:center;margin-bottom:18px;">
-      <div class="avatar" id="avatar" style="width:72px;height:72px;font-size:28px;margin:0 auto;">
+    <div class="card form-panel">
+    <div class="profile-summary">
+      <div class="avatar profile-avatar" id="avatar">
         ${initial(profile?.display_name || user?.email)}
       </div>
       <p class="muted small" style="margin-top:8px;">${user?.email ?? ''}</p>
     </div>
     <div class="field">
-      <label>Nama tampilan</label>
+      <label for="name">Nama tampilan</label>
       <input id="name" value="${profile?.display_name ?? ''}" placeholder="Nama yang dilihat teman lain" />
     </div>
     <div class="field">
-      <label>Peran</label>
-      <div id="roles" class="row" style="gap:8px;"></div>
+      <label id="roles-label">Peran</label>
+      <div id="roles" class="row role-options" role="group" aria-labelledby="roles-label"></div>
     </div>
     <div class="field">
-      <label>Bio (opsional)</label>
+      <label for="bio">Bio (opsional)</label>
       <textarea id="bio" rows="3" placeholder="Instansi, spesialisasi, atau info singkat lain">${profile?.bio ?? ''}</textarea>
     </div>
     <button id="save" class="btn btn-primary">Simpan Profil</button>
+    </div>
   `)
   );
   root.appendChild(el);

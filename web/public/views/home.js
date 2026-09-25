@@ -9,7 +9,7 @@ export default async function render(root) {
   const name = profile?.display_name || user?.email?.split('@')[0] || 'Explorer';
 
   const el = h(`
-    <div>
+    <div class="page home-page">
       <div class="topbar">
         <div>
           <p class="muted small" style="margin:0;">Good to see you,</p>
@@ -17,7 +17,7 @@ export default async function render(root) {
         </div>
       </div>
       <p class="muted small">Your AI workspace is ready.</p>
-      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;" />
+      <hr class="section-divider" />
 
       <div class="row-between">
         <span class="section-title" style="margin:0;">Connected Providers</span>
@@ -25,29 +25,30 @@ export default async function render(root) {
       </div>
       <div id="providers" class="status-grid" style="margin-top:10px;"></div>
 
-      <div class="card" style="margin-top:22px;background:linear-gradient(135deg,#f0f4ff,#efffc6,#fff);">
+      <div class="card system-card">
         <h3 style="font-size:16px;">System Status</h3>
         <div class="status-grid" style="margin-top:14px;">
-          <button class="status-tile" style="background:rgba(9,173,89,.07);color:var(--success);" data-go="/vpn">
+          <button class="status-tile status-tile--vpn" data-go="/vpn">
             <span>🛡️</span><span class="label">VPN</span><span class="value">Lihat status</span>
           </button>
-          <button class="status-tile" style="background:rgba(121,84,255,.07);color:var(--primary);" data-go="/bots">
+          <button class="status-tile status-tile--bots" data-go="/bots">
             <span>🤖</span><span class="label">Bots</span><span class="value">Bot BPJS</span>
           </button>
-          <button class="status-tile" style="background:rgba(32,215,229,.1);color:#0aa;" data-go="/friends">
+          <button class="status-tile status-tile--friends" data-go="/friends">
             <span>👥</span><span class="label">Friends</span><span class="value">Kelola</span>
           </button>
         </div>
       </div>
 
-      <div class="card tappable" id="chat-cta" style="margin-top:18px;background:linear-gradient(135deg,#e4f9ff,#e9eeff,#d8c8ff);">
+      <button type="button" class="card tappable chat-cta" id="chat-cta">
         <div class="row-between">
           <div>
-            <h3 style="font-size:17px;color:var(--accent-blue);">Smarter tools.<br/>A brighter you.</h3>
+            <h3>Smarter tools.<br/>A brighter you.</h3>
           </div>
-          <span style="font-size:28px;">✨</span>
+          <span aria-hidden="true" style="font-size:28px;">✨</span>
         </div>
-      </div>
+        <span class="cta-label">Open AI Chat &rarr;</span>
+      </button>
     </div>
   `);
   root.appendChild(el);
@@ -65,9 +66,9 @@ export default async function render(root) {
     const has = await hasApiKey(id);
     if (has) connected++;
     const tile = h(`
-      <div class="card" style="text-align:center;padding:14px 4px;">
-        <div style="font-size:20px;">${id === 'openai' ? '🌀' : id === 'anthropic' ? '☀️' : 'G'}</div>
-        <div style="font-weight:600;font-size:12px;margin-top:8px;">${info.label}</div>
+      <div class="card provider-card">
+        <div class="provider-icon" aria-hidden="true">${id === 'openai' ? '🌀' : id === 'anthropic' ? '☀️' : 'G'}</div>
+        <div class="provider-name">${info.label}</div>
         <div class="small" style="color:${has ? 'var(--success)' : 'var(--text-muted)'};margin-top:3px;">
           ${has ? 'Connected' : 'Not connected'}
         </div>

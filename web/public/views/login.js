@@ -9,22 +9,22 @@ export default async function render(root) {
   document.body.classList.add('aurora');
 
   const el = h(`
-    <div style="padding-top:36px;">
-      <div class="brand-mark" style="margin-bottom:22px;">${logoSvg(44)}</div>
-      <h1 id="title" class="gradient-text" style="font-size:28px;margin:0 0 8px;">Welcome back</h1>
-      <p class="eyebrow" style="margin:0 0 18px;">ONE HUB. INFINITE POSSIBILITIES.</p>
-      <p class="muted small" style="margin:0 0 26px;">Masuk dengan akun asli agar teman & chat tersimpan untukmu.</p>
+    <div class="page card login-page">
+      <div class="brand-mark login-brand">${logoSvg(44)}<span>AI Hub</span></div>
+      <h1 id="title" class="gradient-text login-title">Welcome back</h1>
+      <p class="eyebrow login-eyebrow">ONE HUB. INFINITE POSSIBILITIES.</p>
+      <p class="muted login-intro">Masuk dengan akun asli agar teman & chat tersimpan untukmu.</p>
       <div class="field">
-        <label>Email</label>
-        <input id="email" type="email" placeholder="you@example.com" />
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" placeholder="you@example.com" />
       </div>
       <div class="field">
-        <label>Password</label>
+        <label for="password">Password</label>
         <input id="password" type="password" placeholder="Minimal 6 karakter" />
       </div>
-      <p id="error" class="error-text" style="display:none;"></p>
+      <p id="error" class="error-text" role="alert" style="display:none;"></p>
       <button id="submit" class="btn btn-primary">Sign in</button>
-      <button id="toggle" class="btn btn-text" style="display:block;margin:14px auto 0;">
+      <button id="toggle" class="btn btn-text login-toggle">
         Belum punya akun? Daftar
       </button>
     </div>
