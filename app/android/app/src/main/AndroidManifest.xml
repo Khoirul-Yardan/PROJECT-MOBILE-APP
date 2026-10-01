@@ -1,5 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Bot BPJS: on-device wake word check + live transcription of the
+         nurse-patient conversation. Requested at runtime (not just
+         declared) right before the first recording session starts. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <application
         android:label="ai_hub"
         android:name="${applicationName}"

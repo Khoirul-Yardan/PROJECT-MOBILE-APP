@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Bot BPJS merekam percakapan perawat-pasien untuk dibuatkan draf dokumentasi otomatis.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Bot BPJS mengubah rekaman percakapan menjadi teks untuk draf dokumentasi BPJS.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

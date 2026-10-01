@@ -131,7 +131,7 @@ input:focus,textarea:focus,select:focus { border-color:var(--accent); box-shadow
 .skill-item .skill-cmd { font-weight:700; color:var(--accent-ink); font-family:monospace; flex-shrink:0; }
 .skill-item .skill-label { color:var(--ink-muted); }
 .pill { display:inline-block; padding:3px 8px; border-radius:7px; font-weight:600; font-size:11px; background:var(--surface-sunken); border:1px solid transparent; }
-.pill--warn { background:var(--warn-tint); color:var(--warn); } .pill--ok { background:var(--ok-tint); color:var(--ok); }
+.pill--warn { background:var(--warn-tint); color:var(--warn); } .pill--ok { background:var(--ok-tint); color:var(--ok); } .pill--bad { background:var(--bad-tint); color:var(--bad); }
 .empty-state { text-align:center; color:var(--ink-muted); font-size:14px; padding:28px 20px; background:#ffffffb0; border:1px dashed var(--line-strong); border-radius:var(--radius); }
 .spinner { width:24px; height:24px; flex-shrink:0; border-radius:50%; border:3px solid var(--line); border-top-color:var(--accent); animation:spin .8s linear infinite; margin:40px auto; }
 @keyframes spin { to { transform:rotate(360deg); } }

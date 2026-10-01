@@ -15,6 +15,7 @@ import profile from './views/profile.js';
 import apikeys from './views/apikeys.js';
 import addApiKey from './views/add-api-key.js';
 import activity from './views/activity.js';
+import bpjsReview from './views/bpjs-review.js';
 
 const PUBLIC_ROUTES = new Set(['/login']);
 
@@ -47,6 +48,7 @@ route('/settings/profile', guard(profile));
 route('/settings/apikeys', guard(apikeys));
 route('/settings/add-api-key', guard(addApiKey));
 route('/settings/activity', guard(activity));
+route('/bpjs', guard(bpjsReview));
 
 const root = document.getElementById('app');
 mountNavigation();

@@ -1,5 +1,6 @@
 import { h, icon } from '../ui.js';
 import { Native } from '../bridge.js';
+import { navigate } from '../router.js';
 
 // Bots are deliberately separate from Chat: each one has its own fixed
 // flow (Bot BPJS: wake word → record → transcript → send to doctor), not a
@@ -35,9 +36,20 @@ export default async function render(root) {
         yang dipakai langsung dari tab Chat.
       </p>
       <div id="grid" class="agent-grid"></div>
+      <button type="button" class="card tappable" id="bpjs-review-link" style="margin-top:14px;text-align:left;">
+        <div class="row">
+          <span class="feature-icon">${icon('document')}</span>
+          <div class="grow">
+            <div class="item-title">Dokumentasi BPJS</div>
+            <div class="muted small">Lihat sesi yang sudah direkam — review (dokter) atau riwayat (perawat).</div>
+          </div>
+        </div>
+      </button>
     </div>
   `);
   root.appendChild(el);
+
+  el.querySelector('#bpjs-review-link').onclick = () => navigate('/bpjs');
 
   const gridEl = el.querySelector('#grid');
   ITEMS.forEach((item) => {

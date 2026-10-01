@@ -21,6 +21,13 @@ void main() {
   const secureStorageChannel = MethodChannel(
     'plugins.it_nomads.com/flutter_secure_storage',
   );
+  // speech_to_text's platform channel has no implementation in the plain
+  // widget-test harness either — without a mock, `initialize()` awaits a
+  // method call that never replies and the test hangs. Replying 'false' to
+  // `initialize` exercises exactly what the screen does on a real device
+  // when the user denies the microphone permission, which is the behavior
+  // the test below actually verifies.
+  const speechChannel = MethodChannel('plugin.csdcorp.com/speech_to_text');
   TestWidgetsFlutterBinding.ensureInitialized();
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(secureStorageChannel, (call) async {
@@ -29,6 +36,15 @@ void main() {
             return null;
           case 'readAll':
             return <String, String>{};
+          default:
+            return null;
+        }
+      });
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(speechChannel, (call) async {
+        switch (call.method) {
+          case 'initialize':
+            return false;
           default:
             return null;
         }
@@ -50,33 +66,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Bot BPJS preview stops at the record step and warns when no doctor is connected', (
+  testWidgets('Bot BPJS preview shows a clear error when speech recognition has no platform support', (
     tester,
   ) async {
-    // SupabaseService.init() never runs in this plain widget-test harness,
-    // so fetchAcceptedDoctors() takes its documented best-effort empty-list
-    // path (same as "signed out" or "offline") — this test exercises that
-    // real safety behavior: a nurse with no accepted doctor friendship
-    // must be told why, not shown a fake placeholder name to pick from.
-    // The full picker → review → verdict flow needs a signed-in Supabase
-    // session with an accepted friendship and is covered by the Playwright
-    // smoke test in web/tests instead, where that's actually reachable.
+    // speech_to_text has no platform channel implementation in the plain
+    // widget-test harness (no real device/emulator), so
+    // SpeechToText.initialize() resolves false — same as a real device
+    // where the user denied the microphone permission. This test exercises
+    // that the screen surfaces a clear reason instead of hanging or
+    // crashing. The full record → transcribe → send → doctor-review flow
+    // needs a real platform (mic + Supabase session + accepted friendship)
+    // and is covered by the Playwright smoke test in web/tests instead.
     await tester.pumpWidget(
       MaterialApp(theme: buildAppTheme(), home: const BotBpjsScreen()),
     );
     await tester.tap(find.text('Ucapkan "Halo Jarvis"'));
-    await tester.pump(const Duration(milliseconds: 700));
-    await tester.pump();
-    expect(find.text('Hentikan Sesi'), findsOneWidget);
-    await tester.tap(find.text('Hentikan Sesi'));
-    // Avoid pumpAndSettle here: the processing spinner runs for a fixed
-    // delay before the doctor lookup resolves, so settle would hang on it.
-    await tester.pump(const Duration(milliseconds: 900));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Belum ada dokter terhubung'), findsOneWidget);
-    await tester.tap(find.text('Mengerti'));
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Mikrofon/STT error:', findRichText: true),
+      findsNothing, // this path is the init-false branch, not onError
+    );
     expect(find.text('Ucapkan "Halo Jarvis"'), findsOneWidget);
+    expect(
+      find.textContaining('Izin mikrofon ditolak'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

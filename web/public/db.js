@@ -151,3 +151,99 @@ export function watchFriendships(onChange) {
     .subscribe();
   return () => sb.removeChannel(channel);
 }
+
+// ---------------------------------------------------------------------
+// Bot BPJS — doctor-side review. Recording/STT/LLM happen natively (see
+// bot_bpjs_screen.dart + bpjs_service.dart); once a session reaches
+// 'pending_review' the doctor reviews and verdicts it from here, in their
+// *own* account/device — this was previously only reachable from whichever
+// device ran the native Bot BPJS screen, which made the "doctor reviews
+// independently" requirement in the PRD unreachable in practice.
+// ---------------------------------------------------------------------
+
+/** Sessions where the signed-in user is the target doctor, newest first,
+ * each with its patient name, status, and the nurse's profile attached. */
+export async function fetchDoctorBpjsSessions() {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data } = await sb
+    .from('bpjs_sessions')
+    .select('*')
+    .eq('dokter_id', user.id)
+    .order('created_at', { ascending: false });
+  const rows = data ?? [];
+  const nurseIds = [...new Set(rows.map((r) => r.perawat_id))];
+  let nursesById = {};
+  if (nurseIds.length > 0) {
+    const { data: profiles } = await sb.from('profiles').select('id,display_name').in('id', nurseIds);
+    nursesById = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]));
+  }
+  return rows.map((r) => ({ ...r, nurse_profile: nursesById[r.perawat_id] ?? null }));
+}
+
+/** Sessions where the signed-in user is the nurse — used by the nurse's
+ * own "my BPJS sessions" history, separate from Bot BPJS's live recording. */
+export async function fetchNurseBpjsSessions() {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data } = await sb
+    .from('bpjs_sessions')
+    .select('*')
+    .eq('perawat_id', user.id)
+    .order('created_at', { ascending: false });
+  const rows = data ?? [];
+  const doctorIds = [...new Set(rows.map((r) => r.dokter_id))];
+  let doctorsById = {};
+  if (doctorIds.length > 0) {
+    const { data: profiles } = await sb.from('profiles').select('id,display_name').in('id', doctorIds);
+    doctorsById = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]));
+  }
+  return rows.map((r) => ({ ...r, doctor_profile: doctorsById[r.dokter_id] ?? null }));
+}
+
+export async function fetchBpjsDocument(sessionId) {
+  const { data } = await sb
+    .from('bpjs_documents')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+export async function fetchBpjsTranscript(sessionId) {
+  const { data } = await sb
+    .from('bpjs_transcripts')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('timestamp_offset_ms');
+  return data ?? [];
+}
+
+/** Doctor's verdict. Writes the review row (RLS: only the session's own
+ * target doctor may insert) and flips the session's status to match. */
+export async function submitBpjsReview(sessionId, verdict, catatan) {
+  const user = await currentUser();
+  if (!user) throw new Error('Belum masuk akun.');
+  const { error: reviewError } = await sb.from('bpjs_reviews').insert({
+    session_id: sessionId,
+    dokter_id: user.id,
+    verdict,
+    catatan: catatan || null,
+  });
+  if (reviewError) throw reviewError;
+  const { error: statusError } = await sb
+    .from('bpjs_sessions')
+    .update({ status: verdict, updated_at: new Date().toISOString() })
+    .eq('id', sessionId);
+  if (statusError) throw statusError;
+}
+
+export function watchBpjsSessions(onChange) {
+  const channel = sb
+    .channel(`bpjs-sessions-${Math.random().toString(36).slice(2)}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bpjs_sessions' }, onChange)
+    .subscribe();
+  return () => sb.removeChannel(channel);
+}
