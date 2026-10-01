@@ -79,4 +79,41 @@ class SupabaseService {
       // Logging is best-effort; swallow network/RLS errors.
     }
   }
+
+  /// Accepted friends whose profile role matches [role] (e.g. 'dokter') —
+  /// this is what Bot BPJS's doctor picker calls so it only ever lists
+  /// doctors the signed-in nurse actually has an accepted friendship with,
+  /// instead of a fixed placeholder list. Returns `{id, display_name}` maps.
+  /// Empty on any failure (not signed in, RLS denies, offline) so the
+  /// caller can show "tidak ada dokter" rather than crash — same
+  /// best-effort contract as [logActivity].
+  static Future<List<Map<String, dynamic>>> fetchAcceptedDoctors() async {
+    if (!_initialized) return [];
+    final uid = userId;
+    if (uid == null) return [];
+    try {
+      final rows = await client
+          .from('friendships')
+          .select('requester_id,addressee_id')
+          .eq('status', 'accepted')
+          .or('requester_id.eq.$uid,addressee_id.eq.$uid');
+      final otherIds = (rows as List)
+          .map(
+            (r) => r['requester_id'] == uid
+                ? r['addressee_id'] as String
+                : r['requester_id'] as String,
+          )
+          .toSet()
+          .toList();
+      if (otherIds.isEmpty) return [];
+      final profiles = await client
+          .from('profiles')
+          .select('id,display_name,role')
+          .inFilter('id', otherIds)
+          .eq('role', 'dokter');
+      return (profiles as List).cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
 }

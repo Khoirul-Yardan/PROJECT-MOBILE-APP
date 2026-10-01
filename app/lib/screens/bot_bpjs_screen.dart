@@ -19,8 +19,6 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
   String? _doctor;
   String? _verdict;
 
-  static const _friends = ['dr. Amma Haz', 'dr. Sritrusta', 'dr. Wibowo'];
-
   static const _formFields = [
     ('Keluhan utama', 'Nyeri perut bagian kanan bawah sejak 2 hari'),
     ('Durasi gejala', '2 hari, memberat setelah makan'),
@@ -49,6 +47,28 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
   }
 
   Future<void> _pickDoctor() async {
+    final doctors = await SupabaseService.fetchAcceptedDoctors();
+    if (!mounted) return;
+    if (doctors.isEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Belum ada dokter terhubung'),
+          content: const Text(
+            'Tambahkan dokter sebagai teman dulu di menu Teman (Pengaturan → Teman) sebelum mengirim dokumentasi ini.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Mengerti'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _stage = _Stage.idle);
+      return;
+    }
     final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -71,11 +91,14 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            for (final name in _friends)
+            for (final doc in doctors)
               ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: Text(name),
-                onTap: () => Navigator.pop(context, name),
+                title: Text((doc['display_name'] as String?) ?? 'Dokter'),
+                onTap: () => Navigator.pop(
+                  context,
+                  (doc['display_name'] as String?) ?? 'Dokter',
+                ),
               ),
             const SizedBox(height: 12),
           ],

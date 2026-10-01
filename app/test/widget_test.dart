@@ -50,9 +50,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Bot BPJS preview runs the full session and review flow', (
+  testWidgets('Bot BPJS preview stops at the record step and warns when no doctor is connected', (
     tester,
   ) async {
+    // SupabaseService.init() never runs in this plain widget-test harness,
+    // so fetchAcceptedDoctors() takes its documented best-effort empty-list
+    // path (same as "signed out" or "offline") — this test exercises that
+    // real safety behavior: a nurse with no accepted doctor friendship
+    // must be told why, not shown a fake placeholder name to pick from.
+    // The full picker → review → verdict flow needs a signed-in Supabase
+    // session with an accepted friendship and is covered by the Playwright
+    // smoke test in web/tests instead, where that's actually reachable.
     await tester.pumpWidget(
       MaterialApp(theme: buildAppTheme(), home: const BotBpjsScreen()),
     );
@@ -61,21 +69,14 @@ void main() {
     await tester.pump();
     expect(find.text('Hentikan Sesi'), findsOneWidget);
     await tester.tap(find.text('Hentikan Sesi'));
-    // Avoid pumpAndSettle here: the processing spinner behind the sheet
-    // animates indefinitely until a doctor is picked, so settle would hang.
+    // Avoid pumpAndSettle here: the processing spinner runs for a fixed
+    // delay before the doctor lookup resolves, so settle would hang on it.
     await tester.pump(const Duration(milliseconds: 900));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Kirim ke dokter siapa?'), findsOneWidget);
-    await tester.tap(find.text('dr. Amma Haz'));
-    await tester.pumpAndSettle();
-    expect(find.text('Untuk: dr. Amma Haz'), findsOneWidget);
-    expect(find.text('Draf AI — perlu verifikasi dokter'), findsOneWidget);
-    await tester.tap(find.text('Tandai Sesuai'));
-    await tester.pumpAndSettle();
-    expect(
-      find.textContaining('aplikasi ini tidak mencairkan dana'),
-      findsOneWidget,
-    );
+    expect(find.text('Belum ada dokter terhubung'), findsOneWidget);
+    await tester.tap(find.text('Mengerti'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Ucapkan "Halo Jarvis"'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
