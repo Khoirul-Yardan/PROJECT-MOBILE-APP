@@ -1,79 +1,79 @@
-import { h } from '../ui.js';
-import { currentUser, myProfile } from '../db.js';
-import { hasApiKey, PROVIDERS } from '../ai.js';
+﻿import { h, icon, escapeHtml, initial } from '../ui.js';
+import { currentUser, myProfile, fetchActivity, watchActivity } from '../db.js';
+import { listRegisteredProviders } from '../ai.js';
 import { navigate } from '../router.js';
 
 export default async function render(root) {
-  const user = await currentUser();
-  const profile = await myProfile();
+  const [user, profile] = await Promise.all([currentUser(), myProfile()]);
   const name = profile?.display_name || user?.email?.split('@')[0] || 'Explorer';
-
+  const hour = new Date().getHours();
+  const greeting = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
   const el = h(`
     <div class="page home-page">
       <div class="topbar">
-        <div>
-          <p class="muted small" style="margin:0;">Selamat datang,</p>
-          <h1 style="margin:2px 0 0;">${name}</h1>
+        <h1>Home Dashboard</h1>
+        <div class="row" style="gap:6px;">
+          <button class="icon-button" data-go="/settings/activity" aria-label="Lihat aktivitas">${icon('bell')}</button>
+          <button class="avatar" data-go="/settings/profile" aria-label="Buka profil">${escapeHtml(initial(name))}</button>
         </div>
       </div>
-      <hr class="section-divider" />
-
-      <div class="row-between">
-        <span class="section-title" style="margin:0;">Penyedia AI Terhubung</span>
-        <span id="provider-count" class="muted small" style="font-family:var(--mono);">…</span>
+      <section class="home-greeting">
+        <p>${greeting},</p><h2>${escapeHtml(name)}</h2>
+        <p class="muted small">Siap membuat hari ini lebih produktif?</p>
+      </section>
+      <div class="module-grid">
+        <button class="card tappable module-card" data-go="/settings/apikeys">
+          <span class="feature-icon tone-green">${icon('spark')}</span>
+          <h3>Provider &amp; Agent</h3><p id="provider-count">Memuat...</p>
+        </button>
+        <button class="card tappable module-card" data-go="/chat">
+          <span class="feature-icon tone-purple">${icon('chat')}</span>
+          <h3>Chat</h3><p>Pakai provider atau agent pilihanmu</p>
+        </button>
+        <button class="card tappable module-card" data-go="/bots">
+          <span class="feature-icon">${icon('bot')}</span>
+          <h3>Bots</h3><p>Jarvis &amp; Bot BPJS</p>
+        </button>
+        <button class="card tappable module-card" data-go="/vpn">
+          <span class="feature-icon tone-green">${icon('shield')}</span>
+          <h3>VPN</h3><p>Kelola koneksi aman</p>
+        </button>
       </div>
-      <div id="providers" class="status-grid" style="margin-top:10px;"></div>
-
-      <div class="card system-card">
-        <h3 style="font-size:14px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;">Status Sistem</h3>
-        <div class="status-grid" style="margin-top:14px;">
-          <button class="status-tile status-tile--vpn" data-go="/vpn">
-            <span aria-hidden="true">&#9673;</span><span class="label">VPN</span><span class="value">Lihat status</span>
-          </button>
-          <button class="status-tile status-tile--bots" data-go="/bots">
-            <span aria-hidden="true">&#9635;</span><span class="label">Bots</span><span class="value">Bot BPJS</span>
-          </button>
-          <button class="status-tile status-tile--friends" data-go="/friends">
-            <span aria-hidden="true">&#9670;</span><span class="label">Teman</span><span class="value">Kelola</span>
-          </button>
-        </div>
+      <div class="row-between" style="margin-top:22px;">
+        <h2 class="section-title" style="margin:0;">Aktivitas terbaru</h2>
+        <button class="btn-text" data-go="/settings/activity">Lihat semua</button>
       </div>
-
-      <button type="button" class="card tappable chat-cta" id="chat-cta">
-        <div class="row-between">
-          <div>
-            <span class="eyebrow" style="color:#cfc9bc;">Percakapan AI</span>
-            <h3 style="margin-top:6px;">Mulai obrolan baru</h3>
-          </div>
-        </div>
-        <span class="cta-label">Buka Chat &rarr;</span>
+      <div id="recent-activity" aria-live="polite"><p class="muted small">Memuat aktivitas...</p></div>
+      <button class="card tappable chat-cta" data-go="/chat">
+        <div class="row"><span class="feature-icon tone-purple">${icon('chat')}</span><div><h3>Ada ide hari ini?</h3><p>Mulai percakapan dengan asisten AI pilihanmu.</p></div></div>
+        <span class="cta-label">Mulai chat &rarr;</span>
       </button>
-    </div>
-  `);
+    </div>`);
   root.appendChild(el);
-
-  el.querySelectorAll('[data-go]').forEach((btn) => {
-    btn.onclick = () => navigate(btn.dataset.go);
+  el.querySelectorAll('[data-go]').forEach((button) => {
+    button.onclick = () => navigate(button.dataset.go);
   });
-  el.querySelector('#chat-cta').onclick = () => navigate('/chat');
+  const registered = await listRegisteredProviders();
+  el.querySelector('#provider-count').textContent =
+    registered.length === 0 ? 'Belum ada — tambah sekarang' : `${registered.length} terhubung`;
 
-  const providersEl = el.querySelector('#providers');
-  const countEl = el.querySelector('#provider-count');
-  const entries = Object.entries(PROVIDERS);
-  let connected = 0;
-  for (const [id, info] of entries) {
-    const has = await hasApiKey(id);
-    if (has) connected++;
-    const tile = h(`
-      <div class="card provider-card">
-        <div class="provider-icon" aria-hidden="true" style="font-family:var(--mono);font-weight:700;">${id === 'openai' ? 'O' : id === 'anthropic' ? 'C' : 'G'}</div>
-        <div class="provider-name">${info.label}</div>
-        <div class="small" style="color:${has ? 'var(--ok)' : 'var(--ink-faint)'};margin-top:3px;">
-          ${has ? 'Terhubung' : 'Belum terhubung'}
-        </div>
-      </div>
-    `);
-    providersEl.appendChild(tile);
+  let disposed = false;
+  async function refreshActivity() {
+    const rows = await fetchActivity();
+    if (disposed) return;
+    const list = el.querySelector('#recent-activity');
+    list.replaceChildren();
+    if (!rows.length) {
+      list.appendChild(h('<div class="empty-state">Belum ada aktivitas. Mulai chat atau atur provider AI pertamamu.</div>'));
+      return;
+    }
+    for (const row of rows.slice(0, 3)) {
+      const mark = row.category === 'VPN' ? 'shield' : row.category === 'AI' ? 'chat' : 'document';
+      const tone = row.category === 'VPN' ? 'tone-green' : 'tone-purple';
+      list.appendChild(h(`<div class="row activity-row"><span class="feature-icon ${tone}">${icon(mark)}</span><div class="grow"><strong>${escapeHtml(row.title)}</strong><time>${escapeHtml(new Date(row.created_at).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }))}</time></div></div>`));
+    }
   }
-  countEl.textContent = `${connected}/${entries.length}`;
+  await refreshActivity();
+  const unwatch = watchActivity(() => refreshActivity());
+  return { dispose() { disposed = true; unwatch(); } };
 }

@@ -124,7 +124,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Bot BPJS')),
+    appBar: AppBar(title: const Text('Jarvis / Bot BPJS')),
     body: SafeArea(
       top: false,
       child: SingleChildScrollView(
@@ -132,6 +132,50 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_stage != _Stage.review) ...[
+              const SizedBox(height: 16),
+              const Center(
+                child: Text(
+                  'Jarvis',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Center(
+                child: Text(
+                  'Asisten suara untuk dokumentasi klinis',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+              ),
+              const SizedBox(height: 28),
+              Center(
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppColors.gradient,
+                    border: Border.all(
+                      color: const Color(0xFFE1EBFF),
+                      width: 8,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x207950FF),
+                        blurRadius: 0,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.mic_none_rounded,
+                    size: 46,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
             HubCard(
               child: Row(
                 children: [
@@ -141,11 +185,17 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_statusLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text(
+                          _statusLabel,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           _statusHint,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
@@ -155,7 +205,10 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
             ),
             const SizedBox(height: 20),
             if (_stage == _Stage.idle)
-              GradientButton(label: 'Ucapkan "Halo Jarvis"', onPressed: _sayHalo)
+              GradientButton(
+                label: 'Ucapkan "Halo Jarvis"',
+                onPressed: _sayHalo,
+              )
             else if (_stage == _Stage.listening)
               const Center(child: CircularProgressIndicator())
             else if (_stage == _Stage.recording) ...[
@@ -167,12 +220,17 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFFFFE7E7),
                     padding: const EdgeInsets.all(17),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   onPressed: _stopAndProcess,
                   child: const Text(
                     'Hentikan Sesi',
-                    style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -183,7 +241,10 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
               )
             else if (_stage == _Stage.review) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.warning.withValues(alpha: .15),
                   borderRadius: BorderRadius.circular(10),
@@ -191,17 +252,28 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.auto_awesome, size: 14, color: AppColors.warning),
+                    Icon(
+                      Icons.auto_awesome,
+                      size: 14,
+                      color: AppColors.warning,
+                    ),
                     SizedBox(width: 6),
                     Text(
                       'Draf AI — perlu verifikasi dokter',
-                      style: TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 14),
-              Text('Untuk: $_doctor', style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                'Untuk: $_doctor',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 4),
               const Text(
                 'Field di bawah mengikuti struktur form BPJS agar tidak perlu ditulis manual.',
@@ -217,7 +289,13 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(f.$1, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                              Text(
+                                f.$1,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
                               const SizedBox(height: 2),
                               Text(f.$2, style: const TextStyle(fontSize: 13)),
                             ],
@@ -257,8 +335,11 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: (_verdict == 'Sesuai' ? AppColors.success : AppColors.textMuted)
-                            .withValues(alpha: .12),
+                        color:
+                            (_verdict == 'Sesuai'
+                                    ? AppColors.success
+                                    : AppColors.textMuted)
+                                .withValues(alpha: .12),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
@@ -271,7 +352,10 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
-                      child: TextButton(onPressed: _reset, child: const Text('Mulai sesi baru')),
+                      child: TextButton(
+                        onPressed: _reset,
+                        child: const Text('Mulai sesi baru'),
+                      ),
                     ),
                   ],
                 ),
@@ -291,11 +375,13 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
   };
 
   String get _statusHint => switch (_stage) {
-    _Stage.idle => 'Preview mode — tekan tombol untuk mensimulasikan "Halo Jarvis".',
+    _Stage.idle =>
+      'Preview mode — tekan tombol untuk mensimulasikan "Halo Jarvis".',
     _Stage.listening => 'Jarvis: "Iya, ada yang bisa saya bantu?"',
     _Stage.recording => 'Jarvis: "Oke, saya akan mengaktifkan Bot BPJS."',
     _Stage.processing => 'Menyusun dokumentasi sesuai field form BPJS.',
-    _Stage.review => 'Perawat & dokter dapat melihat status ini di Activity Log.',
+    _Stage.review =>
+      'Perawat & dokter dapat melihat status ini di Activity Log.',
   };
 }
 

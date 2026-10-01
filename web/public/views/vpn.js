@@ -40,10 +40,7 @@ export default async function render(root) {
           </div>
         </div>
       </div>
-      <p class="muted small center vpn-note">
-        Uses your saved server config. Opening a live network tunnel needs a native
-        VPN/SSH plugin — not wired up yet, so no traffic is actually routed.
-      </p>
+      <p id="vpn-note" class="muted small center vpn-note"></p>
       <button id="connect-btn" class="btn btn-primary" style="margin-top:18px;">Connect</button>
     </div>
   `);
@@ -55,6 +52,38 @@ export default async function render(root) {
   const btn = el.querySelector('#connect-btn');
   const serverText = el.querySelector('#server-text');
 
+  const noteEl = el.querySelector('#vpn-note');
+
+  function updateNote() {
+    if (!Native.attached) {
+      // Opened in a plain browser (no Flutter shell) — bridge.js's dev
+      // fallback fakes "connected: true" so the screen stays testable, but
+      // no real tunnel exists here at all, WireGuard included. Only the
+      // installed Android app talks to a real VpnService.
+      noteEl.textContent = 'Preview browser: tidak ada shell native, jadi Connect di sini cuma simulasi tampilan (localStorage), bukan tunnel asli. Coba dari aplikasi Android untuk tunnel WireGuard sungguhan.';
+      return;
+    }
+    if (!config) {
+      // Every real VPN needs a server with its own credentials — there's no
+      // "default, zero-setup" server to hand out, same as any general VPN
+      // app (you either run your own server or subscribe to someone's).
+      noteEl.textContent = 'Semua protokol butuh server dan kredensialnya sendiri — belum ada server default, ketuk di atas untuk mengisi WireGuard/OpenVPN/SSH milikmu.';
+      return;
+    }
+    if (config.protocol === 'WireGuard') {
+      noteEl.textContent = 'WireGuard membuka tunnel jaringan asli di HP — trafik benar-benar dialihkan lewat server ini saat Connect.';
+    } else {
+      noteEl.textContent = `${config.protocol} baru tersimpan sebagai konfigurasi — tunnel jaringan asli untuk ${config.protocol} belum tersedia, jadi Connect belum benar-benar mengalihkan trafik.`;
+    }
+  }
+
+  function serverLabel(cfg) {
+    if (!cfg) return null;
+    if (cfg.protocol === 'WireGuard') return cfg.endpoint;
+    if (cfg.protocol === 'OpenVPN') return 'File .ovpn tersimpan';
+    return cfg.host ? `${cfg.host}:${cfg.port || 22}` : null;
+  }
+
   function refresh() {
     icon.textContent = connected ? '🔒' : '🔓';
     text.textContent = connected ? 'Connected' : 'Disconnected';
@@ -63,15 +92,17 @@ export default async function render(root) {
       : 'linear-gradient(135deg,#fff,#e7faff,#e3d7ff)';
     circle.style.color = connected ? '#fff' : 'var(--text-dark)';
     btn.textContent = connected ? 'Disconnect' : 'Connect';
-    serverText.textContent = config
-      ? `${config.protocol} · ${config.host}:${config.port}`
-      : 'No server configured — tap to add one';
-    el.querySelector('#stat-host').textContent = connected ? config?.host || '—' : '—';
+    const label = serverLabel(config);
+    serverText.textContent = label
+      ? `${config.protocol} · ${label}`
+      : 'Belum ada server — ketuk untuk menambah';
+    el.querySelector('#stat-host').textContent = connected ? label || '—' : '—';
     el.querySelector('#stat-protocol').textContent = config?.protocol || '—';
     el.querySelector('#stat-since').textContent =
       connected && connectedSince
         ? connectedSince.toTimeString().slice(0, 5)
         : '—';
+    updateNote();
   }
 
   el.querySelector('#server-card').onclick = () => navigate('/vpn-config');
@@ -85,10 +116,11 @@ export default async function render(root) {
     const result = connected ? await Native.vpnDisconnect() : await Native.vpnConnect();
     connected = !!(result && result.connected);
     connectedSince = connected ? new Date() : null;
+    if (result && result.message) toast(result.message);
     logActivity({
       category: 'VPN',
       title: connected ? 'VPN connected' : 'VPN disconnected',
-      subtitle: config ? `${config.protocol} · ${config.host}` : undefined,
+      subtitle: config ? `${config.protocol} · ${serverLabel(config) || ''}` : undefined,
       badge: connected ? 'Success' : 'Info',
     });
     refresh();

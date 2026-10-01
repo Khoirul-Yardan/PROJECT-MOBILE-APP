@@ -375,3 +375,56 @@ begin
     alter publication supabase_realtime add table public.bpjs_reviews;
   end if;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- AI provider/agent credentials — synced via the user's account instead of
+-- only living in one device's local storage, so a key added on one browser/
+-- device is still there after a reinstall or on another device.
+--
+-- `encrypted_key`/`iv` hold an AES-GCM ciphertext, not the raw key — see
+-- web/public/credentials.js for the encryption. RLS is still the real
+-- access control (nobody but the owning user can even read a row); the
+-- client-side encryption is defense-in-depth on top of that, in case this
+-- table is ever exposed some other way (e.g. an accidental dashboard
+-- screen-share, CSV export, or a misconfigured read-only replica).
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.api_credentials (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  provider_id text not null,
+  label text not null,
+  type text not null default 'chat' check (type in ('chat', 'agent')),
+  format text not null default 'openai',
+  endpoint text,
+  model text,
+  encrypted_key text not null,
+  iv text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint api_credentials_unique_provider unique (user_id, provider_id)
+);
+
+create index if not exists api_credentials_user_idx on public.api_credentials (user_id);
+
+alter table public.api_credentials enable row level security;
+
+drop policy if exists "Users can view own api credentials" on public.api_credentials;
+create policy "Users can view own api credentials"
+  on public.api_credentials for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own api credentials" on public.api_credentials;
+create policy "Users can insert own api credentials"
+  on public.api_credentials for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update own api credentials" on public.api_credentials;
+create policy "Users can update own api credentials"
+  on public.api_credentials for update
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own api credentials" on public.api_credentials;
+create policy "Users can delete own api credentials"
+  on public.api_credentials for delete
+  using (auth.uid() = user_id);

@@ -1,12 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// Flat ink-bordered button — the native mirror of web/public/style.css's
-/// .btn-primary. No gradient, no glow shadow: a solid rectangle with a
-/// crisp border reads clearly and doesn't compete with page content.
 class GradientButton extends StatelessWidget {
   const GradientButton({
     super.key,
@@ -19,43 +14,49 @@ class GradientButton extends StatelessWidget {
   final bool arrow;
   @override
   Widget build(BuildContext context) => Material(
-    color: AppColors.ink,
+    color: Colors.transparent,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(3),
-      side: const BorderSide(color: AppColors.ink),
+      borderRadius: BorderRadius.circular(14),
+      side: BorderSide.none,
     ),
-    child: InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(3),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 50),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.surface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+    child: Ink(
+      decoration: BoxDecoration(
+        gradient: AppColors.gradient,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 50),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.surface,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
-              ),
-              if (arrow) ...[
-                const SizedBox(width: 10),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 18,
-                  color: AppColors.accentTint,
-                ),
+                if (arrow) ...[
+                  const SizedBox(width: 10),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: AppColors.accentTint,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -63,8 +64,6 @@ class GradientButton extends StatelessWidget {
   );
 }
 
-/// A ledger entry: flat surface, hairline border, a solid left rule in
-/// ink (or an accent color for emphasis) instead of a floating shadow.
 class HubCard extends StatelessWidget {
   const HubCard({
     super.key,
@@ -78,35 +77,26 @@ class HubCard extends StatelessWidget {
   final Color accentBar;
   final Color? fill;
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(3),
-    child: Container(
-      decoration: BoxDecoration(
-        color: fill ?? AppColors.surface,
-        border: Border.all(color: AppColors.line),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 3, color: accentBar),
-            Flexible(
-              child: Material(
-                color: Colors.transparent,
-                child: Padding(padding: padding, child: child),
-              ),
-            ),
-          ],
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: fill ?? AppColors.surface,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: AppColors.line),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0D244B95),
+          blurRadius: 22,
+          offset: Offset(0, 5),
         ),
-      ),
+      ],
+    ),
+    child: Material(
+      color: Colors.transparent,
+      child: Padding(padding: padding, child: child),
     ),
   );
 }
 
-/// A flat icon chip — surface-sunken square, hairline border, no
-/// gradient glow. `emphasis: true` fills it with the accent tint for the
-/// rare icon that should draw the eye first.
 class IconTile extends StatelessWidget {
   const IconTile(
     this.icon, {
@@ -125,8 +115,8 @@ class IconTile extends StatelessWidget {
     height: size,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(3),
-      color: solid ? color : AppColors.surfaceSunken,
+      borderRadius: BorderRadius.circular(14),
+      color: solid ? color : color.withValues(alpha: .10),
       border: solid ? null : Border.all(color: AppColors.line),
     ),
     child: Icon(
@@ -137,8 +127,6 @@ class IconTile extends StatelessWidget {
   );
 }
 
-/// Filter tabs matching web's .tabs/.chip — monospace label, filled ink
-/// when active instead of a gradient pill.
 class FilterTabs extends StatelessWidget {
   const FilterTabs({
     super.key,
@@ -162,15 +150,15 @@ class FilterTabs extends StatelessWidget {
             selected: selected == i,
             button: true,
             child: Material(
-              color: selected == i ? AppColors.ink : AppColors.surface,
+              color: selected == i ? AppColors.accent : AppColors.surfaceSunken,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(14),
                 side: BorderSide(
-                  color: selected == i ? AppColors.ink : AppColors.lineStrong,
+                  color: selected == i ? AppColors.accent : AppColors.line,
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(14),
                 onTap: () => onSelected(i),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -218,21 +206,11 @@ class ProviderMark extends StatelessWidget {
         color: AppColors.info,
       ),
     ),
-    'Meta' => Icon(
-      Icons.all_inclusive,
-      size: size,
-      color: AppColors.info,
-    ),
+    'Meta' => Icon(Icons.all_inclusive, size: size, color: AppColors.info),
     _ => Icon(Icons.circle_outlined, size: size, color: AppColors.inkMuted),
   };
 }
 
-/// The AI Hub mark: a waypoint / compass stamp — a ring with a single
-/// rust-colored bearing needle, not a rotating cast of gradient shapes.
-/// Reads as "your one fixed point among many providers/tools" and works
-/// identically at nav-icon size and splash size because it's just three
-/// flat shapes, no gradients to band or blur when scaled.
-/// Mirrored pixel-for-pixel in web/public/ui.js's logoSvg().
 class HubLogo extends StatelessWidget {
   const HubLogo({super.key, this.size = 116});
   final double size;
@@ -247,77 +225,85 @@ class HubLogo extends StatelessWidget {
 class _HubLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final r = size.width * .41;
-
-    final ring = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * .055
-      ..color = AppColors.ink;
-    canvas.drawCircle(center, r, ring);
-
-    // Faint tick marks around the ring — a compass rose gesture without
-    // drawing 360 individual ticks.
-    final tick = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * .01
-      ..strokeCap = StrokeCap.round
-      ..color = AppColors.ink.withValues(alpha: .35);
-    for (var i = 0; i < 24; i++) {
-      final a = i * (math.pi * 2 / 24);
-      final dir = Offset(math.cos(a), math.sin(a));
-      canvas.drawLine(center + dir * (r + 2), center + dir * (r + 9), tick);
+    canvas.save();
+    canvas.scale(size.width / 100, size.height / 100);
+    final line = Paint()
+      ..color = const Color(0xFF4275FF)
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(const Offset(20, 48), const Offset(64, 12), line);
+    canvas.drawLine(const Offset(20, 84), const Offset(74, 42), line);
+    canvas.drawLine(const Offset(44, 64), const Offset(76, 84), line);
+    const nodes = [
+      Offset(64, 12),
+      Offset(20, 48),
+      Offset(74, 42),
+      Offset(44, 64),
+      Offset(20, 84),
+      Offset(76, 84),
+    ];
+    for (final node in nodes) {
+      final fill = Paint()
+        ..shader = AppColors.gradient.createShader(
+          Rect.fromCircle(center: node, radius: 14),
+        );
+      canvas.drawCircle(node, 10, fill);
+      canvas.drawCircle(
+        node,
+        10,
+        Paint()
+          ..color = AppColors.accent
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
     }
-
-    // The needle: one solid rust kite shape pointing north, ink counter-
-    // weight pointing south — a single confident accent, not a gradient.
-    final north = center + Offset(0, -r * .82);
-    final south = center + Offset(0, r * .82);
-    final east = center + Offset(r * .28, 0);
-    final west = center + Offset(-r * .28, 0);
-
-    final needleFront = Path()
-      ..moveTo(north.dx, north.dy)
-      ..lineTo(east.dx, east.dy)
-      ..lineTo(west.dx, west.dy)
-      ..close();
-    canvas.drawPath(needleFront, Paint()..color = AppColors.accent);
-
-    final needleBack = Path()
-      ..moveTo(south.dx, south.dy)
-      ..lineTo(east.dx, east.dy)
-      ..lineTo(west.dx, west.dy)
-      ..close();
-    canvas.drawPath(needleBack, Paint()..color = AppColors.ink);
-
-    canvas.drawCircle(
-      center,
-      size.width * .05,
-      Paint()..color = AppColors.surface,
-    );
-    canvas.drawCircle(
-      center,
-      size.width * .05,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = size.width * .035
-        ..color = AppColors.ink,
-    );
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// ---------------------------------------------------------------------
-// Simple flat backdrop: warm paper, no wavy gradient blobs. Splash and
-// any other full-bleed screen just sit on the app's normal background.
 class AuroraBackdrop extends StatelessWidget {
   const AuroraBackdrop({super.key, required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context) => Container(
-    color: AppColors.bg,
-    child: child,
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Colors.white, AppColors.bg, Color(0xFFF0EAFF)],
+      ),
+    ),
+    child: Stack(
+      children: [
+        Positioned(
+          right: -90,
+          top: -70,
+          child: _orb(260, const Color(0xFFDDF5FF)),
+        ),
+        Positioned(
+          left: -120,
+          bottom: 40,
+          child: _orb(320, const Color(0xFFE0E9FF)),
+        ),
+        Positioned(
+          right: -60,
+          bottom: -130,
+          child: _orb(300, const Color(0xFFE8DEFF)),
+        ),
+        child,
+      ],
+    ),
+  );
+
+  Widget _orb(double size, Color color) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+    ),
   );
 }

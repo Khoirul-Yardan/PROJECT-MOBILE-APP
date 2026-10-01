@@ -28,105 +28,6 @@ export async function myProfile() {
   return data;
 }
 
-export async function upsertProfile(displayName, { role, bio } = {}) {
-  const user = await currentUser();
-  if (!user) return;
-  const row = { id: user.id, display_name: displayName };
-  if (role !== undefined) row.role = role;
-  if (bio !== undefined) row.bio = bio;
-  await sb.from('profiles').upsert(row);
-}
-
-export async function searchProfiles(query) {
-  const user = await currentUser();
-  if (!user || !query.trim()) return [];
-  const { data } = await sb
-    .from('profiles')
-    .select()
-    .ilike('display_name', `%${query.trim()}%`)
-    .neq('id', user.id)
-    .limit(20);
-  return data ?? [];
-}
-
-export async function sendFriendRequest(addresseeId) {
-  const user = await currentUser();
-  if (!user) return;
-  await sb.from('friendships').insert({ requester_id: user.id, addressee_id: addresseeId });
-}
-
-export async function respondFriendRequest(friendshipId, accept) {
-  await sb
-    .from('friendships')
-    .update({ status: accept ? 'accepted' : 'blocked', updated_at: new Date().toISOString() })
-    .eq('id', friendshipId);
-}
-
-/** One-shot fetch of friendships + the other party's profile, newest first. */
-export async function fetchFriendships() {
-  const user = await currentUser();
-  if (!user) return [];
-  const { data: rows } = await sb
-    .from('friendships')
-    .select()
-    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-    .order('created_at', { ascending: false });
-  if (!rows || rows.length === 0) return [];
-  const otherIds = [
-    ...new Set(rows.map((r) => (r.requester_id === user.id ? r.addressee_id : r.requester_id))),
-  ];
-  const { data: profiles } = await sb.from('profiles').select().in('id', otherIds);
-  const byId = Object.fromEntries((profiles ?? []).map((p) => [p.id, p]));
-  return rows.map((r) => ({
-    ...r,
-    is_incoming: r.addressee_id === user.id,
-    other_profile: byId[r.requester_id === user.id ? r.addressee_id : r.requester_id],
-  }));
-}
-
-/** Subscribes to realtime changes on `friendships`; returns an unsubscribe fn. */
-export function watchFriendships(onChange) {
-  const channel = sb
-    .channel('friendships-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, onChange)
-    .subscribe();
-  return () => sb.removeChannel(channel);
-}
-
-export async function sendMessage(receiverId, body) {
-  const user = await currentUser();
-  if (!user) return;
-  await sb.from('messages').insert({ sender_id: user.id, receiver_id: receiverId, body });
-}
-
-export async function fetchMessages(peerId) {
-  const user = await currentUser();
-  if (!user) return [];
-  const { data } = await sb
-    .from('messages')
-    .select()
-    .or(
-      `and(sender_id.eq.${user.id},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${user.id})`
-    )
-    .order('created_at');
-  return data ?? [];
-}
-
-export function watchMessages(peerId, onInsert) {
-  const channel = sb
-    .channel(`messages-${peerId}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'messages' },
-      (payload) => {
-        const row = payload.new;
-        onInsert(row);
-      }
-    )
-    .subscribe();
-  return () => sb.removeChannel(channel);
-}
-
 export async function logActivity({ category, title, subtitle, badge = 'Info' }) {
   const user = await currentUser();
   if (!user) return;
@@ -144,8 +45,14 @@ export async function logActivity({ category, title, subtitle, badge = 'Info' })
 }
 
 export function watchActivity(onChange) {
+  // A fixed channel name broke when two views subscribed in close
+  // succession (e.g. Supabase's own auth-refresh on tab-visibility-change
+  // re-rendering Home while a previous subscribe hadn't been torn down
+  // yet) — the realtime client rejects a second `.on()` on a topic that's
+  // already subscribed. A unique name per call sidesteps that entirely;
+  // the channel is still cleaned up via the returned unsubscribe function.
   const channel = sb
-    .channel('activity-log-changes')
+    .channel(`activity-log-changes-${Math.random().toString(36).slice(2)}`)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_log' }, onChange)
     .subscribe();
   return () => sb.removeChannel(channel);

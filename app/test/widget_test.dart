@@ -42,7 +42,10 @@ void main() {
     // run). Bot BPJS below covers what's still genuinely native/testable.
     await tester.pumpWidget(const AiHubApp());
     expect(find.text('AI Hub'), findsOneWidget);
-    expect(find.text('ONE PLACE FOR YOUR TOOLS'), findsOneWidget);
+    expect(
+      find.text('Satu aplikasi untuk AI, agen,\nkolaborasi, dan akses aman.'),
+      findsOneWidget,
+    );
     await tester.pump(const Duration(milliseconds: 500));
     expect(tester.takeException(), isNull);
   });

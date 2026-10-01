@@ -1,64 +1,37 @@
-import { h, header, initial, toast } from '../ui.js';
-import { currentUser, myProfile, upsertProfile } from '../db.js';
+import { h, header, initial } from '../ui.js';
+import { currentUser, signOut } from '../db.js';
+import { Native } from '../bridge.js';
+import { navigate } from '../router.js';
 
-const ROLES = [
-  ['general', 'Umum'],
-  ['perawat', 'Perawat'],
-  ['dokter', 'Dokter'],
-];
-
+// Kept deliberately minimal: this app has no multi-account switcher, so
+// "switch account" and "log out" both just end the current session and
+// hand back to Login — from there the user signs into whichever account
+// they want next.
 export default async function render(root) {
   const user = await currentUser();
-  const profile = await myProfile();
-  let role = profile?.role || 'general';
 
   const el = h(`<div class="page profile-page"></div>`);
-  el.appendChild(header('Profil', { back: true }));
+  el.appendChild(header('Akun', { back: true }));
   el.appendChild(
     h(`
-    <div class="card form-panel">
-    <div class="profile-summary">
-      <div class="avatar profile-avatar" id="avatar">
-        ${initial(profile?.display_name || user?.email)}
+    <div>
+      <div class="card form-panel" style="text-align:center;">
+        <div class="avatar profile-avatar" style="margin:0 auto 14px;">${initial(user?.email)}</div>
+        <div class="item-title">${user?.email ?? ''}</div>
       </div>
-      <p class="muted small" style="margin-top:8px;">${user?.email ?? ''}</p>
-    </div>
-    <div class="field">
-      <label for="name">Nama tampilan</label>
-      <input id="name" value="${profile?.display_name ?? ''}" placeholder="Nama yang dilihat teman lain" />
-    </div>
-    <div class="field">
-      <label id="roles-label">Peran</label>
-      <div id="roles" class="row role-options" role="group" aria-labelledby="roles-label"></div>
-    </div>
-    <div class="field">
-      <label for="bio">Bio (opsional)</label>
-      <textarea id="bio" rows="3" placeholder="Instansi, spesialisasi, atau info singkat lain">${profile?.bio ?? ''}</textarea>
-    </div>
-    <button id="save" class="btn btn-primary">Simpan Profil</button>
+      <button id="switch" class="btn btn-outline" style="margin-top:16px;">Ganti Akun</button>
+      <button id="logout" class="btn btn-danger-outline" style="margin-top:10px;">Keluar</button>
     </div>
   `)
   );
   root.appendChild(el);
 
-  const rolesEl = el.querySelector('#roles');
-  ROLES.forEach(([id, label]) => {
-    const btn = h(`<button class="chip ${role === id ? 'active' : ''}" style="flex:1;">${label}</button>`);
-    btn.onclick = () => {
-      role = id;
-      rolesEl.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
-      btn.classList.add('active');
-    };
-    rolesEl.appendChild(btn);
-  });
+  async function endSession() {
+    await signOut();
+    await Native.signOut();
+    navigate('/login');
+  }
 
-  el.querySelector('#save').onclick = async () => {
-    const name = el.querySelector('#name').value.trim();
-    if (!name) {
-      toast('Nama tidak boleh kosong.');
-      return;
-    }
-    await upsertProfile(name, { role, bio: el.querySelector('#bio').value.trim() });
-    toast('Profil disimpan.');
-  };
+  el.querySelector('#switch').onclick = endSession;
+  el.querySelector('#logout').onclick = endSession;
 }

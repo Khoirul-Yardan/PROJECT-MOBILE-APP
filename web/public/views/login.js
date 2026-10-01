@@ -8,7 +8,8 @@ export default async function render(root) {
 
   const el = h(`
     <div class="page card login-page">
-      <div class="brand-mark login-brand">${logoSvg(40)}<span>AI Hub</span></div>
+      <div class="brand-mark login-brand">${logoSvg(84)}<span>AI Hub</span></div>
+      <p class="login-tagline">Satu aplikasi untuk AI, agen, kolaborasi, dan akses aman.</p>
       <h1 id="title" class="login-title">Masuk</h1>
       <p class="muted login-intro">Gunakan akun asli agar percakapan, teman, dan sesi tersimpan aman untukmu.</p>
       <div class="field">
@@ -17,7 +18,7 @@ export default async function render(root) {
       </div>
       <div class="field">
         <label for="password">Kata sandi</label>
-        <input id="password" type="password" placeholder="Minimal 6 karakter" />
+        <input id="password" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter" />
       </div>
       <p id="error" class="error-text" role="alert" style="display:none;"></p>
       <button id="submit" class="btn btn-primary">Masuk</button>
@@ -37,6 +38,8 @@ export default async function render(root) {
     titleEl.textContent = isRegister ? 'Buat akun' : 'Masuk';
     submitEl.textContent = loading ? 'Menyimpan…' : isRegister ? 'Buat akun' : 'Masuk';
     submitEl.disabled = loading;
+    toggleEl.disabled = loading;
+    el.querySelector('#password').autocomplete = isRegister ? 'new-password' : 'current-password';
     toggleEl.textContent = isRegister
       ? 'Sudah punya akun? Masuk'
       : 'Belum punya akun? Daftar';

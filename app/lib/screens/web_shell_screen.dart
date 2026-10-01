@@ -4,25 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../theme.dart';
-import '../services/ai_provider_service.dart';
 import '../services/supabase_service.dart';
 import '../services/vpn_config_service.dart';
+import '../services/vpn_tunnel_service.dart';
 import '../services/web_hub_config.dart';
 import 'bot_bpjs_screen.dart';
 
-/// The entire native shell of the hybrid app. Every screen (login, home,
-/// chat, bot/agent hub, friends, settings, profile, VPN status) is HTML/JS
-/// served by the `web/` Docker container and rendered here in a single
-/// persistent WebView — the bottom nav below is the only "real" UI chrome
-/// Flutter draws.
+/// The entire native shell of the hybrid app — literally just a WebView and
+/// a bridge. Every screen, **including navigation itself** (login, home,
+/// chat, bot/agent hub, friends, settings, profile, VPN status), is HTML/JS
+/// served by the `web/` Docker container. Flutter draws nothing of its own:
+/// no app bar, no bottom nav, nothing — so the same web layer can be opened
+/// straight in a desktop browser (`http://localhost:8090`) for fast
+/// iteration without touching a device at all, and this shell only matters
+/// once a feature genuinely needs to be native.
 ///
-/// Deliberately kept native instead (per NFR-01/NFR-12 and the product
-/// decision behind this screen): API keys, VPN credentials, the VPN
-/// connection itself, and Bot BPJS's microphone/wake-word/TTS. Those are
-/// exactly the things a WebView cannot do reliably or safely, so they never
-/// cross into the web layer except as a request/response over the bridge
-/// below — a secret is read from Keystore/Keychain, handed to the page for
-/// one HTTPS call, and never stored in the page itself.
+/// Deliberately kept native instead (per NFR-12 and the product decision
+/// behind this screen): VPN credentials, the VPN connection itself, and Bot
+/// BPJS's microphone/wake-word/TTS — things a WebView cannot do reliably or
+/// safely. AI provider/agent API keys used to live here too, but now sync
+/// through the user's Supabase account instead (encrypted — see
+/// `web/public/credentials.js`), so a key survives a reinstall or works
+/// from another device instead of only living on the one that saved it.
 class WebShellScreen extends StatefulWidget {
   const WebShellScreen({super.key});
   @override
@@ -34,18 +37,6 @@ enum _LoadState { loading, ready, failed }
 class _WebShellScreenState extends State<WebShellScreen> {
   late final WebViewController _controller;
   _LoadState _state = _LoadState.loading;
-  // Empty until the web SPA's router reports in (see 'route_changed' below)
-  // — treated the same as '/login' so the native bottom nav never flashes
-  // on top of the login screen before we know better.
-  String _activePath = '';
-
-  static const _navItems = [
-    (Icons.home_outlined, Icons.home_rounded, 'Home', '/home'),
-    (Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded, 'Chat', '/chat'),
-    (Icons.smart_toy_outlined, Icons.smart_toy, 'Bot', '/bots'),
-    (Icons.shield_outlined, Icons.shield, 'VPN', '/vpn'),
-    (Icons.menu_rounded, Icons.menu_rounded, 'More', '/settings'),
-  ];
 
   @override
   void initState() {
@@ -53,7 +44,10 @@ class _WebShellScreenState extends State<WebShellScreen> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(AppColors.bg)
-      ..addJavaScriptChannel('NativeBridge', onMessageReceived: _onBridgeMessage)
+      ..addJavaScriptChannel(
+        'NativeBridge',
+        onMessageReceived: _onBridgeMessage,
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) {
@@ -86,11 +80,6 @@ class _WebShellScreenState extends State<WebShellScreen> {
     final payload = (data['payload'] as Map?)?.cast<String, dynamic>() ?? {};
 
     switch (type) {
-      case 'route_changed':
-        final path = (payload['path'] as String?) ?? '/home';
-        if (mounted) setState(() => _activePath = path);
-        return;
-
       case 'session_changed':
         final refreshToken = payload['refresh_token'] as String?;
         if (refreshToken != null) {
@@ -98,51 +87,45 @@ class _WebShellScreenState extends State<WebShellScreen> {
         }
         return;
 
-      case 'get_api_key':
-        final provider = AiProviderX.fromId(payload['provider'] as String? ?? '');
-        final key = provider == null ? null : await AiProviderService.getApiKey(provider);
-        if (id != null) await _reply(id, {'key': key});
-        return;
-
-      case 'has_api_key':
-        final provider = AiProviderX.fromId(payload['provider'] as String? ?? '');
-        final has = provider != null && await AiProviderService.hasApiKey(provider);
-        if (id != null) await _reply(id, {'has': has});
-        return;
-
-      case 'save_api_key':
-        final provider = AiProviderX.fromId(payload['provider'] as String? ?? '');
-        if (provider != null) {
-          await AiProviderService.saveApiKey(provider, payload['key'] as String? ?? '');
-        }
-        if (id != null) await _reply(id, {});
-        return;
-
       case 'get_vpn_config':
         final config = await VpnConfigService.load();
         if (id != null) {
-          await _reply(id, config?.toJson());
+          await _reply(id, config);
         }
         return;
 
       case 'save_vpn_config':
-        await VpnConfigService.save(
-          VpnConfig(
-            protocol: payload['protocol'] as String? ?? 'OpenVPN',
-            host: payload['host'] as String? ?? '',
-            port: payload['port'] as String? ?? '',
-            username: payload['username'] as String? ?? '',
-            password: payload['password'] as String? ?? '',
-          ),
-        );
+        await VpnConfigService.save(payload);
         if (id != null) await _reply(id, {});
         return;
 
       case 'vpn_connect':
-        if (id != null) await _reply(id, {'connected': true});
+        try {
+          final config = await VpnConfigService.load();
+          final protocol = config?['protocol'] as String?;
+          if (config == null || !VpnTunnelService.supports(protocol ?? '')) {
+            if (id != null) {
+              await _reply(id, {
+                'connected': false,
+                'message':
+                    'Tunnel nyata baru tersedia untuk WireGuard. OpenVPN/SSH masih tersimpan sebagai konfigurasi saja.',
+              });
+            }
+            return;
+          }
+          await VpnTunnelService.connect(config);
+          if (id != null) await _reply(id, {'connected': true});
+        } catch (e) {
+          if (id != null) await _reply(id, {'connected': false, 'message': e.toString()});
+        }
         return;
 
       case 'vpn_disconnect':
+        try {
+          await VpnTunnelService.disconnect();
+        } catch (_) {
+          // Best-effort — still report disconnected so the UI doesn't get stuck.
+        }
         if (id != null) await _reply(id, {'connected': false});
         return;
 
@@ -163,31 +146,20 @@ class _WebShellScreenState extends State<WebShellScreen> {
     }
   }
 
-  void _goTo(String path) {
-    _controller.runJavaScript("location.hash = '#$path';");
-    setState(() => _activePath = path);
-  }
-
   void _retry() {
     setState(() => _state = _LoadState.loading);
     _controller.reload();
   }
 
-  int get _selectedIndex {
-    for (var i = 0; i < _navItems.length; i++) {
-      if (_activePath == _navItems[i].$4) return i;
-    }
-    // Sub-routes (e.g. /settings/profile, /vpn-config, /friends) still
-    // highlight their closest top-level tab.
-    if (_activePath.startsWith('/settings') || _activePath == '/friends') return 4;
-    if (_activePath.startsWith('/vpn')) return 3;
-    return 0;
-  }
-
-  bool get _showBottomNav => _activePath.isNotEmpty && _activePath != '/login';
-
   @override
   Widget build(BuildContext context) => Scaffold(
+    // Top only: the status bar still needs Flutter to reserve space for it,
+    // but the bottom edge is intentionally left un-padded here — the page
+    // is edge-to-edge (see main.dart) and its own CSS (`env(safe-area-
+    // inset-bottom)` in style.css, already used by .web-nav) reserves
+    // exactly the system gesture/button nav's real height. Padding for it
+    // a second time at the Flutter level would double that space and make
+    // the bottom nav look unnecessarily tall.
     body: SafeArea(
       bottom: false,
       child: Stack(
@@ -199,55 +171,7 @@ class _WebShellScreenState extends State<WebShellScreen> {
         ],
       ),
     ),
-    bottomNavigationBar: _showBottomNav ? _bottomNav() : null,
   );
-
-  Widget _bottomNav() => DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 66,
-          child: Row(
-            children: List.generate(_navItems.length, (i) {
-              final selected = i == _selectedIndex;
-              final item = _navItems[i];
-              return Expanded(
-                child: Semantics(
-                  selected: selected,
-                  button: true,
-                  child: InkWell(
-                    onTap: () => _goTo(item.$4),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          selected ? item.$2 : item.$1,
-                          color: selected ? AppColors.accentBlue : AppColors.textMuted,
-                          size: 23,
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          item.$3,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: selected ? AppColors.accentBlue : AppColors.textMuted,
-                            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
 
   Widget _offlineFallback() => Container(
     color: AppColors.bg,
@@ -256,9 +180,16 @@ class _WebShellScreenState extends State<WebShellScreen> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.cloud_off_rounded, size: 40, color: AppColors.textMuted),
+        const Icon(
+          Icons.cloud_off_rounded,
+          size: 40,
+          color: AppColors.textMuted,
+        ),
         const SizedBox(height: 12),
-        const Text('Tidak bisa memuat AI Hub', style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text(
+          'Tidak bisa memuat AI Hub',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 6),
         Text(
           'Pastikan kontainer web (web/) berjalan di ${WebHubConfig.baseUrl}.',

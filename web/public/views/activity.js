@@ -1,7 +1,7 @@
 import { h, header } from '../ui.js';
 import { fetchActivity, watchActivity } from '../db.js';
 
-const CATEGORIES = ['All', 'AI', 'Agents', 'VPN', 'Friends', 'System'];
+const CATEGORIES = ['All', 'AI', 'VPN', 'System'];
 
 export default async function render(root) {
   let cat = 'All';

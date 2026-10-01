@@ -1,38 +1,54 @@
-import { h } from '../ui.js';
-import { currentUser, fetchFriendships, fetchMessages, sendMessage, watchMessages, logActivity } from '../db.js';
-import { sendChat, hasApiKey, PROVIDERS } from '../ai.js';
+import { h, icon } from '../ui.js';
+import { sendChat, listRegisteredProviders } from '../ai.js';
+import { logActivity } from '../db.js';
+import { navigate } from '../router.js';
 
+// Telegram-style skill commands: type "/" as the first character, or tap
+// the skill button next to the input, to get the same picker.
+const SKILLS = [
+  {
+    cmd: '/system',
+    label: 'Atur instruksi sistem',
+    hint: '/system <instruksi untuk AI>',
+    needsArgs: true,
+  },
+  {
+    cmd: '/clear',
+    label: 'Bersihkan percakapan ini',
+    hint: '/clear',
+    needsArgs: false,
+  },
+  {
+    cmd: '/help',
+    label: 'Lihat semua perintah',
+    hint: '/help',
+    needsArgs: false,
+  },
+];
+
+// One picker, everything equal: every provider (ChatGPT, Gemini, ...) and
+// agent (Hermes, OpenClaw, ...) the user has connected sits in the same
+// chip row — pick whichever, there's no separate "agent menu" to dig
+// through first.
 export default async function render(root) {
-  const user = await currentUser();
-  let provider = 'openai';
-  let peer = null; // null = AI Assistant
-  let aiEnabled = false;
+  let entry = null;
   let sending = false;
-  let unwatch = null;
+  let providers = [];
 
-  const aiMessages = [
-    { text: 'Hai! Tambahkan kunci API di Pengaturan, lalu tanyakan apa saja.', fromMe: false },
-  ];
-  const aiEchoByPeer = new Map();
+  const messagesByEntry = new Map();
+  const systemPromptByEntry = new Map();
 
   const el = h(`
     <div class="page chat-page">
       <div class="topbar">
-        <h1 id="chat-title">Chat AI</h1>
+        <h1 id="chat-title">Chat</h1>
       </div>
       <div id="picker" class="tabs"></div>
-      <div class="row chat-toolbar">
-        <select id="provider" aria-label="Penyedia AI">
-          ${Object.entries(PROVIDERS).map(([id, i]) => `<option value="${id}">${i.label}</option>`).join('')}
-        </select>
-        <label id="ai-toggle-wrap" class="row" style="display:none;gap:6px;">
-          <span class="muted small" style="font-family:var(--mono);">AI</span>
-          <span class="switch"><input id="ai-toggle" type="checkbox" aria-label="Aktifkan bantuan AI"/><span class="track"></span></span>
-        </label>
-      </div>
       <div id="messages" class="chat-scroll" role="log" aria-label="Pesan" aria-live="polite"></div>
+      <div id="skill-menu" class="skill-menu hidden"></div>
       <div class="chat-input-row">
-        <textarea id="input" aria-label="Pesan" rows="1" placeholder="Tulis pesan..."></textarea>
+        <button id="skill-btn" class="icon-btn" aria-label="Skills">/</button>
+        <textarea id="input" aria-label="Pesan" rows="1" placeholder="Tulis pesan atau ketik /"></textarea>
         <button id="send" class="send-btn" aria-label="Kirim pesan">&#8594;</button>
       </div>
     </div>
@@ -41,49 +57,108 @@ export default async function render(root) {
 
   const titleEl = el.querySelector('#chat-title');
   const pickerEl = el.querySelector('#picker');
-  const providerEl = el.querySelector('#provider');
-  const toggleWrap = el.querySelector('#ai-toggle-wrap');
-  const toggleEl = el.querySelector('#ai-toggle');
   const messagesEl = el.querySelector('#messages');
+  const skillMenuEl = el.querySelector('#skill-menu');
+  const skillBtnEl = el.querySelector('#skill-btn');
   const inputEl = el.querySelector('#input');
   const sendEl = el.querySelector('#send');
 
-  providerEl.onchange = () => (provider = providerEl.value);
-  toggleEl.onchange = () => (aiEnabled = toggleEl.checked);
+  function hideSkillMenu() {
+    skillMenuEl.classList.add('hidden');
+    skillMenuEl.innerHTML = '';
+  }
+
+  function showSkillMenu(filterText) {
+    const q = (filterText || '').toLowerCase();
+    const matches = SKILLS.filter((s) => s.cmd.startsWith(q || '/'));
+    if (matches.length === 0) {
+      hideSkillMenu();
+      return;
+    }
+    skillMenuEl.innerHTML = '';
+    for (const s of matches) {
+      const row = h(`
+        <button class="skill-item">
+          <span class="skill-cmd">${s.cmd}</span>
+          <span class="skill-label">${s.label}</span>
+        </button>
+      `);
+      row.onclick = () => {
+        inputEl.value = s.needsArgs ? `${s.cmd} ` : s.cmd;
+        inputEl.focus();
+        if (!s.needsArgs) {
+          hideSkillMenu();
+          send();
+        } else {
+          showSkillMenu(s.cmd);
+        }
+      };
+      skillMenuEl.appendChild(row);
+    }
+    skillMenuEl.classList.remove('hidden');
+  }
+
+  skillBtnEl.onclick = () => {
+    if (!skillMenuEl.classList.contains('hidden')) {
+      hideSkillMenu();
+      return;
+    }
+    inputEl.value = '/';
+    inputEl.focus();
+    showSkillMenu('/');
+  };
+
+  inputEl.addEventListener('input', () => {
+    if (inputEl.value.startsWith('/')) showSkillMenu(inputEl.value.split(' ')[0]);
+    else hideSkillMenu();
+  });
 
   async function loadPicker() {
-    const friendships = await fetchFriendships();
-    const friends = friendships
-      .filter((f) => f.status === 'accepted')
-      .map((f) => ({ id: f.other_profile?.id ?? (f.requester_id === user.id ? f.addressee_id : f.requester_id), name: f.other_profile?.display_name ?? 'Friend' }));
+    providers = await listRegisteredProviders();
     pickerEl.innerHTML = '';
-    const aiChip = h(`<button class="chip ${peer === null ? 'active' : ''}">Asisten AI</button>`);
-    aiChip.onclick = () => selectPeer(null);
-    pickerEl.appendChild(aiChip);
-    for (const f of friends) {
-      const chip = h(`<button class="chip ${peer?.id === f.id ? 'active' : ''}">${f.name}</button>`);
-      chip.onclick = () => selectPeer(f);
+
+    if (providers.length === 0) {
+      const emptyProvider = h(`
+        <button class="chip" style="background:var(--accent-tint);color:var(--accent-ink);">
+          + Hubungkan Provider AI
+        </button>
+      `);
+      emptyProvider.onclick = () => navigate('/settings/add-api-key?type=provider');
+      const emptyAgent = h(`
+        <button class="chip" style="background:var(--purple-tint);color:#51349c;">
+          + Hubungkan Agent
+        </button>
+      `);
+      emptyAgent.onclick = () => navigate('/settings/add-api-key?type=agent');
+      pickerEl.appendChild(emptyProvider);
+      pickerEl.appendChild(emptyAgent);
+      return;
+    }
+
+    for (const p of providers) {
+      const active = entry?.id === p.id;
+      const chip = h(`
+        <button class="chip ${active ? 'active' : ''}">
+          ${icon(p.type === 'agent' ? 'layers' : 'spark')}<span>${p.label}</span>
+        </button>
+      `);
+      chip.onclick = () => selectEntry(p);
       pickerEl.appendChild(chip);
     }
+
+    if (!entry && providers.length > 0) entry = providers[0];
   }
 
-  function selectPeer(next) {
-    peer = next;
-    titleEl.textContent = peer ? peer.name : 'Chat AI';
-    toggleWrap.style.display = peer ? 'flex' : 'none';
+  function selectEntry(next) {
+    entry = next;
+    titleEl.textContent = entry.label;
     loadPicker();
     renderMessages();
-    watchPeer();
   }
 
-  function bubble(text, fromMe, { isAi = false, isError = false } = {}) {
-    const cls = fromMe ? 'me' : isError ? 'them error' : isAi ? 'ai-echo' : 'them';
-    return h(`
-      <div class="bubble ${cls}">
-        ${isAi ? '<span class="tag">AI (hanya kamu yang lihat)</span>' : ''}
-        <span>${escapeHtml(text)}</span>
-      </div>
-    `);
+  function bubble(text, fromMe, { isError = false } = {}) {
+    const cls = fromMe ? 'me' : isError ? 'them error' : 'them';
+    return h(`<div class="bubble ${cls}"><span>${escapeHtml(text)}</span></div>`);
   }
 
   function escapeHtml(s) {
@@ -92,86 +167,82 @@ export default async function render(root) {
     return d.innerHTML;
   }
 
-  async function renderMessages() {
+  function renderMessages() {
     messagesEl.innerHTML = '';
-    if (peer === null) {
-      aiMessages.forEach((m) => messagesEl.appendChild(bubble(m.text, m.fromMe, m)));
-    } else {
-      const remote = (await fetchMessages(peer.id)).map((m) => ({
-        text: m.body,
-        fromMe: m.sender_id === user.id,
-        time: m.created_at,
-      }));
-      const echo = aiEchoByPeer.get(peer.id) || [];
-      const all = [...remote, ...echo].sort((a, b) => new Date(a.time) - new Date(b.time));
-      if (all.length === 0) {
-        messagesEl.appendChild(h(`<div class="empty-state">Sapa ${peer.name} untuk mulai mengobrol.</div>`));
-      } else {
-        all.forEach((m) => messagesEl.appendChild(bubble(m.text, m.fromMe, m)));
-      }
+    if (!entry) {
+      messagesEl.appendChild(h('<div class="empty-state">Pilih provider atau agent untuk mulai.</div>'));
+      return;
     }
+    const list = messagesByEntry.get(entry.id) || [
+      { text: `Hai! Kamu terhubung ke ${entry.label}. Tanyakan apa saja.`, fromMe: false },
+    ];
+    messagesByEntry.set(entry.id, list);
+    list.forEach((m) => messagesEl.appendChild(bubble(m.text, m.fromMe, m)));
     if (sending) messagesEl.appendChild(h('<div class="spinner" style="margin:0;width:18px;height:18px;"></div>'));
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  function watchPeer() {
-    if (unwatch) unwatch();
-    unwatch = peer ? watchMessages(peer.id, () => renderMessages()) : null;
-  }
+  function runSkill(text) {
+    const [cmd, ...rest] = text.split(' ');
+    const arg = rest.join(' ').trim();
+    const list = messagesByEntry.get(entry.id) || [];
+    messagesByEntry.set(entry.id, list);
 
-  async function requireKey() {
-    const has = await hasApiKey(provider);
-    if (!has) {
-      aiMessages.push({
-        text: `Belum ada kunci API tersimpan untuk ${PROVIDERS[provider].label}. Tambahkan di Pengaturan.`,
-        fromMe: false,
-        isError: true,
-      });
-      renderMessages();
+    switch (cmd) {
+      case '/system': {
+        if (!arg) {
+          list.push({ text: 'Pakai: /system <instruksi untuk AI>', fromMe: false, isError: true });
+          break;
+        }
+        systemPromptByEntry.set(entry.id, arg);
+        list.push({ text: `Instruksi sistem diatur: "${arg}"`, fromMe: false });
+        break;
+      }
+      case '/clear': {
+        list.length = 0;
+        break;
+      }
+      case '/help': {
+        const lines = SKILLS.map((s) => `${s.hint} — ${s.label}`).join('\n');
+        list.push({ text: `Perintah tersedia:\n${lines}`, fromMe: false });
+        break;
+      }
+      default:
+        list.push({ text: `Perintah tidak dikenal: ${cmd}. Ketik /help untuk daftar perintah.`, fromMe: false, isError: true });
     }
-    return has;
+    renderMessages();
   }
 
   async function send() {
     const text = inputEl.value.trim();
-    if (!text || sending) return;
+    if (!text || sending || !entry) return;
     inputEl.value = '';
-    if (peer === null) {
-      if (!(await requireKey())) return;
-      aiMessages.push({ text, fromMe: true });
-      sending = true;
+    hideSkillMenu();
+
+    if (text.startsWith('/')) {
+      runSkill(text);
+      return;
+    }
+
+    const list = messagesByEntry.get(entry.id) || [];
+    messagesByEntry.set(entry.id, list);
+    list.push({ text, fromMe: true });
+    sending = true;
+    renderMessages();
+    logActivity({ category: 'AI', title: `Pesan dikirim · ${entry.label}` });
+    try {
+      const systemPrompt = systemPromptByEntry.get(entry.id);
+      const history = list.filter((m) => !m.isError).map((m) => ({ role: m.fromMe ? 'user' : 'assistant', text: m.text }));
+      const reply = await sendChat(
+        entry,
+        systemPrompt ? [{ role: 'system', text: systemPrompt }, ...history] : history
+      );
+      list.push({ text: reply, fromMe: false });
+    } catch (e) {
+      list.push({ text: e.message, fromMe: false, isError: true });
+    } finally {
+      sending = false;
       renderMessages();
-      logActivity({ category: 'AI', title: `Chat message sent · ${PROVIDERS[provider].label}` });
-      try {
-        const reply = await sendChat(
-          provider,
-          aiMessages.filter((m) => !m.isError).map((m) => ({ role: m.fromMe ? 'user' : 'assistant', text: m.text }))
-        );
-        aiMessages.push({ text: reply, fromMe: false });
-      } catch (e) {
-        aiMessages.push({ text: e.message, fromMe: false, isError: true });
-      } finally {
-        sending = false;
-        renderMessages();
-      }
-    } else {
-      await sendMessage(peer.id, text);
-      renderMessages();
-      if (!aiEnabled) return;
-      if (!(await requireKey())) return;
-      sending = true;
-      renderMessages();
-      const echo = aiEchoByPeer.get(peer.id) || [];
-      aiEchoByPeer.set(peer.id, echo);
-      try {
-        const reply = await sendChat(provider, [{ role: 'user', text }]);
-        echo.push({ text: reply, fromMe: false, isAi: true, time: new Date().toISOString() });
-      } catch (e) {
-        echo.push({ text: e.message, fromMe: false, isAi: true, isError: true, time: new Date().toISOString() });
-      } finally {
-        sending = false;
-        renderMessages();
-      }
     }
   }
 
@@ -184,11 +255,6 @@ export default async function render(root) {
   });
 
   await loadPicker();
-  await renderMessages();
-
-  return {
-    dispose() {
-      if (unwatch) unwatch();
-    },
-  };
+  if (entry) titleEl.textContent = entry.label;
+  renderMessages();
 }

@@ -2,48 +2,24 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// A saved VPN/SSH server configuration (OpenVPN-style or an SSH tunnel like
-/// Termius), stored on-device only.
-class VpnConfig {
-  const VpnConfig({
-    required this.protocol,
-    required this.host,
-    required this.port,
-    required this.username,
-    required this.password,
-  });
-
-  final String protocol; // 'OpenVPN' | 'WireGuard' | 'SSH (Termius-style)'
-  final String host;
-  final String port;
-  final String username;
-  final String password;
-
-  Map<String, String> toJson() => {
-    'protocol': protocol,
-    'host': host,
-    'port': port,
-    'username': username,
-    'password': password,
-  };
-
-  factory VpnConfig.fromJson(Map<String, dynamic> json) => VpnConfig(
-    protocol: json['protocol'] as String? ?? 'OpenVPN',
-    host: json['host'] as String? ?? '',
-    port: json['port'] as String? ?? '',
-    username: json['username'] as String? ?? '',
-    password: json['password'] as String? ?? '',
-  );
-}
-
-/// Stores the user's real VPN/SSH server details in secure storage
-/// (Keystore/Keychain) — never sent to the AI Hub backend.
+/// Stores the user's real VPN/SSH server config on-device only — never sent
+/// to the AI Hub backend.
+///
+/// The stored shape is a raw JSON map rather than a fixed Dart class on
+/// purpose: WireGuard (private/public key pair, endpoint, allowed IPs),
+/// OpenVPN (a full `.ovpn` file, optionally + username/password), and an
+/// SSH tunnel (host/port/username + password-or-private-key) genuinely
+/// don't share a field shape — always requiring `host/port/username/
+/// password` regardless of protocol was wrong (WireGuard doesn't have a
+/// username/password at all). The web layer (`views/vpn-config.js`) builds
+/// the right shape per protocol; this service just persists whatever it's
+/// given and hands it back unchanged.
 ///
 /// Note: this only persists the connection *details*. Actually opening a
-/// network tunnel (OpenVPN/WireGuard/SSH) needs a native platform plugin
-/// (e.g. `openvpn_flutter`, `wireguard_flutter`, or an SSH client) wired
-/// into the Android/iOS shell — that native integration is not included
-/// here, so "Connect" reflects the saved config rather than a live tunnel.
+/// network tunnel needs a native platform plugin per protocol (e.g.
+/// `wireguard_flutter`, `openvpn_flutter`, or an SSH client) wired into the
+/// Android/iOS shell — that native integration is not included here, so
+/// "Connect" reflects the saved config rather than a live tunnel.
 class VpnConfigService {
   VpnConfigService._();
 
@@ -54,21 +30,19 @@ class VpnConfigService {
   // instead of failing fast, so every call here is time-boxed.
   static const _timeout = Duration(seconds: 3);
 
-  static Future<void> save(VpnConfig config) async {
+  static Future<void> save(Map<String, dynamic> config) async {
     try {
-      await _storage
-          .write(key: _key, value: jsonEncode(config.toJson()))
-          .timeout(_timeout);
+      await _storage.write(key: _key, value: jsonEncode(config)).timeout(_timeout);
     } catch (_) {
       // No secure-storage backend available (e.g. widget tests).
     }
   }
 
-  static Future<VpnConfig?> load() async {
+  static Future<Map<String, dynamic>?> load() async {
     try {
       final raw = await _storage.read(key: _key).timeout(_timeout);
       if (raw == null) return null;
-      return VpnConfig.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      return jsonDecode(raw) as Map<String, dynamic>;
     } catch (_) {
       return null;
     }

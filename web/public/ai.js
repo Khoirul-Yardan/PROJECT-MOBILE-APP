@@ -1,58 +1,68 @@
-// Calls the AI provider's own API directly from the web page — never
-// through an AI Hub server. The key itself is fetched fresh from native
-// secure storage (via the bridge) right before each send and never kept
+// Calls whatever provider/agent the entry describes, directly from the web
+// page — never through an AI Hub server. The key itself is decrypted fresh
+// from Supabase (see credentials.js) right before each send and never kept
 // around in this page longer than that.
-import { Native } from './bridge.js';
+import {
+  saveCredential,
+  listCredentials,
+  hasCredential,
+  getCredentialKey,
+  removeCredential,
+} from './credentials.js';
 
-export const PROVIDERS = {
-  openai: { label: 'OpenAI' },
-  anthropic: { label: 'Claude' },
-  gemini: { label: 'Gemini' },
-};
+export const saveProvider = saveCredential;
+export const listRegisteredProviders = listCredentials;
+export const hasApiKey = hasCredential;
+export const removeProvider = removeCredential;
 
-export async function hasApiKey(provider) {
-  const result = await Native.hasApiKey(provider);
-  return !!(result && result.has);
-}
-
-/** history: [{role:'user'|'assistant', text}], returns the reply text. */
-export async function sendChat(provider, history) {
-  const keyResult = await Native.getApiKey(provider);
-  const apiKey = keyResult && keyResult.key;
+/** history: [{role:'user'|'assistant'|'system', text}], returns the reply text. */
+export async function sendChat(entry, history) {
+  const apiKey = await getCredentialKey(entry.id);
   if (!apiKey) {
-    throw new Error(`No API key saved for ${PROVIDERS[provider].label} yet.`);
+    throw new Error(`Belum ada kunci API tersimpan untuk ${entry.label}.`);
   }
-  switch (provider) {
-    case 'openai':
-      return callOpenAi(apiKey, history);
+  switch (entry.format) {
     case 'anthropic':
-      return callAnthropic(apiKey, history);
+      return callAnthropic(entry, apiKey, history);
     case 'gemini':
-      return callGemini(apiKey, history);
+      return callGemini(entry, apiKey, history);
+    case 'openclaw':
+      return callOpenClaw(entry, apiKey, history);
     default:
-      throw new Error(`Unknown provider: ${provider}`);
+      return callOpenAiCompatible(entry, apiKey, history);
   }
 }
 
-async function callOpenAi(apiKey, history) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+// Covers OpenAI itself, OpenRouter, and most agent/gateway APIs that mimic
+// the OpenAI chat-completions shape (the large majority of what's out
+// there) — including a plain 'system' role message, same as OpenAI's API.
+async function callOpenAiCompatible(entry, apiKey, history) {
+  const res = await fetch(entry.endpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: entry.model,
       messages: history.map((m) => ({ role: m.role, content: m.text })),
     }),
   });
   const body = await res.json();
-  if (!res.ok) throw new Error(`OpenAI error: ${body.error?.message ?? res.statusText}`);
-  return body.choices?.[0]?.message?.content?.trim() ?? '(empty response)';
+  if (!res.ok) throw new Error(`${entry.label} error: ${body.error?.message ?? res.statusText}`);
+  return body.choices?.[0]?.message?.content?.trim() ?? '(respons kosong)';
 }
 
-async function callAnthropic(apiKey, history) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+// Anthropic's Messages API takes the system prompt as its own top-level
+// `system` field, not a message with role:'system' — pull any out of the
+// history and join them, same idea as OpenAI's role but different wire shape.
+async function callAnthropic(entry, apiKey, history) {
+  const systemText = history
+    .filter((m) => m.role === 'system')
+    .map((m) => m.text)
+    .join('\n\n');
+  const messages = history.filter((m) => m.role !== 'system');
+  const res = await fetch(entry.endpoint, {
     method: 'POST',
     headers: {
       'x-api-key': apiKey,
@@ -60,31 +70,63 @@ async function callAnthropic(apiKey, history) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-3-5-haiku-20241022',
+      model: entry.model,
       max_tokens: 1024,
-      messages: history.map((m) => ({ role: m.role, content: m.text })),
+      ...(systemText ? { system: systemText } : {}),
+      messages: messages.map((m) => ({ role: m.role, content: m.text })),
     }),
   });
   const body = await res.json();
-  if (!res.ok) throw new Error(`Claude error: ${body.error?.message ?? res.statusText}`);
-  return body.content?.[0]?.text?.trim() ?? '(empty response)';
+  if (!res.ok) throw new Error(`${entry.label} error: ${body.error?.message ?? res.statusText}`);
+  return body.content?.[0]?.text?.trim() ?? '(respons kosong)';
 }
 
-async function callGemini(apiKey, history) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: history.map((m) => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.text }],
-        })),
-      }),
-    }
+// OpenClaw self-hosted Gateway: instead of Telegram/WhatsApp being the
+// "channel" that talks to the agent, this app's Chat is — same agent
+// session, replies land here. Only the newest user message is sent (the
+// Gateway keeps conversation state server-side per session, unlike the
+// stateless OpenAI/Anthropic/Gemini calls above which resend full history).
+async function callOpenClaw(entry, apiKey, history) {
+  const lastUser = [...history].reverse().find((m) => m.role === 'user');
+  if (!lastUser) return '(tidak ada pesan untuk dikirim)';
+  const res = await fetch(entry.endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ session: 'main', message: lastUser.text }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`${entry.label} error: ${body.error ?? body.message ?? res.statusText}`);
+  // Gateway response field naming varies by OpenClaw version/plugin config —
+  // check the common shapes rather than assuming one.
+  return (
+    body.reply ?? body.message ?? body.text ?? body.content ?? JSON.stringify(body) ?? '(respons kosong)'
   );
+}
+
+// Gemini takes the system prompt as a separate `systemInstruction` field.
+async function callGemini(entry, apiKey, history) {
+  const systemText = history
+    .filter((m) => m.role === 'system')
+    .map((m) => m.text)
+    .join('\n\n');
+  const contents = history
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.text }],
+    }));
+  const res = await fetch(`${entry.endpoint}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...(systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}),
+      contents,
+    }),
+  });
   const body = await res.json();
-  if (!res.ok) throw new Error(`Gemini error: ${body.error?.message ?? res.statusText}`);
-  return body.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '(empty response)';
+  if (!res.ok) throw new Error(`${entry.label} error: ${body.error?.message ?? res.statusText}`);
+  return body.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '(respons kosong)';
 }
