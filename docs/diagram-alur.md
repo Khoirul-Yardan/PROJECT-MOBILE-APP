@@ -1,6 +1,6 @@
 # Diagram Alur — AI Hub (PROJECT MOBILE APP)
 
-> Dokumen ini dibuat dengan membaca kode sumber langsung (bukan asumsi) per **1 Oktober 2026**, commit `28fd897`. Semua diagram pakai [Mermaid](https://mermaid.js.org/) — buka file ini di Obsidian, GitHub, atau editor Markdown apa pun yang mendukung Mermaid untuk melihat visualnya.
+> Dokumen ini dibuat dengan membaca kode sumber langsung (bukan asumsi) per **2 Oktober 2026**, commit `2423dac`. Semua diagram pakai [Mermaid](https://mermaid.js.org/) — buka file ini di Obsidian, GitHub, atau editor Markdown apa pun yang mendukung Mermaid untuk melihat visualnya.
 >
 > Status tiap alur ditandai: ✅ **Fungsional** (diverifikasi dengan data sungguhan, bukan cuma baca kode) · 🟡 **Parsial** (jalan tapi ada batasan) · 🔴 **Simulasi/belum ada**.
 
@@ -10,10 +10,10 @@
 2. [Arsitektur Sistem](#2-arsitektur-sistem)
 3. [Skema Database](#3-skema-database)
 4. [Alur Autentikasi & Startup](#4-alur-autentikasi--startup)
-5. [Alur Pertemanan (Friends)](#5-alur-pertemanan-friends)
-6. [Alur Chat AI / Agent](#6-alur-chat-ai--agent)
-7. [Alur Universal API Key (Deteksi Otomatis)](#7-alur-universal-api-key-deteksi-otomatis)
-8. [Alur Bot BPJS — End to End](#8-alur-bot-bpjs--end-to-end)
+5. [Alur Chat AI / Agent](#5-alur-chat-ai--agent)
+6. [Alur Universal API Key (Deteksi Otomatis)](#6-alur-universal-api-key-deteksi-otomatis)
+7. [Alur Bot BPJS — End to End](#7-alur-bot-bpjs--end-to-end)
+8. [Alur Export & Bagikan Dokumentasi](#8-alur-export--bagikan-dokumentasi)
 9. [Alur VPN](#9-alur-vpn)
 10. [Alur Activity Log](#10-alur-activity-log)
 11. [Native Bridge (Web ⇄ Flutter)](#11-native-bridge-web--flutter)
@@ -36,6 +36,10 @@ mindmap
       speech_to_text ^7.5.0
       cryptography ^2.9.0
       http ^1.2.2
+      pdf ^3.13.1 + printing ^5.14.3
+      docx_creator ^1.4.0
+      share_plus ^11.1.0
+      path_provider ^2.1.6
     Web SPA
       Vanilla JS (ES Modules, tanpa framework/bundler)
       Supabase JS v2 (CDN)
@@ -60,14 +64,17 @@ mindmap
 
 | Lapisan | Teknologi | Versi | Peran |
 |---|---|---|---|
-| Native shell | Flutter / Dart | SDK `^3.13.3` | Splash screen, WebView persisten, navigasi bawah, Bot BPJS (mic/STT), VPN tunnel, secure storage |
-| Native — Supabase | `supabase_flutter` | `^2.17.2` | Mirror sesi untuk `activity_log`, query `friendships`/`profiles`/`bpjs_*` dari Bot BPJS |
+| Native shell | Flutter / Dart | SDK `^3.13.3` | Splash screen, WebView persisten, Bot BPJS (mic/STT), VPN tunnel, secure storage |
+| Native — Supabase | `supabase_flutter` | `^2.17.2` | Mirror sesi untuk `activity_log`, baca/tulis `bpjs_*` dari Bot BPJS |
 | Native — WebView | `webview_flutter` | `^4.14.1` | Merender SPA web di dalam shell |
 | Native — storage | `flutter_secure_storage` | `^9.2.2` | Simpan config VPN lokal (Keystore/Keychain) |
 | Native — VPN | `wireguard_flutter` | `^0.1.3` | Tunnel WireGuard sungguhan via Android `VpnService` |
 | Native — STT | `speech_to_text` | `^7.5.0` | Speech-to-text on-device untuk Bot BPJS |
 | Native — kripto | `cryptography` | `^2.9.0` | Dekripsi kredensial AES-GCM (mirror dari Web Crypto) |
-| Web SPA | Vanilla JS ES Modules | — | Seluruh UI aplikasi (11+ halaman), tanpa build step |
+| Native — PDF | `pdf` + `printing` | `^3.13.1` / `^5.14.3` | Generate dokumen PDF dari draf Bot BPJS |
+| Native — DOCX | `docx_creator` | `^1.4.0` | Generate dokumen Word (.docx) murni Dart, tanpa dependency native |
+| Native — share | `share_plus` | `^11.1.0` | Buka share sheet OS (WhatsApp, email, dll) untuk file hasil ekspor |
+| Web SPA | Vanilla JS ES Modules | — | Seluruh UI aplikasi (10+ halaman), tanpa build step |
 | Web — Supabase | `@supabase/supabase-js@2` | CDN | Auth, query Postgres via REST, Realtime subscription |
 | Web — kripto | Web Crypto API (`crypto.subtle`) | native browser | Enkripsi kredensial AI sebelum disimpan ke Supabase |
 | Backend | Supabase | — | Auth, PostgreSQL, Row Level Security, Realtime |
@@ -154,15 +161,11 @@ flowchart TD
 ```mermaid
 erDiagram
     auth_users ||--|| profiles : "1:1"
-    auth_users ||--o{ friendships : "requester/addressee"
-    auth_users ||--o{ messages : "sender/receiver"
     auth_users ||--o{ activity_log : "memiliki"
     auth_users ||--o{ api_credentials : "memiliki"
-    auth_users ||--o{ bpjs_sessions : "perawat/dokter"
-    friendships }o--|| profiles : "requester_id, addressee_id"
+    auth_users ||--o{ bpjs_sessions : "perawat"
     bpjs_sessions ||--o{ bpjs_transcripts : "1:N"
     bpjs_sessions ||--o{ bpjs_documents : "1:N"
-    bpjs_sessions ||--o{ bpjs_reviews : "1:N"
 
     profiles {
         uuid id PK "= auth.users.id"
@@ -170,22 +173,10 @@ erDiagram
         text role "general|perawat|dokter"
         text bio
     }
-    friendships {
-        uuid id PK
-        uuid requester_id FK
-        uuid addressee_id FK
-        text status "pending|accepted|blocked"
-    }
-    messages {
-        uuid id PK
-        uuid sender_id FK
-        uuid receiver_id FK
-        text body
-    }
     activity_log {
         uuid id PK
         uuid user_id FK
-        text category "AI|Agents|Bots|VPN|Friends|System"
+        text category "AI|Agents|Bots|VPN|System"
         text title
         text badge "Success|Info|Error"
     }
@@ -204,9 +195,10 @@ erDiagram
     bpjs_sessions {
         uuid id PK
         uuid perawat_id FK
-        uuid dokter_id FK
+        text dokter_nama "diketik manual, bukan akun"
+        text dokter_instansi "opsional"
         text pasien_nama
-        text status "recording|processing|sent|pending_review|needs_revision|matches_bpjs_form"
+        text status "recording|processing|siap_dikirim|terkirim"
     }
     bpjs_transcripts {
         uuid id PK
@@ -223,22 +215,14 @@ erDiagram
         jsonb alur_percakapan
         text generated_by_llm_provider
     }
-    bpjs_reviews {
-        uuid id PK
-        uuid session_id FK
-        uuid dokter_id FK
-        text verdict "matches_bpjs_form|needs_revision"
-        text catatan
-    }
 ```
 
-**9 tabel total**, semua dengan **Row Level Security aktif**. Aturan RLS yang paling penting (bukan sekadar "user hanya lihat miliknya"):
+**6 tabel total**, semua dengan **Row Level Security aktif**. Sejak **Friend System dihapus (2 Okt 2026)** — tabel `friendships`, `messages`, dan `bpjs_reviews` tidak lagi ada; `bpjs_sessions.dokter_id` (FK ke `auth.users`) diganti `dokter_nama`+`dokter_instansi` (teks bebas, seperti mengisi form rujukan manual). Aturan RLS yang paling penting (bukan sekadar "user hanya lihat miliknya"):
 
 | Tabel | Aturan RLS kunci |
 |---|---|
-| `bpjs_sessions` | **Insert hanya boleh jika** perawat dan dokter target punya `friendships.status = 'accepted'` — dicek di level database, bukan cuma UI |
-| `bpjs_reviews` | Insert hanya boleh oleh `dokter_id` yang **memang jadi target** sesi tersebut (`bpjs_sessions.dokter_id = auth.uid()`) |
-| `bpjs_transcripts` / `bpjs_documents` | Insert hanya oleh `perawat_id` pemilik sesi; select oleh perawat **atau** dokter sesi itu |
+| `bpjs_sessions` | CRUD penuh hanya oleh `perawat_id` pemilik baris — tidak ada lagi syarat relasi dengan akun lain |
+| `bpjs_transcripts` / `bpjs_documents` | Insert & select hanya oleh `perawat_id` pemilik sesi induk |
 | `api_credentials` | CRUD penuh hanya oleh `user_id` pemilik baris — tidak ada akses lintas user sama sekali |
 | `activity_log` | Append-only: ada policy `insert`+`select`, **tidak ada** policy `update`/`delete` |
 
@@ -285,34 +269,7 @@ sequenceDiagram
 
 ---
 
-## 5. Alur Pertemanan (Friends)
-
-```mermaid
-sequenceDiagram
-    participant P as Perawat (web)
-    participant D as Dokter (web)
-    participant DB as Supabase (RLS)
-
-    P->>DB: searchProfiles("nama dokter")
-    DB-->>P: daftar profiles (ilike display_name, exclude diri sendiri)
-    P->>DB: sendFriendRequest(dokter_id)
-    DB->>DB: INSERT friendships (status='pending')
-    D->>DB: fetchFriendships() → tab "Permintaan Masuk"
-    DB-->>D: baris is_incoming=true, status=pending
-    D->>DB: respondToFriendRequest(id, accept=true)
-    DB->>DB: UPDATE friendships SET status='accepted'
-    Note over P,D: Realtime channel 'friendships-changes-*'\nmentrigger refresh otomatis di kedua sisi
-    P->>DB: fetchAcceptedFriends('dokter')
-    DB-->>P: dokter ini sekarang muncul di Bot BPJS doctor picker
-```
-
-**Status: ✅ Fungsional** — diuji end-to-end: cari profil → kirim request → terima → `fetchAcceptedDoctors()` mengembalikan hasil benar.
-
-**Catatan historis**: fitur ini **sempat hilang total** (tidak ada route `/friends`, tidak ada fungsi database) setelah refactor registry provider AI pada 25–29 September — ditemukan lewat audit dan dibangun ulang pada 1 Oktober (lihat §13).
-
----
-
-## 6. Alur Chat AI / Agent
+## 5. Alur Chat AI / Agent
 
 ```mermaid
 flowchart TD
@@ -342,7 +299,7 @@ flowchart TD
 
 ---
 
-## 7. Alur Universal API Key (Deteksi Otomatis)
+## 6. Alur Universal API Key (Deteksi Otomatis)
 
 ```mermaid
 flowchart TD
@@ -375,7 +332,7 @@ flowchart TD
 
 ---
 
-## 8. Alur Bot BPJS — End to End
+## 7. Alur Bot BPJS — End to End
 
 ```mermaid
 sequenceDiagram
@@ -384,8 +341,6 @@ sequenceDiagram
     participant STT as speech_to_text
     participant DB as Supabase (RLS)
     participant LLM as Provider/Agent AI
-    actor Dokter
-    participant Web as bpjs-review.js (web, akun dokter)
 
     Perawat->>App: Tekan "Ucapkan Halo Jarvis"
     App->>STT: initialize() + minta izin mikrofon
@@ -395,58 +350,74 @@ sequenceDiagram
     else Izin diberikan
         App->>Perawat: Dialog "Nama pasien?"
         Perawat->>App: Isi nama
+        App->>Perawat: Dialog "Dokumentasi untuk dokter siapa?"\n(nama + instansi, teks bebas — seperti form rujukan)
+        Perawat->>App: Isi nama dokter + instansi (opsional)
         App->>STT: listen(localeId:'id_ID', partialResults:true)
         loop Selama merekam
             STT-->>App: onResult(recognizedWords, finalResult)
             App->>App: Tambahkan ke _segments[] saat finalResult
         end
         Perawat->>App: Tekan "Hentikan Sesi"
-        App->>DB: fetchAcceptedDoctors() — role='dokter', friendship accepted
-        alt Tidak ada dokter terhubung
-            DB-->>App: []
-            App->>Perawat: Dialog "Belum ada dokter terhubung\n→ tambahkan di menu Teman"
-        else Ada dokter
-            DB-->>App: daftar dokter
-            Perawat->>App: Pilih dokter dari bottom sheet
-            App->>DB: createSession(dokter_id, pasien_nama)
-            Note right of DB: RLS: hanya sukses jika\nfriendship status='accepted'
-            App->>DB: addTranscriptSegment() × N segmen
-            App->>DB: fetchAcceptedCredential() → dekripsi AES-GCM (native)
-            App->>LLM: generateDocumentation(transcript)\n(format sesuai provider: openai/anthropic/gemini)
-            alt LLM berhasil
-                LLM-->>App: JSON {ringkasan, keluhan_utama, ...}
-            else LLM gagal / tidak ada provider
-                App->>App: Fallback: transkrip mentah + catatan
-            end
-            App->>DB: saveDocumentation() + markStatus('pending_review')
-            App->>Perawat: Tampilkan draf + status "Menunggu review dokter"
+        App->>DB: createSession(dokter_nama, dokter_instansi, pasien_nama)
+        Note right of DB: RLS: hanya butuh perawat_id = auth.uid()\n— tidak ada syarat relasi dengan akun lain
+        App->>DB: addTranscriptSegment() × N segmen
+        App->>App: fetchAcceptedCredential() → dekripsi AES-GCM (native)
+        App->>LLM: generateDocumentation(transcript)\n(format sesuai provider: openai/anthropic/gemini)
+        alt LLM berhasil
+            LLM-->>App: JSON {ringkasan, keluhan_utama, ...}
+        else LLM gagal / tidak ada provider
+            App->>App: Fallback: transkrip mentah + catatan
         end
+        App->>DB: saveDocumentation() + markStatus('siap_dikirim')
+        App->>Perawat: Tampilkan draf + tombol Salin/Ekspor PDF/DOCX
+        Note over Perawat: Lihat §8 untuk alur ekspor & bagikan
     end
-
-    Note over Dokter,Web: Dokter buka akunnya sendiri (device terpisah)
-    Dokter->>Web: Buka Bot Hub → "Dokumentasi BPJS"
-    Web->>DB: fetchDoctorBpjsSessions()
-    DB-->>Web: sesi dengan status pending_review
-    Dokter->>Web: Klik sesi → lihat draf + transkrip
-    Dokter->>Web: Pilih "Sesuai Form BPJS" atau "Perlu Revisi"
-    Web->>DB: submitBpjsReview(session_id, verdict, catatan)
-    DB->>DB: INSERT bpjs_reviews (RLS: hanya dokter target)
-    DB->>DB: UPDATE bpjs_sessions SET status=verdict
-    Note over Perawat,Dokter: Realtime channel 'bpjs-sessions-*'\nmentrigger update status di kedua sisi
 ```
 
-**Status: 🟡 Parsial (ditingkatkan signifikan 1 Okt 2026)** — diverifikasi end-to-end dengan data sungguhan via REST API (buat sesi → transcript → dokumentasi → kirim → dokter review → status berubah, plus RLS menolak dokter yang bukan target).
+**Status: ✅ Fungsional (dirombak total 2 Okt 2026)** — diverifikasi end-to-end dengan data sungguhan via REST API (buat sesi tanpa akun dokter → transcript → dokumentasi → tandai terkirim).
 
 | Bagian | Status | Keterangan |
 |---|---|---|
 | Rekam suara → teks (STT) | ✅ Fungsional | `speech_to_text` on-device, `localeId: 'id_ID'`, auto-restart saat jeda |
-| Validasi dokter via friendship | ✅ Fungsional | Query `fetchAcceptedDoctors()` asli, bukan lagi hardcoded 3 nama |
-| Simpan sesi/transkrip/dokumen | ✅ Fungsional | RLS diverifikasi menolak insert tanpa friendship accepted |
+| Target dokter | ✅ Fungsional | Nama + instansi diketik manual, **tidak butuh akun dokter atau pertemanan** |
+| Simpan sesi/transkrip/dokumen | ✅ Fungsional | RLS: cukup `perawat_id = auth.uid()`, tidak ada syarat relasi lain |
 | Generate dokumentasi via LLM | ✅ Fungsional (jika ada API key) | Pakai kredensial yang sudah didekripsi native; fallback transkrip mentah jika tak ada provider |
-| Review dokter (independen) | ✅ Fungsional | Halaman web baru `bpjs-review.js` — **sebelumnya fitur ini sama sekali tidak ada UI-nya** |
+| Salin teks / ekspor PDF & DOCX | ✅ Fungsional | Lihat §8 — inilah cara dokumentasi sampai ke dokter |
 | **Wake word "Halo Jarvis"** | 🔴 Simulasi | Deteksi suara terpicu tombol, bukan listening pasif sungguhan |
 | **Speaker diarization** (pisah suara perawat/pasien) | 🔴 Belum ada | Semua segmen ditandai `speaker: 'perawat'` — butuh model diarization terpisah |
 | **Text-to-Speech balasan Jarvis** | 🔴 Belum ada | Tidak ada output suara dari aplikasi |
+
+**Perubahan arsitektur penting (2 Okt 2026)**: sebelumnya alur ini mensyaratkan pertemanan (`friendships.status = 'accepted'`) antara perawat dan dokter, dan dokter meninjau draf dari akunnya sendiri di web (`bpjs-review.js` versi lama). Kedua hal itu **dihapus total** atas permintaan eksplisit pengguna. Sekarang dokter tidak perlu akun atau hubungan pertemanan apa pun — perawat cukup mengetik nama/instansi dokter seperti mengisi form rujukan kertas, lalu mengirimkan hasilnya sendiri lewat salin-teks atau file (§8). Ini menyederhanakan alur secara signifikan dan menghilangkan satu titik kegagalan (dokter harus follow-approve dulu sebelum dokumentasi bisa dibuat).
+
+---
+
+## 8. Alur Export & Bagikan Dokumentasi
+
+```mermaid
+flowchart TD
+    Review["Perawat di layar Review\n(stage: review, setelah LLM selesai)"] --> Choice{Pilih aksi}
+    Choice -->|Salin Teks| CopyText["BpjsExport.plainText()\n→ Clipboard.setData()"]
+    Choice -->|Ekspor PDF| BuildPdf["BpjsExport.buildPdf()\npackage: pdf (pw.Document)"]
+    Choice -->|Ekspor DOCX| BuildDocx["BpjsExport.buildDocx()\npackage: docx_creator"]
+    CopyText --> MarkSent["markStatus(session, 'terkirim')"]
+    BuildPdf --> SaveTemp1["Simpan ke temp dir\n(path_provider)"]
+    BuildDocx --> SaveTemp2["Simpan ke temp dir\n(path_provider)"]
+    SaveTemp1 --> ShareSheet["share_plus:\nbuka share sheet OS"]
+    SaveTemp2 --> ShareSheet
+    ShareSheet --> AppPicker["Perawat pilih aplikasi\n(WhatsApp, Email, Drive, dll)"]
+    AppPicker --> MarkSent
+    MarkSent --> Done["Dokter menerima dokumentasi\ndi luar aplikasi — perawat yang mengirim langsung"]
+```
+
+**Status: ✅ Fungsional** — ketiga jalur (salin teks, PDF, DOCX) memakai data draf + transkrip yang sama persis dengan yang ditampilkan di layar Review, sehingga isinya konsisten dengan apa yang perawat lihat sebelum membagikan.
+
+| Jalur | Mekanisme | Keterangan |
+|---|---|---|
+| Salin Teks | `Clipboard.setData()` | Teks polos siap tempel ke WhatsApp/Email — paling cepat, tidak perlu aplikasi lain terbuka |
+| Ekspor PDF | `pdf` (`pw.Document`) + `printing`/`share_plus` | Dokumen berformat dengan header, field terstruktur, transkrip |
+| Ekspor DOCX | `docx_creator` (murni Dart, tanpa native binding) | File Word yang bisa diedit dokter sebelum disimpan ke rekam medis |
+
+**Mengapa tidak ada lagi "kirim ke akun dokter"**: pendekatan lama (dokter login, lihat draf, kasih verdict) butuh dokter sudah punya akun aplikasi dan sudah berteman dengan perawat — dua syarat yang menghambat penggunaan nyata di lapangan (dokter sering tidak pakai aplikasi ini). Pendekatan baru meniru alur kerja nyata rumah sakit: dokumentasi dibuat, lalu **perawat mengirimkannya sendiri** ke dokter lewat kanal komunikasi yang sudah dipakai sehari-hari (WhatsApp, email, dicetak), persis seperti form rujukan kertas.
 
 ---
 
@@ -477,14 +448,14 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Action["Aksi pengguna\n(login, chat, bot, vpn, friend)"] --> LogCall["logActivity({category, title, badge})"]
+    Action["Aksi pengguna\n(login, chat, bot, vpn)"] --> LogCall["logActivity({category, title, badge})"]
     LogCall --> Insert["INSERT activity_log\n(best-effort, tidak pernah throw)"]
     Insert --> RT["Realtime channel\n'activity-log-changes-*'"]
     RT --> ViewUpdate["Halaman /settings/activity\nauto-refresh"]
     Insert -.->|RLS: append-only| NoUpdate["❌ Tidak ada policy UPDATE/DELETE\n— log tidak bisa diubah/dihapus dari client"]
 ```
 
-**Status: ✅ Fungsional** — insert + realtime subscription diverifikasi. Kategori: `AI`, `Agents`, `Bots`, `VPN`, `Friends`, `System`.
+**Status: ✅ Fungsional** — insert + realtime subscription diverifikasi. Kategori: `AI`, `Agents`, `Bots`, `VPN`, `System`.
 
 ---
 
@@ -547,15 +518,15 @@ flowchart TD
 |---|---|---|
 | Login / Registrasi | ✅ Fungsional | Signup + login nyata via REST API |
 | Profil (nama, role, bio) | ✅ Fungsional | Upsert diverifikasi |
-| Pertemanan (cari, kirim, terima) | ✅ Fungsional | *Sempat hilang total setelah refactor 25-29 Sept, dibangun ulang 1 Okt* |
+| Pertemanan (Friend System) | — | **Dihapus total (2 Okt 2026)** atas permintaan eksplisit pengguna — lihat §7 |
 | Chat dengan provider/agent AI | 🟡 Parsial | Logic benar, butuh API key asli pengguna |
 | Universal API key (deteksi otomatis) | ✅ Fungsional | Bug regex kritis ditemukan & diperbaiki |
 | Kredensial terenkripsi (AES-GCM) | ✅ Fungsional | Round-trip encrypt→simpan→baca→decrypt diverifikasi sama persis |
 | Bot Hub (katalog) | ✅ Fungsional | Navigasi & filter bekerja |
-| **Bot BPJS — rekam suara (STT)** | ✅ Fungsional | `speech_to_text` on-device asli (baru 1 Okt 2026) |
-| **Bot BPJS — pilih dokter** | ✅ Fungsional | Query friendship asli, bukan lagi hardcoded (baru 1 Okt 2026) |
-| **Bot BPJS — generate dokumentasi LLM** | ✅ Fungsional | Panggil LLM native dengan kredensial terenkripsi (baru 1 Okt 2026) |
-| **Bot BPJS — review dokter independen** | ✅ Fungsional | Halaman web baru, sebelumnya tidak ada sama sekali (baru 1 Okt 2026) |
+| **Bot BPJS — rekam suara (STT)** | ✅ Fungsional | `speech_to_text` on-device asli |
+| **Bot BPJS — target dokter** | ✅ Fungsional | Nama+instansi diketik manual, tanpa akun/pertemanan (diubah 2 Okt 2026) |
+| **Bot BPJS — generate dokumentasi LLM** | ✅ Fungsional | Panggil LLM native dengan kredensial terenkripsi |
+| **Bot BPJS — salin teks / ekspor PDF & DOCX** | ✅ Fungsional | Baru 2 Okt 2026 — menggantikan alur review dokter berbasis akun |
 | Bot BPJS — wake word pasif | 🔴 Simulasi | Terpicu tombol, bukan listening sungguhan |
 | Bot BPJS — speaker diarization | 🔴 Belum ada | Butuh model terpisah |
 | VPN WireGuard | ✅ Fungsional | Tunnel asli via `wireguard_flutter` |
@@ -569,11 +540,11 @@ flowchart TD
 |---|---|---|
 | 25 Sept | Tabel `api_credentials` belum diterapkan ke DB live | Schema dijalankan manual via SQL Editor |
 | 1 Okt | Pola regex OpenAI menangkap key provider lain | Negative lookahead ditambahkan, 6/6 test lolos |
-| 1 Okt | Fitur Friends hilang total (tidak ada route/UI/fungsi DB) | Dibangun ulang lengkap: `db.js`, `views/friends.js`, routing |
-| 1 Okt | Bot BPJS pakai 3 nama dokter hardcoded | Diganti query `fetchAcceptedDoctors()` asli |
-| 1 Okt | Bot BPJS 100% simulasi (`Future.delayed`, data contoh) | STT asli, LLM call asli, simpan DB asli, halaman review dokter baru |
+| 1 Okt | Fitur Friends sempat hilang total (tidak ada route/UI/fungsi DB) | Dibangun ulang sementara, lalu **dihapus permanen** keesokan harinya (lihat baris berikut) |
+| 1 Okt | Bot BPJS 100% simulasi (`Future.delayed`, data contoh) | STT asli, LLM call asli, simpan DB asli |
 | 1 Okt | Konten halaman web terduplikasi vertikal | Race condition `onAuthStateChange` di `router.js`, diperbaiki dengan render-token guard |
+| **2 Okt** | **Permintaan pengguna**: fitur Friends dinilai tidak diperlukan, Bot BPJS harus sampai ke dokter lewat salin/PDF/DOCX | Friend System dihapus total (tabel `friendships`/`messages`/`bpjs_reviews` di-drop); `bpjs_sessions.dokter_id` → `dokter_nama`+`dokter_instansi`; tambah `BpjsExport` (plaintext/PDF/DOCX + share sheet OS) |
 
 ---
 
-*Dokumen ini mencerminkan kondisi kode pada commit `28fd897`. Untuk status paling akurat, baca langsung kode di `app/lib/` dan `web/public/` — dokumen bisa menjadi usang seiring pengembangan lanjutan.*
+*Dokumen ini mencerminkan kondisi kode pada commit `2423dac`. Untuk status paling akurat, baca langsung kode di `app/lib/` dan `web/public/` — dokumen bisa menjadi usang seiring pengembangan lanjutan.*
