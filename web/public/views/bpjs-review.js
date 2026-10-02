@@ -1,50 +1,32 @@
 import { h, header, toast } from '../ui.js';
-import {
-  fetchDoctorBpjsSessions,
-  fetchNurseBpjsSessions,
-  fetchBpjsDocument,
-  fetchBpjsTranscript,
-  submitBpjsReview,
-  watchBpjsSessions,
-  currentUser,
-  myProfile,
-} from '../db.js';
+import { fetchNurseBpjsSessions, fetchBpjsDocument, fetchBpjsTranscript, markBpjsSessionSent, watchBpjsSessions } from '../db.js';
 
 const STATUS_LABEL = {
   recording: 'Merekam',
   processing: 'Diproses',
-  sent: 'Terkirim',
-  pending_review: 'Menunggu Review',
-  needs_revision: 'Perlu Revisi',
-  matches_bpjs_form: 'Sesuai Form BPJS',
+  siap_dikirim: 'Siap Dikirim',
+  terkirim: 'Sudah Dikirim',
 };
 
 const STATUS_TONE = {
-  pending_review: 'warn',
-  needs_revision: 'bad',
-  matches_bpjs_form: 'ok',
+  recording: 'warn',
+  processing: 'warn',
+  siap_dikirim: 'warn',
+  terkirim: 'ok',
 };
 
-// Doctor-side review for Bot BPJS sessions. Recording happens natively on
-// the nurse's device (see app/lib/screens/bot_bpjs_screen.dart); once a
-// session is saved it's just rows in Supabase, so the doctor reviews it
-// from their own account here — same data, independent device, which is
-// what the PRD's "doctor verifies from their own side" step actually needs.
+// Riwayat Bot BPJS — daftar sesi yang pernah direkam perawat sendiri.
+// Tidak ada review dokter di sini (Friend System yang jadi dasarnya sudah
+// dihapus): draf dokumentasi diteruskan perawat langsung ke dokter lewat
+// salin-teks, PDF, atau DOCX — lihat juga export langsung di layar Bot BPJS
+// (app/lib/screens/bot_bpjs_screen.dart) tepat setelah sesi selesai direkam.
 export default async function render(root) {
-  const user = await currentUser();
-  const profile = await myProfile();
-  const isDoctor = profile?.role === 'dokter';
-
   const el = h(`<div class="page bpjs-review-page"></div>`);
-  el.appendChild(header('Dokumentasi BPJS', { back: true }));
+  el.appendChild(header('Riwayat Bot BPJS', { back: true }));
   el.appendChild(
     h(`
     <p class="muted small" style="margin-top:-8px;">
-      ${
-        isDoctor
-          ? 'Sesi dari perawat yang mengirim dokumentasi ke Anda.'
-          : 'Sesi Bot BPJS yang sudah Anda kirim ke dokter.'
-      }
+      Sesi yang sudah Anda rekam. Salin teks atau buka kembali di aplikasi untuk ekspor PDF/DOCX.
     </p>
   `)
   );
@@ -55,25 +37,18 @@ export default async function render(root) {
   let sessions = [];
 
   async function load() {
-    sessions = isDoctor ? await fetchDoctorBpjsSessions() : await fetchNurseBpjsSessions();
+    sessions = await fetchNurseBpjsSessions();
   }
 
   function renderList() {
     listEl.innerHTML = '';
     if (sessions.length === 0) {
       listEl.appendChild(
-        h(
-          `<div class="empty-state">${
-            isDoctor ? 'Belum ada sesi dikirim ke Anda.' : 'Belum ada sesi Bot BPJS. Buka Bot Hub → Bot BPJS di aplikasi untuk mulai.'
-          }</div>`
-        )
+        h('<div class="empty-state">Belum ada sesi Bot BPJS. Buka Bot Hub → Bot BPJS di aplikasi untuk mulai merekam.</div>')
       );
       return;
     }
     sessions.forEach((s) => {
-      const otherName = isDoctor
-        ? s.nurse_profile?.display_name ?? 'Perawat'
-        : s.doctor_profile?.display_name ?? 'Dokter';
       const tone = STATUS_TONE[s.status] ?? 'warn';
       const card = h(`
         <button type="button" class="card tappable" style="text-align:left;margin-bottom:10px;">
@@ -82,7 +57,7 @@ export default async function render(root) {
             <span class="pill pill--${tone}">${STATUS_LABEL[s.status] ?? s.status}</span>
           </div>
           <p class="muted small" style="margin-top:4px;">
-            ${isDoctor ? 'Dari' : 'Untuk'}: ${otherName} · ${new Date(s.created_at).toLocaleString()}
+            Untuk: ${s.dokter_nama}${s.dokter_instansi ? ' · ' + s.dokter_instansi : ''} · ${new Date(s.created_at).toLocaleString()}
           </p>
         </button>
       `);
@@ -91,9 +66,28 @@ export default async function render(root) {
     });
   }
 
+  function buildPlainText(session, doc, transcript) {
+    const structured = doc?.dokumentasi_terstruktur ?? {};
+    const lines = [
+      `DOKUMENTASI PERCAKAPAN PERAWAT-PASIEN`,
+      `Untuk: ${session.dokter_nama}${session.dokter_instansi ? ' (' + session.dokter_instansi + ')' : ''}`,
+      `Pasien: ${session.pasien_nama}`,
+      `Tanggal: ${new Date(session.created_at).toLocaleString()}`,
+      '',
+      ...Object.entries(structured).map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}:\n${value}`),
+    ];
+    if (transcript.length > 0) {
+      lines.push('', 'TRANSKRIP PERCAKAPAN:');
+      transcript.forEach((t) => lines.push(`${t.speaker}: ${t.text_segment}`));
+    }
+    lines.push('', 'Catatan: draf ini dibuat otomatis dan perlu diverifikasi oleh dokter sebelum digunakan sebagai dasar tindakan medis.');
+    return lines.join('\n');
+  }
+
   async function openSession(session) {
     const doc = await fetchBpjsDocument(session.id);
     const transcript = await fetchBpjsTranscript(session.id);
+    const plainText = buildPlainText(session, doc, transcript);
 
     const detailEl = h(`<div class="page bpjs-detail-page"></div>`);
     const backBar = h(`
@@ -104,7 +98,7 @@ export default async function render(root) {
     `);
     backBar.querySelector('button').onclick = () => {
       el.replaceChildren();
-      el.appendChild(header('Dokumentasi BPJS', { back: true }));
+      el.appendChild(header('Riwayat Bot BPJS', { back: true }));
       el.appendChild(listEl);
     };
     detailEl.appendChild(backBar);
@@ -124,6 +118,7 @@ export default async function render(root) {
     detailEl.appendChild(
       h(`
       <div class="card" style="margin-bottom:14px;">
+        <p class="muted small" style="margin:0 0 8px;">Untuk: <strong>${session.dokter_nama}</strong>${session.dokter_instansi ? ' · ' + session.dokter_instansi : ''}</p>
         <h3 style="margin-top:0;">Draf Dokumentasi</h3>
         ${fieldsHtml || '<p class="muted small">Belum ada draf dokumentasi.</p>'}
         ${doc?.generated_by_llm_provider ? `<p class="muted small">Disusun oleh: ${doc.generated_by_llm_provider}</p>` : ''}
@@ -142,53 +137,29 @@ export default async function render(root) {
       );
     }
 
-    if (isDoctor && session.status === 'pending_review') {
-      const noteInput = h('<textarea placeholder="Catatan untuk perawat (opsional)" rows="2" style="margin-bottom:10px;"></textarea>');
-      detailEl.appendChild(noteInput);
-      const actionsEl = h('<div class="row" style="gap:10px;"></div>');
-      const approveBtn = h('<button class="btn btn-primary" style="flex:1;">Sesuai Form BPJS</button>');
-      const reviseBtn = h('<button class="btn btn-outline" style="flex:1;">Perlu Revisi</button>');
-      approveBtn.onclick = async () => {
-        try {
-          await submitBpjsReview(session.id, 'matches_bpjs_form', noteInput.value.trim());
-          toast('Ditandai sesuai form BPJS.');
-          el.replaceChildren();
-          el.appendChild(header('Dokumentasi BPJS', { back: true }));
-          el.appendChild(listEl);
+    const actionsEl = h('<div class="row" style="gap:10px;flex-wrap:wrap;"></div>');
+    const copyBtn = h('<button class="btn btn-primary" style="flex:1;">Salin Teks</button>');
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(plainText);
+        toast('Teks disalin — siap ditempel ke WhatsApp/Email untuk dokter.');
+        if (session.status !== 'terkirim') {
+          await markBpjsSessionSent(session.id);
           await load();
-          renderList();
-        } catch (e) {
-          toast(e.message || 'Gagal menyimpan review.');
         }
-      };
-      reviseBtn.onclick = async () => {
-        try {
-          await submitBpjsReview(session.id, 'needs_revision', noteInput.value.trim());
-          toast('Dikirim kembali untuk revisi.');
-          el.replaceChildren();
-          el.appendChild(header('Dokumentasi BPJS', { back: true }));
-          el.appendChild(listEl);
-          await load();
-          renderList();
-        } catch (e) {
-          toast(e.message || 'Gagal menyimpan review.');
-        }
-      };
-      actionsEl.appendChild(reviseBtn);
-      actionsEl.appendChild(approveBtn);
-      detailEl.appendChild(actionsEl);
-    } else if (session.status !== 'pending_review' && session.status !== 'recording' && session.status !== 'processing') {
-      const tone = STATUS_TONE[session.status] ?? 'warn';
-      detailEl.appendChild(
-        h(`
-        <div class="card" style="background:var(--${tone}-tint);">
-          <p style="margin:0;font-size:13px;">
-            Status: <strong>${STATUS_LABEL[session.status] ?? session.status}</strong>
-          </p>
-        </div>
-      `)
-      );
-    }
+      } catch (e) {
+        toast('Gagal menyalin: ' + e.message);
+      }
+    };
+    actionsEl.appendChild(copyBtn);
+    detailEl.appendChild(actionsEl);
+    detailEl.appendChild(
+      h(`
+      <p class="muted small" style="margin-top:12px;">
+        Untuk ekspor sebagai file PDF atau DOCX, buka sesi ini langsung dari aplikasi (Bot Hub → Bot BPJS → riwayat sesi) — berkas dibuat di perangkat lalu bisa langsung dibagikan lewat aplikasi apa pun di HP Anda.
+      </p>
+    `)
+    );
 
     el.replaceChildren();
     el.appendChild(detailEl);

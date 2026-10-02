@@ -74,9 +74,9 @@ void main() {
     // SpeechToText.initialize() resolves false — same as a real device
     // where the user denied the microphone permission. This test exercises
     // that the screen surfaces a clear reason instead of hanging or
-    // crashing. The full record → transcribe → send → doctor-review flow
-    // needs a real platform (mic + Supabase session + accepted friendship)
-    // and is covered by the Playwright smoke test in web/tests instead.
+    // crashing. The full record → transcribe → export flow needs a real
+    // platform (mic + Supabase session) and is covered manually / by the
+    // Playwright smoke test in web/tests instead.
     await tester.pumpWidget(
       MaterialApp(theme: buildAppTheme(), home: const BotBpjsScreen()),
     );

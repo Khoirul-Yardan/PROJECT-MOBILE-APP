@@ -12,9 +12,9 @@ import 'bot_bpjs_screen.dart';
 
 /// The entire native shell of the hybrid app — literally just a WebView and
 /// a bridge. Every screen, **including navigation itself** (login, home,
-/// chat, bot/agent hub, friends, settings, profile, VPN status), is HTML/JS
-/// served by the `web/` Docker container. Flutter draws nothing of its own:
-/// no app bar, no bottom nav, nothing — so the same web layer can be opened
+/// chat, bot/agent hub, settings, profile, VPN status), is HTML/JS served
+/// by the `web/` Docker container. Flutter draws nothing of its own: no app
+/// bar, no bottom nav, nothing — so the same web layer can be opened
 /// straight in a desktop browser (`http://localhost:8090`) for fast
 /// iteration without touching a device at all, and this shell only matters
 /// once a feature genuinely needs to be native.

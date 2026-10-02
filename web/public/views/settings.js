@@ -3,7 +3,7 @@ import { currentUser, signOut } from '../db.js';
 import { navigate } from '../router.js';
 
 const TILES = [
-  { icon: 'users', title: 'Teman', subtitle: 'Perawat & dokter — dibutuhkan untuk kirim dokumentasi Bot BPJS.', go: '/friends' },
+  { icon: 'document', title: 'Riwayat Bot BPJS', subtitle: 'Sesi yang sudah direkam — salin atau ekspor untuk dikirim ke dokter.', go: '/bpjs' },
   { icon: 'lock', title: 'API &amp; Agent', subtitle: 'Kelola provider dan agent yang terhubung.', go: '/settings/apikeys' },
   { icon: 'shield', title: 'VPN', subtitle: 'Kelola koneksi dan akses aman.', go: '/vpn' },
   { icon: 'document', title: 'Log Aktivitas', subtitle: 'Lihat aktivitas terbaru.', go: '/settings/activity' },

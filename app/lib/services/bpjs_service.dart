@@ -1,7 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:docx_creator/docx_creator.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 
 import 'supabase_service.dart';
 
@@ -266,7 +272,8 @@ class BpjsSessionRepo {
   BpjsSessionRepo._();
 
   static Future<String?> createSession({
-    required String dokterId,
+    required String dokterNama,
+    String? dokterInstansi,
     required String pasienNama,
   }) async {
     final uid = SupabaseService.userId;
@@ -276,7 +283,8 @@ class BpjsSessionRepo {
           .from('bpjs_sessions')
           .insert({
             'perawat_id': uid,
-            'dokter_id': dokterId,
+            'dokter_nama': dokterNama,
+            'dokter_instansi': dokterInstansi,
             'pasien_nama': pasienNama,
             'status': 'recording',
           })
@@ -337,5 +345,155 @@ class BpjsSessionRepo {
     } catch (_) {
       // Best-effort.
     }
+  }
+}
+
+/// Builds the shareable output of one Bot BPJS session (plain text, PDF,
+/// DOCX) from the same structured draft + transcript the review screen
+/// shows — this is the actual deliverable: the nurse hands it to the named
+/// doctor directly (copy/paste into WhatsApp/email, or share the file),
+/// since there is no in-app doctor account to route it through anymore.
+class BpjsExport {
+  BpjsExport._();
+
+  static String plainText({
+    required String dokterNama,
+    String? dokterInstansi,
+    required String pasienNama,
+    required DateTime createdAt,
+    required Map<String, dynamic> structured,
+    required List<Map<String, String>> transcript,
+  }) {
+    final buf = StringBuffer()
+      ..writeln('DOKUMENTASI PERCAKAPAN PERAWAT-PASIEN')
+      ..writeln(
+        'Untuk: $dokterNama${dokterInstansi != null && dokterInstansi.isNotEmpty ? ' ($dokterInstansi)' : ''}',
+      )
+      ..writeln('Pasien: $pasienNama')
+      ..writeln('Tanggal: ${createdAt.toLocal()}')
+      ..writeln();
+    for (final entry in structured.entries) {
+      buf
+        ..writeln(entry.key.replaceAll('_', ' ').toUpperCase())
+        ..writeln('${entry.value}')
+        ..writeln();
+    }
+    if (transcript.isNotEmpty) {
+      buf.writeln('TRANSKRIP PERCAKAPAN:');
+      for (final seg in transcript) {
+        buf.writeln('${seg['speaker']}: ${seg['text']}');
+      }
+      buf.writeln();
+    }
+    buf.writeln(
+      'Catatan: draf ini dibuat otomatis dan perlu diverifikasi oleh dokter sebelum digunakan sebagai dasar tindakan medis.',
+    );
+    return buf.toString();
+  }
+
+  static Future<Uint8List> buildPdf({
+    required String dokterNama,
+    String? dokterInstansi,
+    required String pasienNama,
+    required DateTime createdAt,
+    required Map<String, dynamic> structured,
+    required List<Map<String, String>> transcript,
+  }) async {
+    final doc = pw.Document();
+    doc.addPage(
+      pw.MultiPage(
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Text(
+              'Dokumentasi Percakapan Perawat-Pasien',
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Text(
+            'Untuk: $dokterNama${dokterInstansi != null && dokterInstansi.isNotEmpty ? ' ($dokterInstansi)' : ''}',
+          ),
+          pw.Text('Pasien: $pasienNama'),
+          pw.Text('Tanggal: ${createdAt.toLocal()}'),
+          pw.SizedBox(height: 12),
+          ...structured.entries.expand(
+            (e) => [
+              pw.Text(
+                e.key.replaceAll('_', ' ').toUpperCase(),
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+              ),
+              pw.Text('${e.value}'),
+              pw.SizedBox(height: 8),
+            ],
+          ),
+          if (transcript.isNotEmpty) ...[
+            pw.SizedBox(height: 8),
+            pw.Text(
+              'Transkrip Percakapan',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
+            ),
+            pw.SizedBox(height: 4),
+            ...transcript.map((seg) => pw.Text('${seg['speaker']}: ${seg['text']}')),
+          ],
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Catatan: draf ini dibuat otomatis dan perlu diverifikasi oleh dokter sebelum digunakan sebagai dasar tindakan medis.',
+            style: pw.TextStyle(fontSize: 9, fontStyle: pw.FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+    return doc.save();
+  }
+
+  static Future<Uint8List> buildDocx({
+    required String dokterNama,
+    String? dokterInstansi,
+    required String pasienNama,
+    required DateTime createdAt,
+    required Map<String, dynamic> structured,
+    required List<Map<String, String>> transcript,
+  }) async {
+    final builder = DocxDocumentBuilder()
+        .h1('Dokumentasi Percakapan Perawat-Pasien')
+        .p(
+          'Untuk: $dokterNama${dokterInstansi != null && dokterInstansi.isNotEmpty ? ' ($dokterInstansi)' : ''}',
+        )
+        .p('Pasien: $pasienNama')
+        .p('Tanggal: ${createdAt.toLocal()}')
+        .p('');
+    for (final entry in structured.entries) {
+      builder
+        ..h3(entry.key.replaceAll('_', ' ').toUpperCase())
+        ..p('${entry.value}');
+    }
+    if (transcript.isNotEmpty) {
+      builder.h2('Transkrip Percakapan');
+      for (final seg in transcript) {
+        builder.p('${seg['speaker']}: ${seg['text']}');
+      }
+    }
+    builder.p('');
+    builder.quote(
+      'Draf ini dibuat otomatis dan perlu diverifikasi oleh dokter sebelum digunakan sebagai dasar tindakan medis.',
+    );
+    final built = builder.build();
+    return Uint8List.fromList(await DocxExporter().exportToBytes(built));
+  }
+
+  /// Saves [bytes] to a temp file and opens the OS share sheet so the nurse
+  /// can hand it off through WhatsApp, email, Drive, etc. — whichever app
+  /// is already installed, no extra integration needed on this app's side.
+  static Future<void> shareFile({
+    required Uint8List bytes,
+    required String filename,
+    required String mimeSubject,
+  }) async {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/$filename');
+    await file.writeAsBytes(bytes, flush: true);
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(file.path)], subject: mimeSubject),
+    );
   }
 }

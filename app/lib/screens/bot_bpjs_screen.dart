@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -10,7 +11,7 @@ import '../widgets/hub_ui.dart';
 import '../services/supabase_service.dart';
 import '../services/bpjs_service.dart';
 
-enum _Stage { idle, listening, recording, processing, review, sent, denied }
+enum _Stage { idle, listening, recording, processing, review, denied }
 
 class BotBpjsScreen extends StatefulWidget {
   const BotBpjsScreen({super.key});
@@ -23,14 +24,17 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechReady = false;
 
-  String? _doctorId;
   String? _doctorName;
+  String? _doctorInstansi;
   String? _patientName;
+  DateTime? _sessionCreatedAt;
+  String? _sessionId;
   String _liveTranscript = '';
   final List<Map<String, String>> _segments = []; // {speaker, text}
   Map<String, dynamic>? _draft;
   String? _providerLabel;
   String? _errorMessage;
+  bool _exporting = false;
 
   @override
   void dispose() {
@@ -75,16 +79,25 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
       });
       return;
     }
-    // Ask who the patient is before recording starts — the transcript and
-    // generated draft need a name to attach to, and schema.sql's
-    // bpjs_sessions.pasien_nama is not-null.
+    // Ask who the patient is, and who the session is for, before recording
+    // starts — no doctor account/friendship to look up anymore: the
+    // target doctor is just a typed name (+ instansi), same as filling in
+    // a referral form by hand.
     final patientName = await _askPatientName();
     if (!mounted) return;
     if (patientName == null || patientName.trim().isEmpty) {
       setState(() => _stage = _Stage.idle);
       return;
     }
+    final doctorInfo = await _askDoctorInfo();
+    if (!mounted) return;
+    if (doctorInfo == null || (doctorInfo['nama'] ?? '').trim().isEmpty) {
+      setState(() => _stage = _Stage.idle);
+      return;
+    }
     _patientName = patientName.trim();
+    _doctorName = doctorInfo['nama']!.trim();
+    _doctorInstansi = doctorInfo['instansi']?.trim();
     setState(() => _stage = _Stage.recording);
     _liveTranscript = '';
     _segments.clear();
@@ -116,6 +129,52 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Lanjut'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<Map<String, String>?> _askDoctorInfo() {
+    final namaController = TextEditingController();
+    final instansiController = TextEditingController();
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Dokumentasi untuk dokter siapa?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: namaController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Nama dokter',
+                hintText: 'mis. dr. Amma Haz',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: instansiController,
+              decoration: const InputDecoration(
+                labelText: 'Instansi / RS (opsional)',
+                hintText: 'mis. RS Ahmad Yani Surabaya',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, {
+              'nama': namaController.text,
+              'instansi': instansiController.text,
+            }),
             child: const Text('Mulai Rekam'),
           ),
         ],
@@ -159,40 +218,23 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
       badge: 'Info',
     );
 
-    // Pick the target doctor *before* creating the session row — schema.sql
-    // requires an accepted friendship with that doctor at insert time (see
-    // bpjs_sessions' insert policy), so the ID has to be known up front,
-    // not filled in after the fact.
-    final doctors = await SupabaseService.fetchAcceptedDoctors();
-    if (!mounted) return;
-    if (doctors.isEmpty) {
-      await _showNoDoctorDialog();
-      if (!mounted) return;
-      setState(() => _stage = _Stage.idle);
-      return;
-    }
-    final picked = await _pickDoctor(doctors);
-    if (!mounted) return;
-    if (picked == null) {
-      setState(() => _stage = _Stage.idle);
-      return;
-    }
-    _doctorId = picked['id'] as String;
-    _doctorName = picked['display_name'] as String? ?? 'Dokter';
-
+    final createdAt = DateTime.now();
     final sessionId = await BpjsSessionRepo.createSession(
-      dokterId: _doctorId!,
+      dokterNama: _doctorName ?? 'Dokter',
+      dokterInstansi: _doctorInstansi,
       pasienNama: _patientName ?? 'Pasien',
     );
     if (!mounted) return;
     if (sessionId == null) {
       setState(() {
-        _errorMessage =
-            'Gagal membuat sesi — pastikan kamu dan $_doctorName sudah berteman (status "accepted"), bukan hanya "pending".';
+        _errorMessage = 'Gagal membuat sesi — periksa koneksi internet dan coba lagi.';
         _stage = _Stage.idle;
       });
       return;
     }
+    _sessionId = sessionId;
+    _sessionCreatedAt = createdAt;
+
     var offsetMs = 0;
     for (final seg in _segments) {
       await BpjsSessionRepo.addTranscriptSegment(
@@ -235,75 +277,91 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
       alurPercakapan: _segments,
       providerId: credential?.id,
     );
-    await BpjsSessionRepo.markStatus(sessionId, 'pending_review');
+    await BpjsSessionRepo.markStatus(sessionId, 'siap_dikirim');
 
     if (!mounted) return;
     setState(() => _stage = _Stage.review);
     await SupabaseService.logActivity(
       category: 'Bots',
-      title: 'Dokumentasi dikirim ke $_doctorName',
-      subtitle: 'Menunggu review kecocokan form BPJS',
-      badge: 'Info',
+      title: 'Draf dokumentasi siap untuk $_doctorName',
+      subtitle: 'Siap disalin atau diekspor PDF/DOCX',
+      badge: 'Success',
     );
   }
 
-  Future<void> _showNoDoctorDialog() => showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Belum ada dokter terhubung'),
-      content: const Text(
-        'Tambahkan dokter sebagai teman dulu di menu Teman (Pengaturan → Teman) sebelum mengirim dokumentasi ini.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Mengerti'),
-        ),
-      ],
-    ),
-  );
+  Future<void> _copyText() async {
+    final text = BpjsExport.plainText(
+      dokterNama: _doctorName ?? 'Dokter',
+      dokterInstansi: _doctorInstansi,
+      pasienNama: _patientName ?? 'Pasien',
+      createdAt: _sessionCreatedAt ?? DateTime.now(),
+      structured: _draft ?? const {},
+      transcript: _segments,
+    );
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    await _markSentAndNotify('Teks disalin — siap ditempel ke WhatsApp/Email.');
+  }
 
-  Future<Map<String, dynamic>?> _pickDoctor(
-    List<Map<String, dynamic>> doctors,
-  ) => showModalBottomSheet<Map<String, dynamic>>(
-    context: context,
-    showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'Kirim ke dokter siapa?',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              'Hanya dokter yang sudah berteman dengan Anda yang muncul di sini.',
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-            ),
-          ),
-          const SizedBox(height: 8),
-          for (final doc in doctors)
-            ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.person)),
-              title: Text((doc['display_name'] as String?) ?? 'Dokter'),
-              onTap: () => Navigator.pop(context, doc),
-            ),
-          const SizedBox(height: 12),
-        ],
-      ),
-    ),
-  );
+  Future<void> _exportAs(String format) async {
+    setState(() => _exporting = true);
+    try {
+      final createdAt = _sessionCreatedAt ?? DateTime.now();
+      final safeName = (_patientName ?? 'pasien').replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_');
+      if (format == 'pdf') {
+        final bytes = await BpjsExport.buildPdf(
+          dokterNama: _doctorName ?? 'Dokter',
+          dokterInstansi: _doctorInstansi,
+          pasienNama: _patientName ?? 'Pasien',
+          createdAt: createdAt,
+          structured: _draft ?? const {},
+          transcript: _segments,
+        );
+        await BpjsExport.shareFile(
+          bytes: bytes,
+          filename: 'dokumentasi_bpjs_$safeName.pdf',
+          mimeSubject: 'Dokumentasi BPJS — $_patientName',
+        );
+      } else {
+        final bytes = await BpjsExport.buildDocx(
+          dokterNama: _doctorName ?? 'Dokter',
+          dokterInstansi: _doctorInstansi,
+          pasienNama: _patientName ?? 'Pasien',
+          createdAt: createdAt,
+          structured: _draft ?? const {},
+          transcript: _segments,
+        );
+        await BpjsExport.shareFile(
+          bytes: bytes,
+          filename: 'dokumentasi_bpjs_$safeName.docx',
+          mimeSubject: 'Dokumentasi BPJS — $_patientName',
+        );
+      }
+      if (!mounted) return;
+      await _markSentAndNotify('File ${format.toUpperCase()} siap dibagikan.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Gagal membuat file: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _markSentAndNotify(String message) async {
+    if (_sessionId != null) {
+      await BpjsSessionRepo.markStatus(_sessionId!, 'terkirim');
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   void _reset() => setState(() {
     _stage = _Stage.idle;
-    _doctorId = null;
     _doctorName = null;
+    _doctorInstansi = null;
     _patientName = null;
+    _sessionId = null;
+    _sessionCreatedAt = null;
     _liveTranscript = '';
     _segments.clear();
     _draft = null;
@@ -320,7 +378,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_stage != _Stage.review && _stage != _Stage.sent) ...[
+            if (_stage != _Stage.review) ...[
               const SizedBox(height: 16),
               const Center(
                 child: Text(
@@ -459,7 +517,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                 padding: EdgeInsets.symmetric(vertical: 24),
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (_stage == _Stage.review || _stage == _Stage.sent) ...[
+            else if (_stage == _Stage.review) ...[
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -493,12 +551,12 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
               ),
               const SizedBox(height: 14),
               Text(
-                'Untuk: $_doctorName',
+                'Untuk: $_doctorName${_doctorInstansi != null && _doctorInstansi!.isNotEmpty ? ' · $_doctorInstansi' : ''}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Dokter meninjau dan menandai status ini dari akunnya sendiri (web) — status di bawah diperbarui secara realtime.',
+                'Bagikan draf ini langsung ke dokter — salin teksnya, atau kirim sebagai file PDF/DOCX lewat WhatsApp, email, atau aplikasi lain di HP Anda.',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
               const SizedBox(height: 14),
@@ -529,6 +587,39 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                 ),
               ),
               const SizedBox(height: 18),
+              if (_exporting)
+                const Center(child: CircularProgressIndicator())
+              else ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _copyText,
+                    icon: const Icon(Icons.copy_all_rounded, size: 18),
+                    label: const Text('Salin Teks'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _exportAs('pdf'),
+                        icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                        label: const Text('Ekspor PDF'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _exportAs('docx'),
+                        icon: const Icon(Icons.description_outlined, size: 18),
+                        label: const Text('Ekspor DOCX'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
@@ -548,8 +639,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
     _Stage.listening => 'Menyiapkan mikrofon...',
     _Stage.recording => 'Merekam sesi...',
     _Stage.processing => 'Memproses (STT + LLM + simpan ke database)...',
-    _Stage.review => 'Dikirim — menunggu review dokter',
-    _Stage.sent => 'Terkirim',
+    _Stage.review => 'Draf siap — belum dibagikan',
     _Stage.denied => 'Izin mikrofon diperlukan',
   };
 
@@ -557,9 +647,8 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
     _Stage.idle => 'Tekan tombol untuk mulai merekam percakapan.',
     _Stage.listening => 'Meminta izin mikrofon dan menyiapkan speech recognition.',
     _Stage.recording => 'Bicara dengan pasien — teks akan muncul di bawah.',
-    _Stage.processing => 'Mengirim transkrip ke dokter yang dipilih.',
-    _Stage.review => 'Dokter dan perawat dapat melihat status ini di Activity Log.',
-    _Stage.sent => 'Dokter sudah meninjau sesi ini.',
+    _Stage.processing => 'Menyusun draf dokumentasi untuk dokter yang dituju.',
+    _Stage.review => 'Salin atau ekspor untuk membagikan draf ini ke dokter.',
     _Stage.denied => 'Aktifkan izin mikrofon di pengaturan perangkat lalu coba lagi.',
   };
 }

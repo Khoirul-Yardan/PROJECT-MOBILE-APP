@@ -14,8 +14,10 @@ create table if not exists public.activity_log (
   created_at timestamptz not null default now()
 );
 
--- Safe to re-run against a table created before 'Bots'/'Friends' existed as
--- categories — both the Bot BPJS screen and the Friends views write these.
+-- Safe to re-run against a table created before 'Bots' existed as a
+-- category — the Bot BPJS screen writes this. 'Friends' is kept in the
+-- allowed list even though the Friend System itself was removed, purely so
+-- old rows already written with that category don't fail validation.
 do $$
 begin
   if exists (
@@ -59,7 +61,11 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Friend System — profiles (searchable) + friendships (requests/accepted)
+-- Profiles — directory of display names + role (perawat/dokter/general).
+-- The Friend System (friendships table + its UI) was removed: Bot BPJS now
+-- targets a doctor by typed name/instansi per session instead of a
+-- pre-approved account relationship — see bpjs_sessions below. `role` is
+-- kept only so a signed-in user can label themself for their own records.
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.profiles (
@@ -88,7 +94,6 @@ create index if not exists profiles_display_name_idx
 
 alter table public.profiles enable row level security;
 
--- Any signed-in user (including anonymous) can search the directory by name.
 drop policy if exists "Anyone signed in can read profiles" on public.profiles;
 create policy "Anyone signed in can read profiles"
   on public.profiles for select
@@ -104,142 +109,123 @@ create policy "Users can update their own profile"
   on public.profiles for update
   using (auth.uid() = id);
 
-create table if not exists public.friendships (
-  id uuid primary key default gen_random_uuid(),
-  requester_id uuid not null references auth.users (id) on delete cascade,
-  addressee_id uuid not null references auth.users (id) on delete cascade,
-  status text not null default 'pending' check (status in ('pending', 'accepted', 'blocked')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint friendships_no_self check (requester_id <> addressee_id),
-  constraint friendships_unique_pair unique (requester_id, addressee_id)
-);
-
-create index if not exists friendships_requester_idx on public.friendships (requester_id);
-create index if not exists friendships_addressee_idx on public.friendships (addressee_id);
-
-alter table public.friendships enable row level security;
-
-drop policy if exists "Users can view their own friendships" on public.friendships;
-create policy "Users can view their own friendships"
-  on public.friendships for select
-  using (auth.uid() = requester_id or auth.uid() = addressee_id);
-
-drop policy if exists "Users can send friend requests" on public.friendships;
-create policy "Users can send friend requests"
-  on public.friendships for insert
-  with check (auth.uid() = requester_id);
-
-drop policy if exists "Users can respond to their friendships" on public.friendships;
-create policy "Users can respond to their friendships"
-  on public.friendships for update
-  using (auth.uid() = requester_id or auth.uid() = addressee_id);
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime'
-      and schemaname = 'public'
-      and tablename = 'friendships'
-  ) then
-    alter publication supabase_realtime add table public.friendships;
-  end if;
-end $$;
-
--- ---------------------------------------------------------------------------
--- Direct messages — one-to-one chat between friends, used by the unified
--- Chat screen (AI Assistant conversation OR a friend conversation).
--- ---------------------------------------------------------------------------
-
-create table if not exists public.messages (
-  id uuid primary key default gen_random_uuid(),
-  sender_id uuid not null references auth.users (id) on delete cascade,
-  receiver_id uuid not null references auth.users (id) on delete cascade,
-  body text not null,
-  created_at timestamptz not null default now(),
-  constraint messages_no_self check (sender_id <> receiver_id)
-);
-
-create index if not exists messages_conversation_idx
-  on public.messages (least(sender_id, receiver_id), greatest(sender_id, receiver_id), created_at);
-
-alter table public.messages enable row level security;
-
-drop policy if exists "Users can view their own conversations" on public.messages;
-create policy "Users can view their own conversations"
-  on public.messages for select
-  using (auth.uid() = sender_id or auth.uid() = receiver_id);
-
-drop policy if exists "Users can send messages" on public.messages;
-create policy "Users can send messages"
-  on public.messages for insert
-  with check (auth.uid() = sender_id);
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime'
-      and schemaname = 'public'
-      and tablename = 'messages'
-  ) then
-    alter publication supabase_realtime add table public.messages;
-  end if;
-end $$;
+-- Removed tables from the old Friend System — drop them if an earlier
+-- schema.sql run already created them. Both `messages` (1:1 chat between
+-- friends) and `friendships` existed only to support each other and were
+-- never load-bearing for any other feature once Bot BPJS switched to a
+-- typed doctor name instead of an accepted-friend account relationship.
+-- CASCADE is safe here: the only dependents are the old bpjs_sessions
+-- policies that referenced friendships in their USING clause — those get
+-- replaced with friendship-free versions further down in this file anyway.
+drop table if exists public.messages cascade;
+drop table if exists public.friendships cascade;
 
 -- ---------------------------------------------------------------------------
 -- Bot BPJS / Jarvis — voice-documented nurse-patient sessions.
 -- See PRD-AI-Hub-Jarvis-BPJS.md §7.3. Every table here holds sensitive
--- health data (NFR-10): RLS restricts every row to just the sending nurse
--- (perawat_id) and the target doctor (dokter_id) — nobody else, including
--- other authenticated users, can read or write these rows.
+-- health data (NFR-10): RLS restricts every row to just the signed-in nurse
+-- who recorded it (perawat_id) — nobody else can read or write these rows.
+--
+-- There is deliberately no doctor *account* relationship here anymore (the
+-- Friend System this used to depend on was removed) — the target doctor is
+-- just a typed name + instansi per session, same as writing it by hand on
+-- a referral form. The finished documentation is handed to that doctor
+-- directly by the nurse (copy/paste, PDF, or DOCX — see §8 "Alur Export"),
+-- not through an in-app review screen on the doctor's own account.
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.bpjs_sessions (
   id uuid primary key default gen_random_uuid(),
   perawat_id uuid not null references auth.users (id) on delete cascade,
-  dokter_id uuid not null references auth.users (id) on delete cascade,
+  dokter_nama text not null,
+  dokter_instansi text,
   pasien_nama text not null,
   status text not null default 'recording'
-    check (status in ('recording', 'processing', 'sent', 'pending_review', 'needs_revision', 'matches_bpjs_form')),
+    check (status in ('recording', 'processing', 'siap_dikirim', 'terkirim')),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint bpjs_sessions_no_self check (perawat_id <> dokter_id)
+  updated_at timestamptz not null default now()
 );
 
+-- bpjs_reviews (doctor-account review verdicts) referenced dokter_id, and
+-- was removed along with the Friend System's doctor accounts — drop it
+-- *before* the migration below, so its policies don't block dropping that
+-- column from bpjs_sessions.
+drop table if exists public.bpjs_reviews cascade;
+
+-- Migration for a database that already ran the old (friendship-based)
+-- version of this table: drop the doctor-account column/constraints it
+-- had, and backfill the new typed-name column from whatever profile name
+-- was linked, so existing rows keep a usable value instead of erroring.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'bpjs_sessions' and column_name = 'dokter_id'
+  ) then
+    alter table public.bpjs_sessions add column if not exists dokter_nama text;
+    alter table public.bpjs_sessions add column if not exists dokter_instansi text;
+    update public.bpjs_sessions s
+      set dokter_nama = coalesce(p.display_name, 'Dokter')
+      from public.profiles p
+      where p.id = s.dokter_id and s.dokter_nama is null;
+    update public.bpjs_sessions set dokter_nama = 'Dokter' where dokter_nama is null;
+    alter table public.bpjs_sessions alter column dokter_nama set not null;
+    alter table public.bpjs_sessions drop constraint if exists bpjs_sessions_no_self;
+    -- Every old policy anywhere that reads bpjs_sessions.dokter_id (on this
+    -- table and its children) has to go before the column itself can drop —
+    -- Postgres won't let a column disappear while a policy still names it.
+    -- All of these get recreated below in their friendship-free form.
+    drop policy if exists "Nurse and target doctor can view a session" on public.bpjs_sessions;
+    drop policy if exists "Nurse can start a session with an accepted friend" on public.bpjs_sessions;
+    drop policy if exists "Nurse or target doctor can update a session" on public.bpjs_sessions;
+    drop policy if exists "Nurse and target doctor can view transcripts" on public.bpjs_transcripts;
+    drop policy if exists "Nurse and target doctor can view documentation" on public.bpjs_documents;
+    alter table public.bpjs_sessions drop column dokter_id;
+  end if;
+  if exists (
+    select 1 from pg_constraint where conname = 'bpjs_sessions_status_check'
+  ) then
+    alter table public.bpjs_sessions drop constraint bpjs_sessions_status_check;
+    -- Old status values ('sent', 'pending_review', 'needs_revision',
+    -- 'matches_bpjs_form') came from the doctor-review flow that no longer
+    -- exists — map them onto the closest new status so existing rows don't
+    -- just become invalid data once the stricter check is added back.
+    update public.bpjs_sessions
+      set status = case
+        when status in ('sent', 'pending_review') then 'siap_dikirim'
+        when status in ('matches_bpjs_form', 'needs_revision') then 'terkirim'
+        else status
+      end
+      where status not in ('recording', 'processing', 'siap_dikirim', 'terkirim');
+    alter table public.bpjs_sessions
+      add constraint bpjs_sessions_status_check
+      check (status in ('recording', 'processing', 'siap_dikirim', 'terkirim'));
+  end if;
+end $$;
+
 create index if not exists bpjs_sessions_perawat_idx on public.bpjs_sessions (perawat_id, created_at desc);
-create index if not exists bpjs_sessions_dokter_idx on public.bpjs_sessions (dokter_id, created_at desc);
 
 alter table public.bpjs_sessions enable row level security;
 
-drop policy if exists "Nurse and target doctor can view a session" on public.bpjs_sessions;
-create policy "Nurse and target doctor can view a session"
+drop policy if exists "Nurse can view their own sessions" on public.bpjs_sessions;
+create policy "Nurse can view their own sessions"
   on public.bpjs_sessions for select
-  using (auth.uid() = perawat_id or auth.uid() = dokter_id);
+  using (auth.uid() = perawat_id);
 
--- NFR-14: a session can only be opened by the nurse, and only ever targets a
--- doctor who has *already accepted* a friend request with that nurse —
--- prevents sending patient documentation to an unrelated/unknown account.
-drop policy if exists "Nurse can start a session with an accepted friend" on public.bpjs_sessions;
-create policy "Nurse can start a session with an accepted friend"
+drop policy if exists "Nurse can create their own sessions" on public.bpjs_sessions;
+create policy "Nurse can create their own sessions"
   on public.bpjs_sessions for insert
-  with check (
-    auth.uid() = perawat_id
-    and exists (
-      select 1 from public.friendships f
-      where f.status = 'accepted'
-        and (
-          (f.requester_id = perawat_id and f.addressee_id = dokter_id)
-          or (f.requester_id = dokter_id and f.addressee_id = perawat_id)
-        )
-    )
-  );
+  with check (auth.uid() = perawat_id);
 
-drop policy if exists "Nurse or target doctor can update a session" on public.bpjs_sessions;
-create policy "Nurse or target doctor can update a session"
+drop policy if exists "Nurse can update their own sessions" on public.bpjs_sessions;
+create policy "Nurse can update their own sessions"
   on public.bpjs_sessions for update
-  using (auth.uid() = perawat_id or auth.uid() = dokter_id);
+  using (auth.uid() = perawat_id);
+
+drop policy if exists "Nurse can delete their own sessions" on public.bpjs_sessions;
+create policy "Nurse can delete their own sessions"
+  on public.bpjs_sessions for delete
+  using (auth.uid() = perawat_id);
 
 create table if not exists public.bpjs_transcripts (
   id uuid primary key default gen_random_uuid(),
@@ -256,12 +242,13 @@ create index if not exists bpjs_transcripts_session_idx
 alter table public.bpjs_transcripts enable row level security;
 
 drop policy if exists "Nurse and target doctor can view transcripts" on public.bpjs_transcripts;
-create policy "Nurse and target doctor can view transcripts"
+drop policy if exists "Nurse can view transcripts for their own session" on public.bpjs_transcripts;
+create policy "Nurse can view transcripts for their own session"
   on public.bpjs_transcripts for select
   using (
     exists (
       select 1 from public.bpjs_sessions s
-      where s.id = session_id and (auth.uid() = s.perawat_id or auth.uid() = s.dokter_id)
+      where s.id = session_id and auth.uid() = s.perawat_id
     )
   );
 
@@ -291,12 +278,13 @@ create index if not exists bpjs_documents_session_idx on public.bpjs_documents (
 alter table public.bpjs_documents enable row level security;
 
 drop policy if exists "Nurse and target doctor can view documentation" on public.bpjs_documents;
-create policy "Nurse and target doctor can view documentation"
+drop policy if exists "Nurse can view documentation for their own session" on public.bpjs_documents;
+create policy "Nurse can view documentation for their own session"
   on public.bpjs_documents for select
   using (
     exists (
       select 1 from public.bpjs_sessions s
-      where s.id = session_id and (auth.uid() = s.perawat_id or auth.uid() = s.dokter_id)
+      where s.id = session_id and auth.uid() = s.perawat_id
     )
   );
 
@@ -320,41 +308,8 @@ create policy "Nurse can update documentation for their session"
     )
   );
 
-create table if not exists public.bpjs_reviews (
-  id uuid primary key default gen_random_uuid(),
-  session_id uuid not null references public.bpjs_sessions (id) on delete cascade,
-  dokter_id uuid not null references auth.users (id) on delete cascade,
-  verdict text not null check (verdict in ('matches_bpjs_form', 'needs_revision')),
-  catatan text,
-  reviewed_at timestamptz not null default now()
-);
-
-create index if not exists bpjs_reviews_session_idx on public.bpjs_reviews (session_id, reviewed_at desc);
-
-alter table public.bpjs_reviews enable row level security;
-
-drop policy if exists "Nurse and target doctor can view reviews" on public.bpjs_reviews;
-create policy "Nurse and target doctor can view reviews"
-  on public.bpjs_reviews for select
-  using (
-    exists (
-      select 1 from public.bpjs_sessions s
-      where s.id = session_id and (auth.uid() = s.perawat_id or auth.uid() = s.dokter_id)
-    )
-  );
-
--- Only the *target* doctor of the session may review it (§4.7 step 8) — not
--- just any doctor the nurse happens to be friends with.
-drop policy if exists "Target doctor can review their assigned session" on public.bpjs_reviews;
-create policy "Target doctor can review their assigned session"
-  on public.bpjs_reviews for insert
-  with check (
-    auth.uid() = dokter_id
-    and exists (
-      select 1 from public.bpjs_sessions s
-      where s.id = session_id and s.dokter_id = auth.uid()
-    )
-  );
+-- (bpjs_reviews already dropped earlier in this file, before the
+-- bpjs_sessions.dokter_id migration that needed it gone first.)
 
 do $$
 begin
@@ -365,14 +320,6 @@ begin
       and tablename = 'bpjs_sessions'
   ) then
     alter publication supabase_realtime add table public.bpjs_sessions;
-  end if;
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime'
-      and schemaname = 'public'
-      and tablename = 'bpjs_reviews'
-  ) then
-    alter publication supabase_realtime add table public.bpjs_reviews;
   end if;
 end $$;
 
