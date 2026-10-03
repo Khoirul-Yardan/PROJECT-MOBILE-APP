@@ -1,11 +1,11 @@
-import { h, header, icon, toast } from '../ui.js';
+import { h, header, icon, toast, escapeHtml } from '../ui.js';
 import { KNOWN_PROVIDERS, SELF_HOSTED_PROVIDERS, detectProvider, slugify } from '../providers.js';
 import { saveProvider } from '../ai.js';
 import { logActivity } from '../db.js';
 
-// Two entry points into the same underlying flow: "Hubungkan Provider AI"
+// Two entry points into the same underlying flow: "Tambah provider"
 // (ChatGPT/Claude/Gemini/OpenRouter — reply comes straight from the model)
-// and "Hubungkan Agent" (Hermes, OpenClaw — can take actions, not just
+// and "Tambah agent" (Hermes, OpenClaw — can take actions, not just
 // reply) land here with a different `type` query param so each screen only
 // shows what belongs to it. They still end up as the same kind of saved
 // entry and both show up side by side in the Chat picker — the split is
@@ -20,16 +20,18 @@ export default async function render(root) {
 
   let detected = null;
   let manualMode = false;
-  let manualType = mode;
+  let manualType = isAgent ? 'agent' : 'chat';
+  let saving = false;
+  let manualSelection = null;
 
   const el = h(`<div class="page add-api-page"></div>`);
-  el.appendChild(header(isAgent ? 'Hubungkan Agent' : 'Hubungkan Provider AI', { back: true }));
+  el.appendChild(header(isAgent ? 'Tambah agent' : 'Tambah provider', { back: true }));
   el.appendChild(
     h(`
     <p class="muted small" style="margin-top:-8px;">
       ${
         isAgent
-          ? 'Tempel API key agent (Hermes) atau hubungkan gateway self-hosted (OpenClaw) di bawah — agent bisa mengambil aksi, bukan cuma membalas teks.'
+          ? 'Tempel API key agent (Hermes) atau hubungkan gateway self-hosted (OpenClaw) di bawah untuk digunakan dalam Chat.'
           : 'Tempel API key provider AI (ChatGPT, Claude, Gemini, OpenRouter) — sistem mengenali sendiri jenisnya.'
       }
     </p>
@@ -40,7 +42,7 @@ export default async function render(root) {
     <div class="card form-panel">
       <div class="field" style="margin-bottom:0;">
         <label for="key-input">Tempel API key</label>
-        <textarea id="key-input" rows="2" placeholder="sk-..., sk-ant-..., AIza..., atau key lainnya" autocomplete="off" spellcheck="false"></textarea>
+        <input type="password" id="key-input" placeholder="sk-..., sk-ant-..., AIza..., atau key lainnya" autocomplete="off" spellcheck="false" /><button id="show-key" type="button" class="btn-text">Tampilkan key</button>
       </div>
       <div id="detect-result" style="margin-top:14px;"></div>
     </div>
@@ -54,6 +56,8 @@ export default async function render(root) {
 
   const keyInput = pasteCard.querySelector('#key-input');
   const detectResult = pasteCard.querySelector('#detect-result');
+  pasteCard.querySelector('#show-key').onclick = e => { keyInput.type = keyInput.type === 'password' ? 'text' : 'password'; e.currentTarget.textContent = keyInput.type === 'password' ? 'Tampilkan key' : 'Sembunyikan key'; };
+  const errorEl = h('<p class="error-text" role="alert" tabindex="-1"></p>'); el.appendChild(errorEl);
 
   function renderDetectResult() {
     if (manualMode) {
@@ -65,7 +69,7 @@ export default async function render(root) {
       detectResult.innerHTML = '';
       return;
     }
-    detected = detectProvider(raw);
+    detected = manualSelection || detectProvider(raw);
     if (detected) {
       detectResult.innerHTML = '';
       const wrap = h('<div></div>');
@@ -73,13 +77,18 @@ export default async function render(root) {
         <div class="row" style="padding:12px 14px;border-radius:12px;background:var(--ok-tint);">
           <span class="feature-icon tone-green">${icon('spark')}</span>
           <div class="grow">
-            <div class="item-title">Terdeteksi: ${detected.label}</div>
+            <div class="item-title">Format dikenali sebagai ${detected.label}</div>
             <div class="muted small">${detected.vendor} · ${detected.type === 'agent' ? 'Agent' : 'Provider chat'}</div>
           </div>
         </div>
       `));
-      const saveBtn = h('<button class="btn btn-primary" style="margin-top:12px;">Simpan &amp; Hubungkan</button>');
-      saveBtn.onclick = () => saveDetected(detected, raw);
+      const advanced = h(`<details style="margin-top:12px"><summary>Pengaturan lanjutan</summary>
+        <div class="field"><label for="detected-endpoint">Endpoint API</label><input id="detected-endpoint" value="${escapeHtml(detected.endpoint || '')}" spellcheck="false"></div>
+        <div class="field"><label for="detected-model">Model (opsional)</label><input id="detected-model" value="${escapeHtml(detected.model || '')}" spellcheck="false"></div>
+      </details>`);
+      wrap.appendChild(advanced);
+      const saveBtn = h('<button class="btn btn-primary" style="margin-top:12px;">Simpan konfigurasi</button>');
+      saveBtn.onclick = () => saveDetected({ ...detected, endpoint: advanced.querySelector('#detected-endpoint').value.trim(), model: advanced.querySelector('#detected-model').value.trim() || undefined }, raw);
       wrap.appendChild(saveBtn);
       detectResult.appendChild(wrap);
     } else {
@@ -97,7 +106,7 @@ export default async function render(root) {
       const quickRow = h('<div class="tabs" style="margin-top:12px;"></div>');
       providersForMode.forEach((p) => {
         const chip = h(`<button class="chip">${icon(p.icon)}<span>${p.label}</span></button>`);
-        chip.onclick = () => saveDetected(p, raw);
+        chip.onclick = () => { manualSelection = p; renderDetectResult(); };
         quickRow.appendChild(chip);
       });
       wrap.appendChild(quickRow);
@@ -113,16 +122,25 @@ export default async function render(root) {
   }
 
   keyInput.addEventListener('input', () => {
-    manualMode = false;
+    manualMode = false; manualSelection = null;
     manualSection.innerHTML = '';
     renderDetectResult();
   });
 
   async function saveDetected(entry, rawKey) {
-    await saveProvider(entry, rawKey);
-    await logActivity({ category: 'AI', title: 'API terhubung', subtitle: entry.label, badge: 'Success' });
-    toast(`${entry.label} terhubung.`);
-    history.back();
+    if (saving) return;
+    if (!entry.endpoint || !/^https?:\/\//i.test(entry.endpoint)) {
+      errorEl.textContent = 'Isi endpoint layanan dengan alamat http:// atau https://.';
+      errorEl.focus(); return;
+    }
+    saving = true; errorEl.textContent = '';
+    el.querySelectorAll('button').forEach(b => b.disabled = true);
+    try {
+      await saveProvider(entry, rawKey);
+      logActivity({ category: 'AI', title: 'Konfigurasi layanan disimpan', subtitle: entry.label });
+      toast('Konfigurasi tersimpan'); history.back();
+    } catch { errorEl.textContent = 'Konfigurasi belum tersimpan. Periksa koneksi lalu coba lagi.'; errorEl.focus(); }
+    finally { saving = false; el.querySelectorAll('button').forEach(b => b.disabled = false); }
   }
 
   function renderManualForm(rawKey) {
@@ -149,7 +167,7 @@ export default async function render(root) {
           <label for="manual-model">Model (opsional)</label>
           <input id="manual-model" placeholder="mis. gpt-4o-mini, hermes-3-70b" />
         </div>
-        <button id="manual-save" class="btn btn-primary">Simpan &amp; Hubungkan</button>
+        <button id="manual-save" class="btn btn-primary">Simpan konfigurasi</button>
       </div>
     `)
     );
@@ -164,7 +182,7 @@ export default async function render(root) {
       const endpoint = manualSection.querySelector('#manual-endpoint').value.trim();
       const model = manualSection.querySelector('#manual-model').value.trim();
       if (!label || !endpoint) {
-        toast('Isi nama dan endpoint dulu.');
+        errorEl.textContent = 'Isi nama dan endpoint layanan.'; errorEl.focus();
         return;
       }
       const entry = {
@@ -232,14 +250,14 @@ export default async function render(root) {
             <input id="${p.id}-token" type="password" placeholder="token" />
             <div class="muted small">${p.tokenHelp}</div>
           </div>
-          <button id="${p.id}-save" class="btn btn-primary">Simpan &amp; Hubungkan</button>
+          <button id="${p.id}-save" class="btn btn-primary">Simpan konfigurasi</button>
         </div>
       `);
       card.querySelector(`#${p.id}-save`).onclick = async () => {
         const url = card.querySelector(`#${p.id}-url`).value.trim().replace(/\/$/, '');
         const token = card.querySelector(`#${p.id}-token`).value.trim();
         if (!url || !token) {
-          toast('Isi URL gateway dan token dulu.');
+          errorEl.textContent = 'Isi URL gateway dan token.'; errorEl.focus();
           return;
         }
         const entry = { id: p.id, label: p.label, type: p.type, format: p.format, endpoint: url };

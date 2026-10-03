@@ -3,6 +3,8 @@
 // drives this by running `location.hash = '#/chat'` etc. inside the WebView.
 const routes = new Map();
 let current = null;
+let currentPath = null;
+const scrollPositions = new Map();
 
 // Supabase's onAuthStateChange can fire more than once in quick succession
 // during startup (e.g. an INITIAL_SESSION event followed by a SIGNED_IN
@@ -26,6 +28,7 @@ export async function start(root, fallback = '/home') {
 async function render(root, fallback) {
   const myToken = ++renderToken;
   const path = (location.hash || `#${fallback}`).slice(1).split('?')[0];
+  if (currentPath && currentPath !== path) scrollPositions.set(currentPath, window.scrollY);
   const view = routes.get(path) ?? routes.get(fallback);
 
   // Views call container.appendChild(...) themselves, so give each render
@@ -74,7 +77,14 @@ async function render(root, fallback) {
   }
 
   current = result;
+  currentPath = path;
   root.replaceChildren(...container.childNodes);
+  requestAnimationFrame(() => {
+    if (myToken !== renderToken) return;
+    const heading = root.querySelector('h1');
+    if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+    window.scrollTo(0, scrollPositions.get(path) || 0);
+  });
 }
 
 export function navigate(path) {

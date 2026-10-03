@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,10 +7,9 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../theme.dart';
 import '../widgets/hub_ui.dart';
-import '../services/supabase_service.dart';
 import '../services/bpjs_service.dart';
 
-enum _Stage { idle, listening, recording, processing, review, denied }
+enum _Stage { preparation, recording, processing, review }
 
 class BotBpjsScreen extends StatefulWidget {
   const BotBpjsScreen({super.key});
@@ -19,681 +17,594 @@ class BotBpjsScreen extends StatefulWidget {
   State<BotBpjsScreen> createState() => _BotBpjsScreenState();
 }
 
-class _BotBpjsScreenState extends State<BotBpjsScreen> {
-  _Stage _stage = _Stage.idle;
-  final stt.SpeechToText _speech = stt.SpeechToText();
-  bool _speechReady = false;
-
-  String? _doctorName;
-  String? _doctorInstansi;
-  String? _patientName;
-  DateTime? _sessionCreatedAt;
-  String? _sessionId;
-  String _liveTranscript = '';
-  final List<Map<String, String>> _segments = []; // {speaker, text}
+class _BotBpjsScreenState extends State<BotBpjsScreen>
+    with WidgetsBindingObserver {
+  final _form = GlobalKey<FormState>();
+  final _patient = TextEditingController();
+  final _doctor = TextEditingController();
+  final _institution = TextEditingController();
+  final _speech = stt.SpeechToText();
+  final _elapsed = Stopwatch();
+  final List<Map<String, String>> _segments = [];
+  final List<int> _offsets = [];
+  _Stage _stage = _Stage.preparation;
+  Timer? _timer;
+  bool _starting = false,
+      _micActive = false,
+      _stopping = false,
+      _exporting = false,
+      _saved = false,
+      _leaving = false;
+  String _live = '', _progress = '', _provider = '';
+  String? _error, _sessionId;
+  DateTime? _createdAt;
   Map<String, dynamic>? _draft;
-  String? _providerLabel;
-  String? _errorMessage;
-  bool _exporting = false;
+  BpjsAiCredential? _credential;
+  int _savedSegments = 0;
+  bool _documentSaved = false;
+  bool get _raw => _provider.isEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
-    _speech.stop();
+    WidgetsBinding.instance.removeObserver(this);
+    _timer?.cancel();
+    _elapsed.stop();
+    _speech.cancel();
+    _patient.dispose();
+    _doctor.dispose();
+    _institution.dispose();
     super.dispose();
   }
 
-  Future<void> _sayHalo() async {
-    setState(() {
-      _stage = _Stage.listening;
-      _errorMessage = null;
-    });
-    _speechReady = await _speech.initialize(
-      onStatus: (status) {
-        if (status == 'notListening' && _stage == _Stage.recording) {
-          // The platform speech engine stops itself after a pause; restart
-          // it so a real multi-turn conversation keeps being captured
-          // instead of the session silently going deaf after one utterance.
-          _speech.listen(
-            onResult: _onSpeechResult,
-            listenOptions: stt.SpeechListenOptions(
-              partialResults: true,
-              cancelOnError: false,
-              localeId: 'id_ID',
-            ),
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused && _stage == _Stage.recording) {
+      _stopCapture().then((_) {
+        if (mounted) {
+          setState(
+            () => _error = 'Mikrofon terhenti saat aplikasi masuk latar belakang. Periksa transkrip lalu proses hasil.',
           );
         }
-      },
-      onError: (error) {
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = 'Mikrofon/STT error: ${error.errorMsg}';
-        });
-      },
-    );
-    if (!mounted) return;
-    if (!_speechReady) {
-      setState(() {
-        _stage = _Stage.denied;
-        _errorMessage =
-            'Izin mikrofon ditolak atau speech recognition tidak tersedia di perangkat ini.';
       });
-      return;
-    }
-    // Ask who the patient is, and who the session is for, before recording
-    // starts — no doctor account/friendship to look up anymore: the
-    // target doctor is just a typed name (+ instansi), same as filling in
-    // a referral form by hand.
-    final patientName = await _askPatientName();
-    if (!mounted) return;
-    if (patientName == null || patientName.trim().isEmpty) {
-      setState(() => _stage = _Stage.idle);
-      return;
-    }
-    final doctorInfo = await _askDoctorInfo();
-    if (!mounted) return;
-    if (doctorInfo == null || (doctorInfo['nama'] ?? '').trim().isEmpty) {
-      setState(() => _stage = _Stage.idle);
-      return;
-    }
-    _patientName = patientName.trim();
-    _doctorName = doctorInfo['nama']!.trim();
-    _doctorInstansi = doctorInfo['instansi']?.trim();
-    setState(() => _stage = _Stage.recording);
-    _liveTranscript = '';
-    _segments.clear();
-    await _speech.listen(
-      onResult: _onSpeechResult,
-      listenOptions: stt.SpeechListenOptions(
-        partialResults: true,
-        cancelOnError: false,
-        localeId: 'id_ID',
-      ),
-    );
-  }
-
-  Future<String?> _askPatientName() {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nama pasien'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'mis. Budi Santoso'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Lanjut'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<Map<String, String>?> _askDoctorInfo() {
-    final namaController = TextEditingController();
-    final instansiController = TextEditingController();
-    return showDialog<Map<String, String>>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Dokumentasi untuk dokter siapa?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: namaController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Nama dokter',
-                hintText: 'mis. dr. Amma Haz',
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: instansiController,
-              decoration: const InputDecoration(
-                labelText: 'Instansi / RS (opsional)',
-                hintText: 'mis. RS Ahmad Yani Surabaya',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, {
-              'nama': namaController.text,
-              'instansi': instansiController.text,
-            }),
-            child: const Text('Mulai Rekam'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onSpeechResult(SpeechRecognitionResult result) {
-    if (!mounted) return;
-    setState(() => _liveTranscript = result.recognizedWords);
-    if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
-      // The on-device recognizer alone can't tell nurse from patient
-      // (speaker diarization needs a dedicated model this app doesn't
-      // bundle) — segments are tagged 'perawat' by default since the nurse
-      // holds the phone; this is a documented limitation, not hidden.
-      _segments.add({'speaker': 'perawat', 'text': result.recognizedWords.trim()});
-      _liveTranscript = '';
     }
   }
 
-  Future<void> _stopAndProcess() async {
-    await _speech.stop();
-    if (_liveTranscript.trim().isNotEmpty) {
-      _segments.add({'speaker': 'perawat', 'text': _liveTranscript.trim()});
-    }
-    setState(() => _stage = _Stage.processing);
-
-    if (_segments.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Tidak ada ucapan yang terekam. Coba lagi.';
-        _stage = _Stage.idle;
-      });
-      return;
-    }
-
-    await SupabaseService.logActivity(
-      category: 'Bots',
-      title: 'Bot BPJS — sesi direkam',
-      subtitle: 'Menyusun dokumentasi sesuai form BPJS',
-      badge: 'Info',
-    );
-
-    final createdAt = DateTime.now();
-    final sessionId = await BpjsSessionRepo.createSession(
-      dokterNama: _doctorName ?? 'Dokter',
-      dokterInstansi: _doctorInstansi,
-      pasienNama: _patientName ?? 'Pasien',
-    );
+  void _onStatus(String status) {
     if (!mounted) return;
-    if (sessionId == null) {
-      setState(() {
-        _errorMessage = 'Gagal membuat sesi — periksa koneksi internet dan coba lagi.';
-        _stage = _Stage.idle;
-      });
-      return;
-    }
-    _sessionId = sessionId;
-    _sessionCreatedAt = createdAt;
-
-    var offsetMs = 0;
-    for (final seg in _segments) {
-      await BpjsSessionRepo.addTranscriptSegment(
-        sessionId: sessionId,
-        speaker: seg['speaker']!,
-        text: seg['text']!,
-        offsetMs: offsetMs,
-      );
-      offsetMs += 4000;
-    }
-
-    final transcriptText = _segments.map((s) => s['text']).join(' ');
-    final credential = await BpjsAiService.firstAvailableCredential();
-    Map<String, dynamic> draft;
-    if (credential != null) {
-      final generated = await BpjsAiService.generateDocumentation(
-        credential: credential,
-        transcriptText: transcriptText,
-      );
-      draft = generated ??
-          {
-            'ringkasan': transcriptText,
-            'catatan':
-                'AI tidak merespons — ringkasan ini adalah transkrip mentah, perlu disusun manual oleh perawat.',
-          };
-      _providerLabel = credential.label;
-    } else {
-      draft = {
-        'ringkasan': transcriptText,
-        'catatan':
-            'Belum ada provider/agent AI terhubung (Pengaturan → API & Agent) — ringkasan ini adalah transkrip mentah.',
-      };
-      _providerLabel = null;
-    }
-    _draft = draft;
-
-    await BpjsSessionRepo.saveDocumentation(
-      sessionId: sessionId,
-      structured: draft,
-      alurPercakapan: _segments,
-      providerId: credential?.id,
-    );
-    await BpjsSessionRepo.markStatus(sessionId, 'siap_dikirim');
-
-    if (!mounted) return;
-    setState(() => _stage = _Stage.review);
-    await SupabaseService.logActivity(
-      category: 'Bots',
-      title: 'Draf dokumentasi siap untuk $_doctorName',
-      subtitle: 'Siap disalin atau diekspor PDF/DOCX',
-      badge: 'Success',
-    );
-  }
-
-  Future<void> _copyText() async {
-    final text = BpjsExport.plainText(
-      dokterNama: _doctorName ?? 'Dokter',
-      dokterInstansi: _doctorInstansi,
-      pasienNama: _patientName ?? 'Pasien',
-      createdAt: _sessionCreatedAt ?? DateTime.now(),
-      structured: _draft ?? const {},
-      transcript: _segments,
-    );
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!mounted) return;
-    await _markSentAndNotify('Teks disalin — siap ditempel ke WhatsApp/Email.');
-  }
-
-  Future<void> _exportAs(String format) async {
-    setState(() => _exporting = true);
-    try {
-      final createdAt = _sessionCreatedAt ?? DateTime.now();
-      final safeName = (_patientName ?? 'pasien').replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_');
-      if (format == 'pdf') {
-        final bytes = await BpjsExport.buildPdf(
-          dokterNama: _doctorName ?? 'Dokter',
-          dokterInstansi: _doctorInstansi,
-          pasienNama: _patientName ?? 'Pasien',
-          createdAt: createdAt,
-          structured: _draft ?? const {},
-          transcript: _segments,
-        );
-        await BpjsExport.shareFile(
-          bytes: bytes,
-          filename: 'dokumentasi_bpjs_$safeName.pdf',
-          mimeSubject: 'Dokumentasi BPJS — $_patientName',
-        );
+    setState(() {
+      _micActive = status == 'listening';
+      if (_micActive) {
+        _elapsed.start();
       } else {
-        final bytes = await BpjsExport.buildDocx(
-          dokterNama: _doctorName ?? 'Dokter',
-          dokterInstansi: _doctorInstansi,
-          pasienNama: _patientName ?? 'Pasien',
-          createdAt: createdAt,
-          structured: _draft ?? const {},
-          transcript: _segments,
+        _elapsed.stop();
+      }
+    });
+  }
+
+  Future<void> _start() async {
+    if (_starting || !_form.currentState!.validate()) return;
+    setState(() {
+      _starting = true;
+      _error = null;
+    });
+    try {
+      final ready = await _speech.initialize(
+        onStatus: _onStatus,
+        onError: (error) {
+          if (mounted) {
+            setState(() {
+              _micActive = false;
+              _elapsed.stop();
+              _error =
+                  'Mikrofon terhenti: ${error.errorMsg}. Transkrip yang sudah tersedia tetap dapat diproses.';
+            });
+          }
+        },
+      );
+      if (!mounted) return;
+      if (!ready) {
+        setState(
+          () => _error = 'Izin mikrofon ditolak atau pengenalan suara tidak tersedia. Periksa izin mikrofon pada pengaturan perangkat, lalu coba lagi.',
         );
-        await BpjsExport.shareFile(
-          bytes: bytes,
-          filename: 'dokumentasi_bpjs_$safeName.docx',
-          mimeSubject: 'Dokumentasi BPJS — $_patientName',
+        return;
+      }
+      _createdAt = DateTime.now();
+      _elapsed.reset();
+      setState(() => _stage = _Stage.recording);
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && _micActive) setState(() {});
+      });
+      await _speech.listen(
+        onResult: _onResult,
+        listenOptions: stt.SpeechListenOptions(
+          partialResults: true,
+          cancelOnError: true,
+          localeId: 'id_ID',
+        ),
+      );
+      if (mounted) {
+        setState(() {
+          _micActive = _speech.isListening;
+          if (_micActive) _elapsed.start();
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = 'Mikrofon belum dapat diaktifkan. Periksa izin perangkat lalu coba lagi.',
         );
       }
-      if (!mounted) return;
-      await _markSentAndNotify('File ${format.toUpperCase()} siap dibagikan.');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _errorMessage = 'Gagal membuat file: $e');
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  void _onResult(SpeechRecognitionResult result) {
+    if (!mounted || _stage != _Stage.recording) return;
+    setState(() {
+      _live = result.recognizedWords;
+      if (result.finalResult && _live.trim().isNotEmpty) _commitLive();
+    });
+  }
+
+  void _commitLive() {
+    if (_live.trim().isEmpty) return;
+    _segments.add({'speaker': 'perawat', 'text': _live.trim()});
+    // Actual observation time, not an invented interval or diarization result.
+    _offsets.add(_elapsed.elapsedMilliseconds);
+    _live = '';
+  }
+
+  Future<void> _stopCapture() async {
+    if (_stopping) return;
+    _stopping = true;
+    try {
+      await _speech.stop();
+    } finally {
+      _elapsed.stop();
+      _timer?.cancel();
+      if (mounted) {
+        setState(() {
+          _micActive = false;
+          _commitLive();
+        });
+      }
+      _stopping = false;
+    }
+  }
+
+  Future<void> _process() async {
+    if (_stage == _Stage.processing || _stopping) return;
+    await _stopCapture();
+    if (!mounted) return;
+    if (_segments.isEmpty) {
+      setState(() {
+        _stage = _Stage.preparation;
+        _error = 'Tidak ada ucapan yang terekam. Identitas tetap tersimpan; coba rekam lagi.';
+      });
+      return;
+    }
+    setState(() {
+      _stage = _Stage.processing;
+      _error = null;
+      _progress = 'Menyusun draf';
+    });
+    if (_draft == null) {
+      _credential = await BpjsAiService.firstAvailableCredential();
+      final text = _segments.map((s) => s['text']).join('\n');
+      final generated = _credential == null
+          ? null
+          : await BpjsAiService.generateDocumentation(
+              credential: _credential!,
+              transcriptText: text,
+            );
+      _provider = generated == null ? '' : _credential!.label;
+      _draft =
+          generated ??
+          {
+            'ringkasan': text,
+            'catatan': 'Transkrip mentah — belum disusun AI. Provider belum tersedia atau penyusunan draf gagal.',
+          };
+    }
+    if (!mounted) return;
+    setState(() => _progress = 'Menyimpan transkrip dan draf');
+    try {
+      _sessionId ??= await BpjsSessionRepo.createSession(
+        dokterNama: _doctor.text.trim(),
+        dokterInstansi: _institution.text.trim(),
+        pasienNama: _patient.text.trim(),
+      );
+      if (_sessionId == null) throw StateError('Sesi belum tersimpan');
+      await BpjsSessionRepo.markStatus(_sessionId!, 'processing');
+      while (_savedSegments < _segments.length) {
+        final segment = _segments[_savedSegments];
+        await BpjsSessionRepo.addTranscriptSegment(
+          sessionId: _sessionId!,
+          speaker: segment['speaker']!,
+          text: segment['text']!,
+          offsetMs: _offsets[_savedSegments],
+        );
+        _savedSegments++;
+      }
+      if (!_documentSaved) {
+        await BpjsSessionRepo.saveDocumentation(
+          sessionId: _sessionId!,
+          structured: _draft!,
+          alurPercakapan: _segments,
+          providerId: _raw ? null : _credential?.id,
+        );
+        _documentSaved = true;
+      }
+      await BpjsSessionRepo.markStatus(_sessionId!, 'siap_dikirim');
+      _saved = true;
+    } catch (_) {
+      _error = 'Belum tersimpan lengkap di riwayat. Transkrip dan draf masih tersedia di layar ini. Salin atau ekspor sebelum keluar.';
+    }
+    if (mounted) setState(() => _stage = _Stage.review);
+  }
+
+  String get _reference =>
+      _sessionId ?? 'lokal-${_createdAt?.millisecondsSinceEpoch ?? 0}';
+  String get _documentLabel => _raw
+      ? 'Transkrip mentah — belum disusun AI'
+      : 'Draf AI — perlu verifikasi dokter';
+
+  Future<void> _copy() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      await Clipboard.setData(
+        ClipboardData(
+          text: BpjsExport.plainText(
+            dokterNama: _doctor.text.trim(),
+            dokterInstansi: _institution.text.trim(),
+            pasienNama: _patient.text.trim(),
+            createdAt: _createdAt!,
+            structured: _draft!,
+            transcript: _segments,
+            sessionReference: _reference,
+            providerLabel: _provider,
+          ),
+        ),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Teks disalin')));
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Teks belum dapat disalin. Coba lagi.');
+      }
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
   }
 
-  Future<void> _markSentAndNotify(String message) async {
-    if (_sessionId != null) {
-      await BpjsSessionRepo.markStatus(_sessionId!, 'terkirim');
+  Future<void> _chooseExport() async {
+    final format = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ekspor dokumen',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Text(
+                  'Pasien: ${_patient.text}\nDokter tujuan: ${_doctor.text}',
+                ),
+                const Text(
+                  'Periksa penerima pada aplikasi tujuan. Membagikan file tidak membuktikan dokter telah menerimanya.',
+                ),
+                ListTile(
+                  title: const Text('PDF'),
+                  subtitle: const Text('Untuk membaca dokumen'),
+                  onTap: () => Navigator.pop(context, 'pdf'),
+                ),
+                ListTile(
+                  title: const Text('DOCX'),
+                  subtitle: const Text('Untuk koreksi di aplikasi dokumen'),
+                  onTap: () => Navigator.pop(context, 'docx'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (format == null || !mounted) return;
+    setState(() => _exporting = true);
+    try {
+      final build = format == 'pdf'
+          ? BpjsExport.buildPdf
+          : BpjsExport.buildDocx;
+      final bytes = await build(
+        dokterNama: _doctor.text.trim(),
+        dokterInstansi: _institution.text.trim(),
+        pasienNama: _patient.text.trim(),
+        createdAt: _createdAt!,
+        structured: _draft!,
+        transcript: _segments,
+        sessionReference: _reference,
+        providerLabel: _provider,
+      );
+      await BpjsExport.shareFile(
+        bytes: bytes,
+        filename:
+            'draf-bpjs-${_createdAt!.toIso8601String().substring(0, 10)}-$_reference.$format',
+        mimeSubject: 'Draf dokumentasi BPJS',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('File siap dibagikan')));
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = 'File belum dapat dibuat atau dibagikan. Draf tetap tersedia; coba lagi.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
     }
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _reset() => setState(() {
-    _stage = _Stage.idle;
-    _doctorName = null;
-    _doctorInstansi = null;
-    _patientName = null;
-    _sessionId = null;
-    _sessionCreatedAt = null;
-    _liveTranscript = '';
-    _segments.clear();
-    _draft = null;
-    _errorMessage = null;
-  });
+  Future<void> _leave() async {
+    if (_leaving || _stage == _Stage.processing || _starting || _exporting) {
+      return;
+    }
+    _leaving = true;
+    await _stopCapture();
+    if (!mounted) return;
+    if (_segments.isNotEmpty && (_stage == _Stage.recording || !_saved)) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Hasil sesi belum tersimpan'),
+          content: const Text(
+            'Mikrofon telah dihentikan. Periksa hasil sebelum meninggalkan sesi.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'stay'),
+              child: const Text('Tetap di sini'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'discard'),
+              child: const Text('Buang hasil'),
+            ),
+            if (_stage == _Stage.recording)
+              FilledButton(
+                onPressed: () => Navigator.pop(context, 'process'),
+                child: const Text('Proses hasil'),
+              ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      _leaving = false;
+      if (choice == 'process') {
+        await _process();
+        return;
+      }
+      if (choice != 'discard') return;
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Widget _notice(String text) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    child: Text(text, style: const TextStyle(color: AppColors.warn)),
+  );
+  Widget _transcript() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Transkrip pendukung',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const Text(
+        'Pembicara belum diverifikasi.',
+        style: TextStyle(color: AppColors.inkMuted),
+      ),
+      ..._segments.map(
+        (s) => Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: SelectableText(s['text']!),
+        ),
+      ),
+      if (_live.isNotEmpty) Text(_live),
+    ],
+  );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Jarvis / Bot BPJS')),
-    body: SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_stage != _Stage.review) ...[
-              const SizedBox(height: 16),
-              const Center(
-                child: Text(
-                  'Jarvis',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Center(
-                child: Text(
-                  'Asisten suara untuk dokumentasi klinis',
-                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                ),
-              ),
-              const SizedBox(height: 28),
-              Center(
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppColors.gradient,
-                    border: Border.all(
-                      color: const Color(0xFFE1EBFF),
-                      width: 8,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.mic_none_rounded,
-                    size: 46,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-            ],
-            HubCard(
-              child: Row(
-                children: [
-                  IconTile(Icons.mic_none_rounded, color: AppColors.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _statusLabel,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) _leave();
+    },
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text('Bot BPJS'),
+        leading: IconButton(
+          tooltip: 'Kembali',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _leave,
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_stage == _Stage.preparation)
+                Form(
+                  key: _form,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Persiapan dokumentasi',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _patient,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama pasien',
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _statusHint,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                          ),
+                        validator: (v) =>
+                            v!.trim().isEmpty ? 'Isi nama pasien' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _doctor,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama dokter tujuan',
                         ),
-                      ],
-                    ),
+                        validator: (v) =>
+                            v!.trim().isEmpty ? 'Isi nama dokter tujuan' : null,
+                      ),
+                      const Text(
+                        'Digunakan pada dokumen; pengiriman dilakukan saat Anda membagikan hasil.',
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _institution,
+                        decoration: const InputDecoration(
+                          labelText: 'Instansi (opsional)',
+                        ),
+                      ),
+                      _notice(
+                        'Pastikan persetujuan perekaman sesuai prosedur instansi sebelum mulai. Suara diproses menjadi teks dan dapat dikirim ke layanan AI pada akun Anda. Jika AI tidak tersedia, hasil berupa transkrip mentah. Hasil tetap perlu diverifikasi dokter.',
+                      ),
+                      FilledButton(
+                        onPressed: _starting ? null : _start,
+                        child: Text(
+                          _starting ? 'Menyiapkan mikrofon…' : 'Mulai rekam',
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: .1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(fontSize: 12, color: AppColors.danger),
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
-            if (_stage == _Stage.idle || _stage == _Stage.denied)
-              GradientButton(
-                label: 'Ucapkan "Halo Jarvis"',
-                onPressed: _sayHalo,
-              )
-            else if (_stage == _Stage.listening)
-              const Center(child: CircularProgressIndicator())
-            else if (_stage == _Stage.recording) ...[
-              _WaveformPreview(active: true),
-              if (_liveTranscript.isNotEmpty || _segments.isNotEmpty) ...[
-                const SizedBox(height: 14),
+                )
+              else ...[
                 HubCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ..._segments.map(
-                        (s) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: Text(s['text'] ?? '', style: const TextStyle(fontSize: 13)),
-                        ),
+                      Text(
+                        'Pasien: ${_patient.text}',
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      if (_liveTranscript.isNotEmpty)
-                        Text(
-                          _liveTranscript,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontStyle: FontStyle.italic,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
+                      Text('Dokter tujuan: ${_doctor.text}'),
+                      if (_institution.text.isNotEmpty) Text(_institution.text),
+                      Text('Tanggal: ${_createdAt?.toLocal()}'),
+                      if (_sessionId != null) Text('Referensi: $_sessionId'),
                     ],
                   ),
                 ),
-              ],
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFE7E7),
-                    padding: const EdgeInsets.all(17),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                const SizedBox(height: 24),
+                if (_stage == _Stage.recording) ...[
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _micActive ? 'Mikrofon aktif' : 'Mikrofon terhenti',
+                      style: TextStyle(
+                        color: _micActive ? AppColors.danger : AppColors.warn,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  onPressed: _stopAndProcess,
-                  child: const Text(
-                    'Hentikan Sesi',
-                    style: TextStyle(
-                      color: AppColors.danger,
-                      fontWeight: FontWeight.w700,
+                  Text(
+                    'Durasi mikrofon aktif: ${_elapsed.elapsed.inMinutes}:${(_elapsed.elapsed.inSeconds % 60).toString().padLeft(2, '0')}',
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _stopping || _starting ? null : _process,
+                    child: Text(
+                      _micActive ? 'Hentikan rekaman' : 'Proses hasil',
                     ),
                   ),
-                ),
-              ),
-            ] else if (_stage == _Stage.processing)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_stage == _Stage.review) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: .15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.auto_awesome,
-                      size: 14,
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(width: 6),
+                  const SizedBox(height: 24),
+                  _transcript(),
+                ],
+                if (_stage == _Stage.processing) ...[
+                  Text(_progress),
+                  const LinearProgressIndicator(),
+                  const SizedBox(height: 24),
+                  _transcript(),
+                ],
+                if (_stage == _Stage.review) ...[
+                  _notice(_documentLabel),
+                  for (final field in const {
+                    'ringkasan': 'Ringkasan',
+                    'keluhan_utama': 'Keluhan utama',
+                    'durasi_gejala': 'Durasi gejala',
+                    'riwayat_kesehatan': 'Riwayat kesehatan',
+                    'hasil_anamnesis': 'Hasil anamnesis',
+                  }.entries) ...[
                     Text(
-                      _providerLabel != null
-                          ? 'Draf AI ($_providerLabel) — perlu verifikasi dokter'
-                          : 'Draf manual (tanpa AI) — perlu verifikasi dokter',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.warning,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      field.value,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    SelectableText(
+                      '${_draft?[field.key] ?? 'Belum disebutkan dalam percakapan'}',
+                    ),
+                    const SizedBox(height: 24),
                   ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Untuk: $_doctorName${_doctorInstansi != null && _doctorInstansi!.isNotEmpty ? ' · $_doctorInstansi' : ''}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Bagikan draf ini langsung ke dokter — salin teksnya, atau kirim sebagai file PDF/DOCX lewat WhatsApp, email, atau aplikasi lain di HP Anda.',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-              ),
-              const SizedBox(height: 14),
-              HubCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: (_draft?.entries ?? const <MapEntry<String, dynamic>>[])
-                      .map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                e.key,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text('${e.value}', style: const TextStyle(fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: 18),
-              if (_exporting)
-                const Center(child: CircularProgressIndicator())
-              else ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _copyText,
-                    icon: const Icon(Icons.copy_all_rounded, size: 18),
-                    label: const Text('Salin Teks'),
+                  if (_raw) _notice('${_draft?['catatan'] ?? ''}'),
+                  _transcript(),
+                  const SizedBox(height: 24),
+                  if (!_raw) Text('Penyusun: $_provider'),
+                  Text(
+                    _saved
+                        ? 'Tersimpan di riwayat.'
+                        : 'Belum tersimpan lengkap di riwayat.',
+                  ),
+                  const Text(
+                    'Pemeriksaan baca-saja. Koreksi dilakukan pada salinan DOCX.',
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _exporting ? null : _chooseExport,
+                    child: Text(
+                      _exporting ? 'Menyiapkan dokumen…' : 'Ekspor dokumen',
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: _exporting ? null : _copy,
+                    child: const Text('Salin teks'),
+                  ),
+                ],
+              ],
+              if (_error != null)
+                Semantics(
+                  liveRegion: true,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: AppColors.danger),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _exportAs('pdf'),
-                        icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                        label: const Text('Ekspor PDF'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _exportAs('docx'),
-                        icon: const Icon(Icons.description_outlined, size: 18),
-                        label: const Text('Ekspor DOCX'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: _reset,
-                  child: const Text('Mulai sesi baru'),
-                ),
-              ),
             ],
-          ],
+          ),
         ),
-      ),
-    ),
-  );
-
-  String get _statusLabel => switch (_stage) {
-    _Stage.idle => 'Menunggu wake word',
-    _Stage.listening => 'Menyiapkan mikrofon...',
-    _Stage.recording => 'Merekam sesi...',
-    _Stage.processing => 'Memproses (STT + LLM + simpan ke database)...',
-    _Stage.review => 'Draf siap — belum dibagikan',
-    _Stage.denied => 'Izin mikrofon diperlukan',
-  };
-
-  String get _statusHint => switch (_stage) {
-    _Stage.idle => 'Tekan tombol untuk mulai merekam percakapan.',
-    _Stage.listening => 'Meminta izin mikrofon dan menyiapkan speech recognition.',
-    _Stage.recording => 'Bicara dengan pasien — teks akan muncul di bawah.',
-    _Stage.processing => 'Menyusun draf dokumentasi untuk dokter yang dituju.',
-    _Stage.review => 'Salin atau ekspor untuk membagikan draf ini ke dokter.',
-    _Stage.denied => 'Aktifkan izin mikrofon di pengaturan perangkat lalu coba lagi.',
-  };
-}
-
-class _WaveformPreview extends StatefulWidget {
-  const _WaveformPreview({this.active = true});
-  final bool active;
-  @override
-  State<_WaveformPreview> createState() => _WaveformPreviewState();
-}
-
-class _WaveformPreviewState extends State<_WaveformPreview>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 60,
-    child: AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(16, (i) {
-          final phase = i * 0.4;
-          final wave = math.sin(_controller.value * 2 * math.pi + phase);
-          final height = 8 + 26 * (0.5 + 0.5 * wave);
-          return Container(
-            width: 4,
-            height: height,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(
-              gradient: AppColors.gradient,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          );
-        }),
       ),
     ),
   );

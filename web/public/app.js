@@ -2,6 +2,7 @@ import { route, start, navigate } from './router.js';
 import { sb } from './db.js';
 import { Native } from './bridge.js';
 import { mountNavigation } from './navigation.js';
+import { setChatOwner } from './chat-state.js';
 
 import login from './views/login.js';
 import home from './views/home.js';
@@ -23,6 +24,7 @@ function guard(render) {
     const { data } = await sb.auth.getSession();
     const path = (location.hash || '#/home').slice(1).split('?')[0];
     const loggedIn = !!data.session;
+    setChatOwner(data.session?.user?.id ?? null);
     if (!loggedIn && !PUBLIC_ROUTES.has(path)) {
       navigate('/login');
       return null;
@@ -57,6 +59,8 @@ start(root, '/home');
 // it's how the native-only Bot BPJS screen still gets an authenticated
 // Supabase client for its activity_log writes, without a second login UI).
 sb.auth.onAuthStateChange((_event, session) => {
+  setChatOwner(session?.user?.id ?? null);
   window.dispatchEvent(new HashChangeEvent('hashchange'));
   if (session?.refresh_token) Native.notifySession(session.refresh_token);
+  else if (_event === 'SIGNED_OUT') Native.signOut();
 });

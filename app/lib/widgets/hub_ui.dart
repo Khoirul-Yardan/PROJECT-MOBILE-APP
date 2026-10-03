@@ -21,7 +21,7 @@ class GradientButton extends StatelessWidget {
     ),
     child: Ink(
       decoration: BoxDecoration(
-        gradient: AppColors.gradient,
+        color: AppColors.accent,
         borderRadius: BorderRadius.circular(14),
       ),
       child: InkWell(
@@ -38,8 +38,6 @@ class GradientButton extends StatelessWidget {
                 Flexible(
                   child: Text(
                     label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.surface,
                       fontWeight: FontWeight.w700,
@@ -80,15 +78,8 @@ class HubCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: fill ?? AppColors.surface,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(color: AppColors.line),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x0D244B95),
-          blurRadius: 22,
-          offset: Offset(0, 5),
-        ),
-      ],
     ),
     child: Material(
       color: Colors.transparent,
@@ -268,42 +259,6 @@ class AuroraBackdrop extends StatelessWidget {
   const AuroraBackdrop({super.key, required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Colors.white, AppColors.bg, Color(0xFFF0EAFF)],
-      ),
-    ),
-    child: Stack(
-      children: [
-        Positioned(
-          right: -90,
-          top: -70,
-          child: _orb(260, const Color(0xFFDDF5FF)),
-        ),
-        Positioned(
-          left: -120,
-          bottom: 40,
-          child: _orb(320, const Color(0xFFE0E9FF)),
-        ),
-        Positioned(
-          right: -60,
-          bottom: -130,
-          child: _orb(300, const Color(0xFFE8DEFF)),
-        ),
-        child,
-      ],
-    ),
-  );
-
-  Widget _orb(double size, Color color) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      ColoredBox(color: AppColors.bg, child: child);
 }

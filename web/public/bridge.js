@@ -47,8 +47,9 @@ function devFallback(type, payload) {
       case 'save_vpn_config':
         localStorage.setItem(DEV_PREFIX + 'vpn_config', JSON.stringify(payload));
         return {};
+      case 'get_vpn_status':
       case 'vpn_connect':
-        return { connected: true };
+        return { connected: false, message: 'Koneksi VPN perangkat tidak tersedia di browser.' };
       case 'vpn_disconnect':
         return { connected: false };
       default:
@@ -74,7 +75,7 @@ function call(type, payload) {
         resolve(fallback);
         return;
       }
-      console.warn('[bridge] no native shell attached — call ignored', type, payload);
+      console.warn('[bridge] no native shell attached — call ignored', type);
       resolve(null);
       return;
     }
@@ -82,7 +83,7 @@ function call(type, payload) {
     const timer = setTimeout(() => {
       if (!pending.has(id)) return;
       pending.delete(id);
-      console.warn('[bridge] native shell did not reply in time — treating as unavailable', type, payload);
+      console.warn('[bridge] native shell did not reply in time — treating as unavailable', type);
       resolve(null);
     }, CALL_TIMEOUT_MS);
     pending.set(id, {
@@ -132,6 +133,7 @@ window.__nativeEvent = (type, payloadJson) => {
 };
 
 export const Native = {
+  getVpnStatus: () => call('get_vpn_status'),
   getVpnConfig: () => call('get_vpn_config'),
   saveVpnConfig: (config) => call('save_vpn_config', config),
 

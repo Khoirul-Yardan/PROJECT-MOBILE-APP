@@ -94,11 +94,12 @@ export async function saveCredential(entry, apiKey) {
 export async function listCredentials() {
   const user = await currentUser();
   if (!user) return [];
-  const { data } = await sb
+  const { data, error } = await sb
     .from('api_credentials')
     .select('provider_id,label,type,format,endpoint,model')
     .eq('user_id', user.id)
     .order('created_at');
+  if (error) throw error;
   return (data || []).map((r) => ({
     id: r.provider_id,
     label: r.label,
@@ -126,18 +127,20 @@ export async function hasCredential(providerId) {
 export async function getCredentialKey(providerId) {
   const user = await currentUser();
   if (!user) return null;
-  const { data } = await sb
+  const { data, error } = await sb
     .from('api_credentials')
     .select('encrypted_key,iv')
     .eq('user_id', user.id)
     .eq('provider_id', providerId)
     .maybeSingle();
+  if (error) throw error;
   if (!data) return null;
   return decryptValue(user.id, data.encrypted_key, data.iv);
 }
 
 export async function removeCredential(providerId) {
   const user = await currentUser();
-  if (!user) return;
-  await sb.from('api_credentials').delete().eq('user_id', user.id).eq('provider_id', providerId);
+  if (!user) throw new Error('Sesi berakhir. Masuk kembali sebelum menghapus kredensial.');
+  const { error } = await sb.from('api_credentials').delete().eq('user_id', user.id).eq('provider_id', providerId);
+  if (error) throw error;
 }

@@ -8,9 +8,9 @@ import { navigate } from './router.js';
 // fast iteration without a device) or inside the app's WebView.
 export function mountNavigation() {
   const items = [
-    ['/home', 'home', 'Home'], ['/chat', 'chat', 'Chat'],
+    ['/home', 'home', 'Beranda'], ['/chat', 'chat', 'Chat'],
     ['/bots', 'bot', 'Bot'], ['/vpn', 'shield', 'VPN'],
-    ['/settings', 'more', 'More'],
+    ['/settings', 'more', 'Pengaturan'],
   ];
   const nav = h(`<nav class="web-nav" aria-label="Navigasi utama" hidden></nav>`);
   for (const [path, mark, label] of items) {
@@ -23,12 +23,16 @@ export function mountNavigation() {
     const path = (location.hash || '#/home').slice(1).split('?')[0];
     nav.hidden = path === '/login';
     document.body.classList.toggle('has-web-nav', !nav.hidden);
-    const selected = path.startsWith('/settings') ? '/settings' : path.startsWith('/vpn') ? '/vpn' : path;
+    const selected = path.startsWith('/settings') ? '/settings' : path.startsWith('/vpn') ? '/vpn' : path === '/bpjs' ? '/bots' : path;
     nav.querySelectorAll('button').forEach((button) => {
       if (button.dataset.path === selected) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     });
   }
   window.addEventListener('hashchange', sync);
+  const measure = () => document.documentElement.style.setProperty('--nav-space', nav.hidden || matchMedia('(min-width:840px)').matches ? '0px' : `${nav.getBoundingClientRect().height}px`);
+  new ResizeObserver(measure).observe(nav);
+  window.addEventListener('resize', measure);
   sync();
+  measure();
 }

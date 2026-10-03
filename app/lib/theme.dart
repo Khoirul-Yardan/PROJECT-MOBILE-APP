@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 
-/// Cool surfaces and blue-violet accents shared with the WebView.
+/// Neutral surfaces and a solid blue accent shared with the WebView.
 class AppColors {
-  static const bg = Color(0xFFF7FAFF);
+  static const bg = Color(0xFFF7F8FA);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceSunken = Color(0xFFEEF4FF);
+  static const surfaceSunken = Color(0xFFF0F2F5);
 
-  static const ink = Color(0xFF111D42);
-  static const inkMuted = Color(0xFF596987);
-  static const inkFaint = Color(0xFF74829D);
+  static const ink = Color(0xFF182230);
+  static const inkMuted = Color(0xFF52606D);
+  static const inkFaint = Color(0xFF52606D);
 
-  static const accent = Color(0xFF2463FF);
-  static const accentInk = Color(0xFF174CDB);
-  static const accentTint = Color(0xFFEAF1FF);
+  static const accent = Color(0xFF2457C5);
+  static const accentInk = Color(0xFF1D469E);
+  static const accentTint = Color(0xFFEEF3FC);
 
-  static const ok = Color(0xFF138459);
-  static const warn = Color(0xFF946009);
-  static const danger = Color(0xFFCC304C);
-  static const info = Color(0xFF2463FF);
+  static const ok = Color(0xFF176B45);
+  static const warn = Color(0xFF805300);
+  static const danger = Color(0xFFB42318);
+  static const info = Color(0xFF2457C5);
 
-  static const line = Color(0xFFE5ECF8);
-  static const lineStrong = Color(0xFFCBD8EF);
+  static const line = Color(0xFFDCE1E7);
+  static const lineStrong = Color(0xFF7C8998);
 
   // Aliases so screens/widgets referencing the previous palette names
   // keep resolving without a mass find/replace across lib/.
@@ -41,12 +41,12 @@ class AppColors {
   static const gradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
-    colors: [Color(0xFF119EFF), Color(0xFF3065FF), Color(0xFF7950FF)],
+    colors: [accent, accent],
   );
   static const softGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFE4F7FF), Color(0xFFF0EAFF)],
+    colors: [surface, surface],
   );
 }
 
@@ -59,7 +59,7 @@ ThemeData buildAppTheme() {
       seedColor: AppColors.accent,
       primary: AppColors.accent,
       onPrimary: AppColors.surface,
-      secondary: const Color(0xFF7950FF),
+      secondary: AppColors.accent,
       onSecondary: AppColors.surface,
       surface: AppColors.surface,
       onSurface: AppColors.ink,
@@ -72,7 +72,7 @@ ThemeData buildAppTheme() {
     scaffoldBackgroundColor: AppColors.bg,
   );
   final border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(12),
     borderSide: const BorderSide(color: AppColors.lineStrong),
   );
   return base.copyWith(
@@ -82,14 +82,14 @@ ThemeData buildAppTheme() {
           headlineSmall: const TextStyle(
             fontSize: 24,
             height: 1.3,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
             color: AppColors.ink,
           ),
           titleLarge: const TextStyle(
             fontSize: 21,
             height: 1.3,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             color: AppColors.ink,
           ),
           titleMedium: const TextStyle(
@@ -136,7 +136,7 @@ ThemeData buildAppTheme() {
       titleTextStyle: TextStyle(
         fontSize: 22,
         height: 1.3,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w700,
         color: AppColors.ink,
       ),
     ),
@@ -183,7 +183,7 @@ ThemeData buildAppTheme() {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.line),
       ),
     ),
@@ -194,7 +194,7 @@ ThemeData buildAppTheme() {
         minimumSize: const Size(48, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: AppColors.ink),
         ),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
@@ -206,7 +206,7 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.ink,
         minimumSize: const Size(48, 48),
         side: const BorderSide(color: AppColors.lineStrong),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         animationDuration: const Duration(milliseconds: 150),
       ),
@@ -214,7 +214,7 @@ ThemeData buildAppTheme() {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.accentInk,
-        minimumSize: const Size(44, 44),
+        minimumSize: const Size(48, 48),
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
       ),
     ),
