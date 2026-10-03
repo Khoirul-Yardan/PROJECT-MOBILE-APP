@@ -1,6 +1,6 @@
-import { h, header, initial, escapeHtml } from '../ui.js';
+import { h, header, initial } from '../ui.js';
 import { currentUser, signOut } from '../db.js';
-import { confirmLeaveChat } from '../chat-state.js';
+import { Native } from '../bridge.js';
 import { navigate } from '../router.js';
 
 // Kept deliberately minimal: this app has no multi-account switcher, so
@@ -16,11 +16,10 @@ export default async function render(root) {
     h(`
     <div>
       <div class="card form-panel" style="text-align:center;">
-        <div class="avatar profile-avatar" style="margin:0 auto 14px;">${escapeHtml(initial(user?.email))}</div>
-        <div class="item-title">${escapeHtml(user?.email ?? '')}</div>
+        <div class="avatar profile-avatar" style="margin:0 auto 14px;">${initial(user?.email)}</div>
+        <div class="item-title">${user?.email ?? ''}</div>
       </div>
-      <p class="muted small">Ganti akun akan mengeluarkan Anda terlebih dahulu.</p><p id="error" class="error-text" role="alert"></p>
-      <button id="switch" class="btn btn-outline" style="margin-top:16px;">Ganti akun</button>
+      <button id="switch" class="btn btn-outline" style="margin-top:16px;">Ganti Akun</button>
       <button id="logout" class="btn btn-danger-outline" style="margin-top:10px;">Keluar</button>
     </div>
   `)
@@ -28,11 +27,9 @@ export default async function render(root) {
   root.appendChild(el);
 
   async function endSession() {
-    if (!confirmLeaveChat()) return;
-    el.querySelectorAll('button').forEach(b => b.disabled = true);
-    try { await signOut(); navigate('/login'); }
-    catch { el.querySelector('#error').textContent = 'Belum berhasil keluar. Coba lagi.'; }
-    finally { el.querySelectorAll('button').forEach(b => b.disabled = false); }
+    await signOut();
+    await Native.signOut();
+    navigate('/login');
   }
 
   el.querySelector('#switch').onclick = endSession;

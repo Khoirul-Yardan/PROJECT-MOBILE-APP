@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
 
-/// Neutral surfaces and a solid blue accent shared with the WebView.
+/// Confident solid blue accent with warm neutral surfaces, shared with the
+/// WebView. No gradient/purple decoration — a single accent hue plus
+/// semantic status colors (amber/green/red) is the whole palette.
 class AppColors {
-  static const bg = Color(0xFFF7F8FA);
+  static const bg = Color(0xFFF6F8FC);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceSunken = Color(0xFFF0F2F5);
+  static const surfaceSunken = Color(0xFFEEF2FA);
 
-  static const ink = Color(0xFF182230);
-  static const inkMuted = Color(0xFF52606D);
-  static const inkFaint = Color(0xFF52606D);
+  static const ink = Color(0xFF14192B);
+  static const inkMuted = Color(0xFF5B6479);
+  static const inkFaint = Color(0xFF7B869C);
 
-  static const accent = Color(0xFF2457C5);
-  static const accentInk = Color(0xFF1D469E);
-  static const accentTint = Color(0xFFEEF3FC);
+  static const accent = Color(0xFF2056E0);
+  static const accentInk = Color(0xFF15409E);
+  static const accentTint = Color(0xFFEAEFFC);
 
-  static const ok = Color(0xFF176B45);
-  static const warn = Color(0xFF805300);
-  static const danger = Color(0xFFB42318);
-  static const info = Color(0xFF2457C5);
+  static const ok = Color(0xFF15804F);
+  static const warn = Color(0xFF9A6400);
+  static const danger = Color(0xFFC53350);
+  static const info = Color(0xFF2056E0);
 
-  static const line = Color(0xFFDCE1E7);
-  static const lineStrong = Color(0xFF7C8998);
+  static const line = Color(0xFFE3E7F0);
+  static const lineStrong = Color(0xFFC7CEDE);
 
   // Aliases so screens/widgets referencing the previous palette names
   // keep resolving without a mass find/replace across lib/.
@@ -38,6 +40,7 @@ class AppColors {
   static const success = ok;
   static const warning = warn;
 
+  // Solid, not a rainbow gradient — depth comes from shadow, not hue shift.
   static const gradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
@@ -59,7 +62,7 @@ ThemeData buildAppTheme() {
       seedColor: AppColors.accent,
       primary: AppColors.accent,
       onPrimary: AppColors.surface,
-      secondary: AppColors.accent,
+      secondary: AppColors.accentInk,
       onSecondary: AppColors.surface,
       surface: AppColors.surface,
       onSurface: AppColors.ink,
@@ -72,7 +75,7 @@ ThemeData buildAppTheme() {
     scaffoldBackgroundColor: AppColors.bg,
   );
   final border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(14),
     borderSide: const BorderSide(color: AppColors.lineStrong),
   );
   return base.copyWith(
@@ -82,14 +85,14 @@ ThemeData buildAppTheme() {
           headlineSmall: const TextStyle(
             fontSize: 24,
             height: 1.3,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             letterSpacing: -0.3,
             color: AppColors.ink,
           ),
           titleLarge: const TextStyle(
             fontSize: 21,
             height: 1.3,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             color: AppColors.ink,
           ),
           titleMedium: const TextStyle(
@@ -136,7 +139,7 @@ ThemeData buildAppTheme() {
       titleTextStyle: TextStyle(
         fontSize: 22,
         height: 1.3,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         color: AppColors.ink,
       ),
     ),
@@ -183,7 +186,7 @@ ThemeData buildAppTheme() {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         side: const BorderSide(color: AppColors.line),
       ),
     ),
@@ -194,7 +197,7 @@ ThemeData buildAppTheme() {
         minimumSize: const Size(48, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           side: const BorderSide(color: AppColors.ink),
         ),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
@@ -206,7 +209,7 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.ink,
         minimumSize: const Size(48, 48),
         side: const BorderSide(color: AppColors.lineStrong),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         animationDuration: const Duration(milliseconds: 150),
       ),
@@ -214,7 +217,7 @@ ThemeData buildAppTheme() {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.accentInk,
-        minimumSize: const Size(48, 48),
+        minimumSize: const Size(44, 44),
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
       ),
     ),

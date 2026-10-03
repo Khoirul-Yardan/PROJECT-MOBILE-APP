@@ -1,144 +1,260 @@
-import { h, escapeHtml } from '../ui.js';
+import { h, icon } from '../ui.js';
 import { sendChat, listRegisteredProviders } from '../ai.js';
 import { logActivity } from '../db.js';
 import { navigate } from '../router.js';
-import { conversation, selectedConversation, selectConversation, watchChat, notifyChat } from '../chat-state.js';
 
-const commands = [['/system', 'Atur instruksi sistem'], ['/clear', 'Bersihkan percakapan'], ['/help', 'Lihat perintah']];
+// Telegram-style skill commands: type "/" as the first character, or tap
+// the skill button next to the input, to get the same picker.
+const SKILLS = [
+  {
+    cmd: '/system',
+    label: 'Atur instruksi sistem',
+    hint: '/system <instruksi untuk AI>',
+    needsArgs: true,
+  },
+  {
+    cmd: '/clear',
+    label: 'Bersihkan percakapan ini',
+    hint: '/clear',
+    needsArgs: false,
+  },
+  {
+    cmd: '/help',
+    label: 'Lihat semua perintah',
+    hint: '/help',
+    needsArgs: false,
+  },
+];
 
+// One picker, everything equal: every provider (ChatGPT, Gemini, ...) and
+// agent (Hermes, OpenClaw, ...) the user has connected sits in the same
+// chip row — pick whichever, there's no separate "agent menu" to dig
+// through first.
 export default async function render(root) {
   let entry = null;
+  let sending = false;
   let providers = [];
-  const el = h(`<div class="page chat-page">
-    <div class="topbar"><h1>Chat</h1></div>
-    <div class="chat-service"><label for="picker">Layanan</label><select id="picker"><option>Memuat layanan…</option></select><div id="model" class="chat-meta"></div></div>
-    <p class="chat-meta">Konteks terpisah per layanan. Percakapan belum tersimpan permanen; muat ulang akan menghapusnya.</p>
-    <div id="messages" class="chat-scroll" aria-label="Pesan"></div>
-    <button id="new-message" class="btn-text" hidden>Pesan baru ↓</button>
-    <div id="waiting" class="chat-meta" role="status"></div>
-    <div id="skill-menu" class="skill-menu hidden"></div>
-    <div class="chat-input-row"><button id="skill-btn" class="icon-btn" aria-label="Buka perintah" aria-expanded="false">/</button>
-      <textarea id="input" aria-label="Pesan" rows="1" placeholder="Tulis pesan…"></textarea>
-      <button id="send" class="send-btn" aria-label="Kirim pesan">→</button></div>
-  </div>`);
+
+  const messagesByEntry = new Map();
+  const systemPromptByEntry = new Map();
+
+  const el = h(`
+    <div class="page chat-page">
+      <div class="topbar">
+        <h1 id="chat-title">Chat</h1>
+      </div>
+      <div id="picker" class="tabs"></div>
+      <div id="messages" class="chat-scroll" role="log" aria-label="Pesan" aria-live="polite"></div>
+      <div id="skill-menu" class="skill-menu hidden"></div>
+      <div class="chat-input-row">
+        <button id="skill-btn" class="icon-btn" aria-label="Skills">/</button>
+        <textarea id="input" aria-label="Pesan" rows="1" placeholder="Tulis pesan atau ketik /"></textarea>
+        <button id="send" class="send-btn" aria-label="Kirim pesan">&#8594;</button>
+      </div>
+    </div>
+  `);
   root.appendChild(el);
-  const $ = s => el.querySelector(s);
-  const input = $('#input'), picker = $('#picker'), messages = $('#messages');
-  const fitViewport = () => {
-    if (!el.isConnected) return;
-    const viewport = window.visualViewport;
-    const top = el.getBoundingClientRect().top;
-    const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-space')) || 0;
-    el.style.height = `${Math.max(180, (viewport?.height || innerHeight) + (viewport?.offsetTop || 0) - top - nav - 16)}px`;
+
+  const titleEl = el.querySelector('#chat-title');
+  const pickerEl = el.querySelector('#picker');
+  const messagesEl = el.querySelector('#messages');
+  const skillMenuEl = el.querySelector('#skill-menu');
+  const skillBtnEl = el.querySelector('#skill-btn');
+  const inputEl = el.querySelector('#input');
+  const sendEl = el.querySelector('#send');
+
+  function hideSkillMenu() {
+    skillMenuEl.classList.add('hidden');
+    skillMenuEl.innerHTML = '';
+  }
+
+  function showSkillMenu(filterText) {
+    const q = (filterText || '').toLowerCase();
+    const matches = SKILLS.filter((s) => s.cmd.startsWith(q || '/'));
+    if (matches.length === 0) {
+      hideSkillMenu();
+      return;
+    }
+    skillMenuEl.innerHTML = '';
+    for (const s of matches) {
+      const row = h(`
+        <button class="skill-item">
+          <span class="skill-cmd">${s.cmd}</span>
+          <span class="skill-label">${s.label}</span>
+        </button>
+      `);
+      row.onclick = () => {
+        inputEl.value = s.needsArgs ? `${s.cmd} ` : s.cmd;
+        inputEl.focus();
+        if (!s.needsArgs) {
+          hideSkillMenu();
+          send();
+        } else {
+          showSkillMenu(s.cmd);
+        }
+      };
+      skillMenuEl.appendChild(row);
+    }
+    skillMenuEl.classList.remove('hidden');
+  }
+
+  skillBtnEl.onclick = () => {
+    if (!skillMenuEl.classList.contains('hidden')) {
+      hideSkillMenu();
+      return;
+    }
+    inputEl.value = '/';
+    inputEl.focus();
+    showSkillMenu('/');
   };
-  window.visualViewport?.addEventListener('resize', fitViewport);
-  window.addEventListener('resize', fitViewport);
-  requestAnimationFrame(fitViewport);
-  function menu(show) {
-    $('#skill-menu').classList.toggle('hidden', !show);
-    $('#skill-btn').setAttribute('aria-expanded', String(show));
+
+  inputEl.addEventListener('input', () => {
+    if (inputEl.value.startsWith('/')) showSkillMenu(inputEl.value.split(' ')[0]);
+    else hideSkillMenu();
+  });
+
+  async function loadPicker() {
+    providers = await listRegisteredProviders();
+    pickerEl.innerHTML = '';
+
+    if (providers.length === 0) {
+      const emptyProvider = h(`
+        <button class="chip" style="background:var(--accent-tint);color:var(--accent-ink);">
+          + Hubungkan Provider AI
+        </button>
+      `);
+      emptyProvider.onclick = () => navigate('/settings/add-api-key?type=provider');
+      const emptyAgent = h(`
+        <button class="chip" style="background:var(--ok-tint);color:var(--ok);">
+          + Hubungkan Agent
+        </button>
+      `);
+      emptyAgent.onclick = () => navigate('/settings/add-api-key?type=agent');
+      pickerEl.appendChild(emptyProvider);
+      pickerEl.appendChild(emptyAgent);
+      return;
+    }
+
+    for (const p of providers) {
+      const active = entry?.id === p.id;
+      const chip = h(`
+        <button class="chip ${active ? 'active' : ''}">
+          ${icon(p.type === 'agent' ? 'layers' : 'spark')}<span>${p.label}</span>
+        </button>
+      `);
+      chip.onclick = () => selectEntry(p);
+      pickerEl.appendChild(chip);
+    }
+
+    if (!entry && providers.length > 0) entry = providers[0];
   }
-  $('#skill-btn').onclick = () => menu($('#skill-menu').classList.contains('hidden'));
-  for (const [cmd, label] of commands) {
-    const b = h(`<button class="skill-item"><span class="skill-cmd">${cmd}</span><span>${label}</span></button>`);
-    b.onclick = () => {
-      if (!entry || conversation(entry.id).sending) return;
-      if (cmd === '/system') {
-        const value = window.prompt('Instruksi sistem untuk ' + entry.label, conversation(entry.id).system);
-        if (value !== null) conversation(entry.id).system = value;
-      } else runCommand(cmd);
-      menu(false); input.focus();
-    };
-    $('#skill-menu').appendChild(b);
+
+  function selectEntry(next) {
+    entry = next;
+    titleEl.textContent = entry.label;
+    loadPicker();
+    renderMessages();
   }
-  function runCommand(text) {
-    const state = conversation(entry.id);
-    if (text === '/clear') {
-      if (state.messages.length && !window.confirm(`Hapus percakapan ${entry.label}? Tindakan ini tidak dapat dibatalkan.`)) return false;
-      state.messages.length = 0;
-    } else if (text.startsWith('/system ')) state.system = text.slice(8).trim();
-    else state.messages.push({ text: '/system <instruksi> — Atur instruksi sistem\n/clear — Bersihkan percakapan\n/help — Lihat perintah', local: true });
-    paint(true); return true;
+
+  function bubble(text, fromMe, { isError = false } = {}) {
+    const cls = fromMe ? 'me' : isError ? 'them error' : 'them';
+    return h(`<div class="bubble ${cls}"><span>${escapeHtml(text)}</span></div>`);
   }
-  function paint(force = false) {
-    const nearEnd = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 80;
-    const oldScroll = messages.scrollTop;
-    const state = entry ? conversation(entry.id) : null;
-    messages.replaceChildren();
-    if (!state?.messages.length) messages.appendChild(h(`<div class="empty-state">${entry ? 'Tulis pesan untuk memulai percakapan.' : 'Tambahkan layanan di Pengaturan untuk mulai chat.'}</div>`));
-    for (const m of state?.messages || []) {
-      const bubble = h(`<div class="bubble ${m.fromMe ? 'me' : 'them'} ${m.error ? 'error' : ''}"><span class="tag">${escapeHtml(m.fromMe ? 'Anda' : m.local ? 'Info' : entry.label)}</span><span>${escapeHtml(m.text)}</span></div>`);
-      if (m.error) {
-        bubble.appendChild(h(`<p role="alert">${escapeHtml(m.error)}</p>`));
-        const retry = h('<button class="btn-text">Coba lagi</button>');
-        retry.disabled = state.sending;
-        retry.onclick = () => request(entry, state, m);
-        bubble.appendChild(retry);
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function renderMessages() {
+    messagesEl.innerHTML = '';
+    if (!entry) {
+      messagesEl.appendChild(h('<div class="empty-state">Pilih provider atau agent untuk mulai.</div>'));
+      return;
+    }
+    const list = messagesByEntry.get(entry.id) || [
+      { text: `Hai! Kamu terhubung ke ${entry.label}. Tanyakan apa saja.`, fromMe: false },
+    ];
+    messagesByEntry.set(entry.id, list);
+    list.forEach((m) => messagesEl.appendChild(bubble(m.text, m.fromMe, m)));
+    if (sending) messagesEl.appendChild(h('<div class="spinner" style="margin:0;width:18px;height:18px;"></div>'));
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function runSkill(text) {
+    const [cmd, ...rest] = text.split(' ');
+    const arg = rest.join(' ').trim();
+    const list = messagesByEntry.get(entry.id) || [];
+    messagesByEntry.set(entry.id, list);
+
+    switch (cmd) {
+      case '/system': {
+        if (!arg) {
+          list.push({ text: 'Pakai: /system <instruksi untuk AI>', fromMe: false, isError: true });
+          break;
+        }
+        systemPromptByEntry.set(entry.id, arg);
+        list.push({ text: `Instruksi sistem diatur: "${arg}"`, fromMe: false });
+        break;
       }
-      messages.appendChild(bubble);
-    }
-    picker.disabled = !!state?.sending || !entry;
-    $('#send').disabled = !entry || !!state?.sending;
-    $('#skill-btn').disabled = !entry || !!state?.sending;
-    input.disabled = !entry;
-    $('#waiting').textContent = state?.sending ? `Menunggu jawaban dari ${entry.label}…` : '';
-    if (nearEnd || force) { messages.scrollTop = messages.scrollHeight; $('#new-message').hidden = true; }
-    else { messages.scrollTop = oldScroll; $('#new-message').hidden = false; }
-  }
-  $('#new-message').onclick = () => { messages.scrollTop = messages.scrollHeight; $('#new-message').hidden = true; };
-  function select(p) {
-    entry = p; selectConversation(p.id); picker.value = p.id;
-    $('#model').textContent = `${p.type === 'agent' ? 'Agent' : 'Provider'}${p.model ? ' · Model: ' + p.model : ''}`;
-    input.value = conversation(p.id).input; paint(true);
-  }
-  picker.onchange = () => select(providers.find(p => p.id === picker.value));
-  input.oninput = () => { if (entry) conversation(entry.id).input = input.value; };
-  input.onkeydown = e => {
-    if (e.key === 'Escape') menu(false);
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer:fine)').matches) { e.preventDefault(); send(); }
-  };
-  async function request(service, state, message) {
-    if (state.sending) return;
-    state.sending = true; delete message.error; notifyChat();
-    try {
-      const reply = await sendChat(service, message.history);
-      const index = state.messages.indexOf(message);
-      state.messages.splice(index + 1, 0, { text: reply });
-    } catch (e) { message.error = `Jawaban gagal dimuat: ${e.message}`; }
-    finally { state.sending = false; notifyChat(); }
-  }
-  function send() {
-    const text = input.value.trim();
-    if (!entry || !text || conversation(entry.id).sending) return;
-    const state = conversation(entry.id);
-    if (text.startsWith('/')) { if (!runCommand(text)) return; }
-    else {
-      const message = { text, fromMe: true };
-      state.messages.push(message);
-      message.history = state.messages.filter(m => !m.local && !m.error).map(m => ({ role: m.fromMe ? 'user' : 'assistant', text: m.text }));
-      if (state.system) message.history.unshift({ role: 'system', text: state.system });
-      request(entry, state, message);
-      logActivity({ category: 'AI', title: `Pesan dikirim · ${entry.label}` });
-    }
-    input.value = ''; state.input = ''; menu(false); paint(true);
-  }
-  $('#send').onclick = send;
-  async function load() {
-    try {
-      providers = await listRegisteredProviders(); picker.replaceChildren();
-      for (const p of providers) { const option = document.createElement('option'); option.value = p.id; option.textContent = `${p.label} · ${p.type === 'agent' ? 'Agent' : 'Provider'}`; picker.appendChild(option); }
-      if (providers.length) select(providers.find(p => p.id === selectedConversation()) || providers[0]);
-      else {
-        picker.appendChild(h('<option>Belum ada layanan</option>')); paint();
-        const add = h('<button class="btn btn-outline">Tambah layanan</button>'); add.onclick = () => navigate('/settings/apikeys'); messages.appendChild(add);
+      case '/clear': {
+        list.length = 0;
+        break;
       }
-    } catch {
-      paint(); messages.replaceChildren(h('<p role="alert">Layanan belum dapat dimuat.</p>'));
-      const retry = h('<button class="btn-text">Coba lagi</button>'); retry.onclick = load; messages.appendChild(retry);
+      case '/help': {
+        const lines = SKILLS.map((s) => `${s.hint} — ${s.label}`).join('\n');
+        list.push({ text: `Perintah tersedia:\n${lines}`, fromMe: false });
+        break;
+      }
+      default:
+        list.push({ text: `Perintah tidak dikenal: ${cmd}. Ketik /help untuk daftar perintah.`, fromMe: false, isError: true });
+    }
+    renderMessages();
+  }
+
+  async function send() {
+    const text = inputEl.value.trim();
+    if (!text || sending || !entry) return;
+    inputEl.value = '';
+    hideSkillMenu();
+
+    if (text.startsWith('/')) {
+      runSkill(text);
+      return;
+    }
+
+    const list = messagesByEntry.get(entry.id) || [];
+    messagesByEntry.set(entry.id, list);
+    list.push({ text, fromMe: true });
+    sending = true;
+    renderMessages();
+    logActivity({ category: 'AI', title: `Pesan dikirim · ${entry.label}` });
+    try {
+      const systemPrompt = systemPromptByEntry.get(entry.id);
+      const history = list.filter((m) => !m.isError).map((m) => ({ role: m.fromMe ? 'user' : 'assistant', text: m.text }));
+      const reply = await sendChat(
+        entry,
+        systemPrompt ? [{ role: 'system', text: systemPrompt }, ...history] : history
+      );
+      list.push({ text: reply, fromMe: false });
+    } catch (e) {
+      list.push({ text: e.message, fromMe: false, isError: true });
+    } finally {
+      sending = false;
+      renderMessages();
     }
   }
-  const unwatch = watchChat(() => paint());
-  await load();
-  requestAnimationFrame(fitViewport);
-  return { dispose() { unwatch(); window.visualViewport?.removeEventListener('resize', fitViewport); window.removeEventListener('resize', fitViewport); } };
+
+  sendEl.onclick = send;
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  await loadPicker();
+  if (entry) titleEl.textContent = entry.label;
+  renderMessages();
 }

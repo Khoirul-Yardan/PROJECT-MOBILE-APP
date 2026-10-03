@@ -22,7 +22,7 @@ let toastTimer;
 export function toast(message) {
   let el = document.getElementById('toast');
   if (!el) {
-    el = h(`<div id="toast" role="status" style="position:fixed;left:50%;bottom:calc(24px + var(--nav-space, 0px));transform:translateX(-50%);
+    el = h(`<div id="toast" style="position:fixed;left:50%;bottom:calc(24px + var(--nav-space, 0px));transform:translateX(-50%);
       background:#111d42;color:#ffffff;padding:10px 18px;border-radius:12px;font-size:12px;
       z-index:999;opacity:0;transition:opacity .2s;border:1px solid #334d80;"></div>`);
     document.body.appendChild(el);
@@ -51,7 +51,7 @@ export function logoSvg(size = 44) {
 export function escapeHtml(value) {
   const el = document.createElement('span');
   el.textContent = String(value ?? '');
-  return el.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return el.innerHTML;
 }
 
 const ICONS = {

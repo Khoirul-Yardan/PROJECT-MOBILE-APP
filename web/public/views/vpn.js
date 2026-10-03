@@ -1,53 +1,135 @@
-import { h, icon } from '../ui.js';
+import { h, toast } from '../ui.js';
 import { Native } from '../bridge.js';
 import { navigate } from '../router.js';
+import { logActivity } from '../db.js';
 
 export default async function render(root) {
-  let connected = null, busy = false, config = null;
-  const el = h(`<div class="page vpn-page"><div class="topbar"><h1>VPN</h1></div>
-    <section class="card vpn-status">${icon('shield')}<h2 id="status-text" role="status">Memeriksa status…</h2>
-    <p id="server-text">Memuat server…</p><p id="protocol"></p></section>
-    <p id="vpn-note" class="notice"></p><p id="error" class="error-text" role="alert"></p>
-    <button id="connect-btn" class="btn btn-primary" disabled>Sambungkan</button>
-    <button id="server-card" class="btn btn-outline" style="margin-top:12px">Atur server</button>
-    <button id="refresh" class="btn-text">Periksa status</button>
-    <p class="muted small">Waktu mulai koneksi: tidak tersedia. Rute trafik mengikuti konfigurasi AllowedIPs.</p></div>`);
+  let connected = false;
+  let config = await Native.getVpnConfig();
+  let connectedSince = null;
+
+  const el = h(`
+    <div class="page vpn-page">
+      <div class="topbar"><h1>VPN Connection</h1></div>
+      <div class="vpn-hero">
+        <div id="status-circle" role="status" aria-live="polite">
+          <span id="status-icon" aria-hidden="true" style="font-size:34px;">🔓</span>
+          <span id="status-text" style="font-weight:700;margin-top:8px;">Disconnected</span>
+        </div>
+      </div>
+      <button type="button" class="card tappable" id="server-card" style="margin-bottom:12px;">
+        <div class="row">
+          <span style="font-size:20px;">🖧</span>
+          <span id="server-text" class="grow item-title">Loading…</span>
+          <span>›</span>
+        </div>
+      </button>
+      <div class="card">
+        <div class="status-grid">
+          <div style="text-align:center;">
+            <div class="muted small">Host</div>
+            <div id="stat-host" class="vpn-stat">—</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="muted small">Protocol</div>
+            <div id="stat-protocol" class="vpn-stat">—</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="muted small">Since</div>
+            <div id="stat-since" class="vpn-stat">—</div>
+          </div>
+        </div>
+      </div>
+      <p id="vpn-note" class="muted small center vpn-note"></p>
+      <button id="connect-btn" class="btn btn-primary" style="margin-top:18px;">Connect</button>
+    </div>
+  `);
   root.appendChild(el);
-  const $ = s => el.querySelector(s);
-  function paint() {
-    $('#status-text').textContent = !Native.attached ? 'Pratinjau browser' : connected === null ? 'Status belum diketahui' : connected ? 'Terhubung' : 'Tidak terhubung';
-    $('#server-text').textContent = config?.endpoint || config?.host || (config?.protocol === 'OpenVPN' ? 'File .ovpn tersimpan' : 'Belum ada server');
-    $('#protocol').textContent = config ? `Protokol: ${config.protocol}` : '';
-    $('#vpn-note').textContent = !Native.attached ? 'Pratinjau browser — koneksi VPN perangkat tidak tersedia.' : config && config.protocol !== 'WireGuard' ? 'Konfigurasi tersimpan; koneksi belum didukung.' : 'Status koneksi diperiksa dari perangkat. Sambungkan untuk meminta izin VPN.';
-    $('#connect-btn').textContent = busy ? 'Memproses…' : !config ? 'Tambah server' : connected ? 'Putuskan VPN' : 'Sambungkan';
-    $('#connect-btn').className = `btn ${connected ? 'btn-outline' : 'btn-primary'}`;
-    $('#connect-btn').disabled = busy || !!config && (!Native.attached || config.protocol !== 'WireGuard' || connected === null);
-    $('#server-card').disabled = busy;
+
+  const circle = el.querySelector('#status-circle');
+  const icon = el.querySelector('#status-icon');
+  const text = el.querySelector('#status-text');
+  const btn = el.querySelector('#connect-btn');
+  const serverText = el.querySelector('#server-text');
+
+  const noteEl = el.querySelector('#vpn-note');
+
+  function updateNote() {
+    if (!Native.attached) {
+      // Opened in a plain browser (no Flutter shell) — bridge.js's dev
+      // fallback fakes "connected: true" so the screen stays testable, but
+      // no real tunnel exists here at all, WireGuard included. Only the
+      // installed Android app talks to a real VpnService.
+      noteEl.textContent = 'Preview browser: tidak ada shell native, jadi Connect di sini cuma simulasi tampilan (localStorage), bukan tunnel asli. Coba dari aplikasi Android untuk tunnel WireGuard sungguhan.';
+      return;
+    }
+    if (!config) {
+      // Every real VPN needs a server with its own credentials — there's no
+      // "default, zero-setup" server to hand out, same as any general VPN
+      // app (you either run your own server or subscribe to someone's).
+      noteEl.textContent = 'Semua protokol butuh server dan kredensialnya sendiri — belum ada server default, ketuk di atas untuk mengisi WireGuard/OpenVPN/SSH milikmu.';
+      return;
+    }
+    if (config.protocol === 'WireGuard') {
+      noteEl.textContent = 'WireGuard membuka tunnel jaringan asli di HP — trafik benar-benar dialihkan lewat server ini saat Connect.';
+    } else {
+      noteEl.textContent = `${config.protocol} baru tersimpan sebagai konfigurasi — tunnel jaringan asli untuk ${config.protocol} belum tersedia, jadi Connect belum benar-benar mengalihkan trafik.`;
+    }
   }
-  async function refresh() {
-    if (busy) return;
-    $('#status-text').textContent = 'Memeriksa status…';
-    const result = await Native.getVpnStatus();
-    connected = typeof result?.connected === 'boolean' ? result.connected : null;
-    paint();
+
+  function serverLabel(cfg) {
+    if (!cfg) return null;
+    if (cfg.protocol === 'WireGuard') return cfg.endpoint;
+    if (cfg.protocol === 'OpenVPN') return 'File .ovpn tersimpan';
+    return cfg.host ? `${cfg.host}:${cfg.port || 22}` : null;
   }
-  $('#refresh').onclick = refresh;
-  $('#server-card').onclick = () => navigate('/vpn-config');
-  $('#connect-btn').onclick = async () => {
-    if (!config) return navigate('/vpn-config');
-    if (busy) return;
-    busy = true; $('#error').textContent = ''; paint();
+
+  function refresh() {
+    icon.textContent = connected ? '🔒' : '🔓';
+    text.textContent = connected ? 'Connected' : 'Disconnected';
+    circle.style.background = connected
+      ? 'linear-gradient(135deg,#20d7e5,#6588ff,#c15aff)'
+      : 'linear-gradient(135deg,#fff,#e7faff,#e3d7ff)';
+    circle.style.color = connected ? '#fff' : 'var(--text-dark)';
+    btn.textContent = connected ? 'Disconnect' : 'Connect';
+    const label = serverLabel(config);
+    serverText.textContent = label
+      ? `${config.protocol} · ${label}`
+      : 'Belum ada server — ketuk untuk menambah';
+    el.querySelector('#stat-host').textContent = connected ? label || '—' : '—';
+    el.querySelector('#stat-protocol').textContent = config?.protocol || '—';
+    el.querySelector('#stat-since').textContent =
+      connected && connectedSince
+        ? connectedSince.toTimeString().slice(0, 5)
+        : '—';
+    updateNote();
+  }
+
+  el.querySelector('#server-card').onclick = () => navigate('/vpn-config');
+
+  btn.onclick = async () => {
+    if (!connected && !config) {
+      toast('No VPN server configured yet — add one first.');
+      navigate('/vpn-config');
+      return;
+    }
     const result = connected ? await Native.vpnDisconnect() : await Native.vpnConnect();
-    connected = typeof result?.connected === 'boolean' ? result.connected : null;
-    $('#error').textContent = result?.message || (result === null ? 'Perangkat belum memberikan hasil. Periksa status sebelum mencoba lagi.' : '');
-    busy = false; paint();
+    connected = !!(result && result.connected);
+    connectedSince = connected ? new Date() : null;
+    if (result && result.message) toast(result.message);
+    logActivity({
+      category: 'VPN',
+      title: connected ? 'VPN connected' : 'VPN disconnected',
+      subtitle: config ? `${config.protocol} · ${serverLabel(config) || ''}` : undefined,
+      badge: connected ? 'Success' : 'Info',
+    });
+    refresh();
   };
-  const unwatch = Native.on('vpn_status', payload => { connected = typeof payload?.connected === 'boolean' ? payload.connected : null; paint(); });
-  const resume = () => { if (!document.hidden) refresh(); };
-  document.addEventListener('visibilitychange', resume);
-  window.addEventListener('focus', resume);
-  config = await Native.getVpnConfig();
-  if (!config?.protocol) config = null;
-  await refresh();
-  return { dispose() { unwatch(); document.removeEventListener('visibilitychange', resume); window.removeEventListener('focus', resume); } };
+
+  Native.on('vpn_status', (payload) => {
+    connected = !!payload?.connected;
+    refresh();
+  });
+
+  refresh();
 }

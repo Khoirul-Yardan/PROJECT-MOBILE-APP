@@ -256,8 +256,7 @@ class BpjsAiService {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final candidates = body['candidates'] as List?;
     if (candidates == null || candidates.isEmpty) return null;
-    final parts =
-        ((candidates.first as Map)['content'] as Map)['parts'] as List?;
+    final parts = ((candidates.first as Map)['content'] as Map)['parts'] as List?;
     if (parts == null || parts.isEmpty) return null;
     return (parts.first as Map)['text'] as String?;
   }
@@ -311,7 +310,7 @@ class BpjsSessionRepo {
         'timestamp_offset_ms': offsetMs,
       });
     } catch (_) {
-      rethrow;
+      // Best-effort — one missed segment must not abort the session.
     }
   }
 
@@ -330,7 +329,7 @@ class BpjsSessionRepo {
         'generated_by_llm_provider': providerId,
       });
     } catch (_) {
-      rethrow;
+      // Best-effort, same contract as the rest of this repo.
     }
   }
 
@@ -344,7 +343,7 @@ class BpjsSessionRepo {
           })
           .eq('id', sessionId);
     } catch (_) {
-      rethrow;
+      // Best-effort.
     }
   }
 }
@@ -364,19 +363,8 @@ class BpjsExport {
     required DateTime createdAt,
     required Map<String, dynamic> structured,
     required List<Map<String, String>> transcript,
-    String sessionReference = "",
-    String providerLabel = "",
   }) {
     final buf = StringBuffer()
-      ..writeln(
-        providerLabel.isEmpty
-            ? 'Transkrip mentah - belum disusun AI'
-            : 'Draf AI - perlu verifikasi dokter',
-      )
-      ..writeln('Referensi: $sessionReference')
-      ..writeln(
-        'Penyusun: ${providerLabel.isEmpty ? 'Belum disusun AI' : providerLabel}',
-      )
       ..writeln('DOKUMENTASI PERCAKAPAN PERAWAT-PASIEN')
       ..writeln(
         'Untuk: $dokterNama${dokterInstansi != null && dokterInstansi.isNotEmpty ? ' ($dokterInstansi)' : ''}',
@@ -393,7 +381,7 @@ class BpjsExport {
     if (transcript.isNotEmpty) {
       buf.writeln('TRANSKRIP PERCAKAPAN:');
       for (final seg in transcript) {
-        buf.writeln('Pembicara belum diverifikasi: ${seg['text']}');
+        buf.writeln('${seg['speaker']}: ${seg['text']}');
       }
       buf.writeln();
     }
@@ -410,23 +398,11 @@ class BpjsExport {
     required DateTime createdAt,
     required Map<String, dynamic> structured,
     required List<Map<String, String>> transcript,
-    String sessionReference = "",
-    String providerLabel = "",
   }) async {
     final doc = pw.Document();
     doc.addPage(
       pw.MultiPage(
-        footer: (context) => pw.Text(
-          'Referensi: $sessionReference | Halaman ${context.pageNumber} / ${context.pagesCount}',
-          style: const pw.TextStyle(fontSize: 9),
-        ),
         build: (context) => [
-          pw.Text(
-            providerLabel.isEmpty
-                ? 'Transkrip mentah - belum disusun AI'
-                : 'Draf AI - perlu verifikasi dokter',
-          ),
-          if (providerLabel.isNotEmpty) pw.Text('Penyusun: $providerLabel'),
           pw.Header(
             level: 0,
             child: pw.Text(
@@ -444,10 +420,7 @@ class BpjsExport {
             (e) => [
               pw.Text(
                 e.key.replaceAll('_', ' ').toUpperCase(),
-                style: pw.TextStyle(
-                  fontWeight: pw.FontWeight.bold,
-                  fontSize: 11,
-                ),
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
               ),
               pw.Text('${e.value}'),
               pw.SizedBox(height: 8),
@@ -460,9 +433,7 @@ class BpjsExport {
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
             ),
             pw.SizedBox(height: 4),
-            ...transcript.map(
-              (seg) => pw.Text('Pembicara belum diverifikasi: ${seg['text']}'),
-            ),
+            ...transcript.map((seg) => pw.Text('${seg['speaker']}: ${seg['text']}')),
           ],
           pw.SizedBox(height: 16),
           pw.Text(
@@ -482,20 +453,9 @@ class BpjsExport {
     required DateTime createdAt,
     required Map<String, dynamic> structured,
     required List<Map<String, String>> transcript,
-    String sessionReference = "",
-    String providerLabel = "",
   }) async {
     final builder = DocxDocumentBuilder()
         .h1('Dokumentasi Percakapan Perawat-Pasien')
-        .p(
-          providerLabel.isEmpty
-              ? 'Transkrip mentah - belum disusun AI'
-              : 'Draf AI - perlu verifikasi dokter',
-        )
-        .p('Referensi: $sessionReference')
-        .p(
-          'Penyusun: ${providerLabel.isEmpty ? 'Belum disusun AI' : providerLabel}',
-        )
         .p(
           'Untuk: $dokterNama${dokterInstansi != null && dokterInstansi.isNotEmpty ? ' ($dokterInstansi)' : ''}',
         )
@@ -510,7 +470,7 @@ class BpjsExport {
     if (transcript.isNotEmpty) {
       builder.h2('Transkrip Percakapan');
       for (final seg in transcript) {
-        builder.p('Pembicara belum diverifikasi: ${seg['text']}');
+        builder.p('${seg['speaker']}: ${seg['text']}');
       }
     }
     builder.p('');

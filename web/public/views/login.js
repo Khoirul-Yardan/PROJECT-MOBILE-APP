@@ -7,25 +7,25 @@ export default async function render(root) {
   let loading = false;
 
   const el = h(`
-    <form class="page card login-page">
-      <div class="brand-mark login-brand">${logoSvg(40)}<span>AI Hub</span></div>
+    <div class="page card login-page">
+      <div class="brand-mark login-brand">${logoSvg(84)}<span>AI Hub</span></div>
       <p class="login-tagline">Satu aplikasi untuk AI, agen, kolaborasi, dan akses aman.</p>
       <h1 id="title" class="login-title">Masuk</h1>
-      <p class="muted login-intro">Masuk untuk menggunakan layanan AI dan mengelola dokumentasi Anda.</p>
+      <p class="muted login-intro">Gunakan akun asli agar percakapan, teman, dan sesi tersimpan aman untukmu.</p>
       <div class="field">
         <label for="email">Email</label>
         <input id="email" type="email" autocomplete="email" placeholder="nama@instansi.go.id" />
       </div>
       <div class="field">
         <label for="password">Kata sandi</label>
-        <input id="password" type="password" autocomplete="current-password" placeholder="Kata sandi" />
+        <input id="password" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter" />
       </div>
       <p id="error" class="error-text" role="alert" style="display:none;"></p>
       <button id="submit" class="btn btn-primary">Masuk</button>
-      <button type="button" id="toggle" class="btn btn-text login-toggle">
+      <button id="toggle" class="btn btn-text login-toggle">
         Belum punya akun? Daftar
       </button>
-    </form>
+    </div>
   `);
   root.appendChild(el);
 
@@ -36,7 +36,7 @@ export default async function render(root) {
 
   function refresh() {
     titleEl.textContent = isRegister ? 'Buat akun' : 'Masuk';
-    submitEl.textContent = loading ? (isRegister ? 'Membuat akun…' : 'Sedang masuk…') : isRegister ? 'Buat akun' : 'Masuk';
+    submitEl.textContent = loading ? 'Menyimpan…' : isRegister ? 'Buat akun' : 'Masuk';
     submitEl.disabled = loading;
     toggleEl.disabled = loading;
     el.querySelector('#password').autocomplete = isRegister ? 'new-password' : 'current-password';
@@ -51,9 +51,7 @@ export default async function render(root) {
     refresh();
   };
 
-  el.onsubmit = async (event) => {
-    event.preventDefault();
-    if (loading) return;
+  submitEl.onclick = async () => {
     const email = el.querySelector('#email').value.trim();
     const password = el.querySelector('#password').value;
     if (!email.includes('@')) {
@@ -61,13 +59,12 @@ export default async function render(root) {
       errorEl.style.display = 'block';
       return;
     }
-    if (!password || (isRegister && password.length < 6)) {
-      errorEl.textContent = isRegister ? 'Kata sandi minimal 6 karakter.' : 'Isi kata sandi.';
+    if (password.length < 6) {
+      errorEl.textContent = 'Password minimal 6 karakter.';
       errorEl.style.display = 'block';
       return;
     }
     loading = true;
-    errorEl.className = 'error-text';
     errorEl.style.display = 'none';
     refresh();
     try {
@@ -76,9 +73,8 @@ export default async function render(root) {
         : await signInWithEmail(email, password);
       if (error) throw error;
       if (!data.session) {
-        errorEl.className = isRegister ? 'notice' : 'error-text';
         errorEl.textContent = isRegister
-          ? 'Periksa email Anda. Akun dibuat; konfirmasi email sebelum masuk.'
+          ? 'Akun dibuat. Cek email untuk konfirmasi, lalu masuk.'
           : 'Tidak bisa masuk.';
         errorEl.style.display = 'block';
         return;

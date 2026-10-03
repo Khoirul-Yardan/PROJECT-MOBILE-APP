@@ -34,15 +34,13 @@ class WebShellScreen extends StatefulWidget {
 
 enum _LoadState { loading, ready, failed }
 
-class _WebShellScreenState extends State<WebShellScreen>
-    with WidgetsBindingObserver {
+class _WebShellScreenState extends State<WebShellScreen> {
   late final WebViewController _controller;
   _LoadState _state = _LoadState.loading;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(AppColors.bg)
@@ -61,35 +59,6 @@ class _WebShellScreenState extends State<WebShellScreen>
         ),
       )
       ..loadRequest(Uri.parse(WebHubConfig.baseUrl));
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _publishVpnStatus();
-  }
-
-  Future<void> _publishVpnStatus() async {
-    bool? connected;
-    try {
-      connected = await VpnTunnelService.isConnected();
-    } catch (_) {
-      /* Unknown status is explicit. */
-    }
-    if (!mounted) return;
-    final payload = jsonEncode({'connected': connected});
-    try {
-      await _controller.runJavaScript(
-        'window.__nativeEvent && window.__nativeEvent("vpn_status", ${jsonEncode(payload)});',
-      );
-    } catch (_) {
-      /* The next explicit status query can recover. */
-    }
   }
 
   Future<void> _reply(String id, Object? result) async {
@@ -126,33 +95,8 @@ class _WebShellScreenState extends State<WebShellScreen>
         return;
 
       case 'save_vpn_config':
-        try {
-          final previous = await VpnConfigService.load();
-          if (VpnTunnelService.supports(
-                previous?['protocol'] as String? ?? '',
-              ) &&
-              await VpnTunnelService.isConnected()) {
-            await VpnTunnelService.disconnect();
-            if (await VpnTunnelService.isConnected()) {
-              throw Exception(
-                'VPN masih aktif. Putuskan koneksi sebelum mengganti server.',
-              );
-            }
-          }
-          await VpnConfigService.save(payload);
-          if (id != null) await _reply(id, {});
-        } catch (e) {
-          if (id != null) await _reply(id, {'error': e.toString()});
-        }
-        return;
-
-      case 'get_vpn_status':
-        try {
-          final connected = await VpnTunnelService.isConnected();
-          if (id != null) await _reply(id, {'connected': connected});
-        } catch (_) {
-          if (id != null) await _reply(id, {'connected': null});
-        }
+        await VpnConfigService.save(payload);
+        if (id != null) await _reply(id, {});
         return;
 
       case 'vpn_connect':
@@ -163,38 +107,26 @@ class _WebShellScreenState extends State<WebShellScreen>
             if (id != null) {
               await _reply(id, {
                 'connected': false,
-                'message': 'Tunnel nyata baru tersedia untuk WireGuard. OpenVPN/SSH masih tersimpan sebagai konfigurasi saja.',
+                'message':
+                    'Tunnel nyata baru tersedia untuk WireGuard. OpenVPN/SSH masih tersimpan sebagai konfigurasi saja.',
               });
             }
             return;
           }
           await VpnTunnelService.connect(config);
-          final connected = await VpnTunnelService.isConnected();
-          if (id != null) {
-            await _reply(id, {
-              'connected': connected,
-              if (!connected)
-                'message':
-                    'Koneksi belum terkonfirmasi. Periksa status perangkat.',
-            });
-          }
+          if (id != null) await _reply(id, {'connected': true});
         } catch (e) {
-          if (id != null) {
-            await _reply(id, {'connected': null, 'message': e.toString()});
-          }
+          if (id != null) await _reply(id, {'connected': false, 'message': e.toString()});
         }
         return;
 
       case 'vpn_disconnect':
         try {
           await VpnTunnelService.disconnect();
-          final connected = await VpnTunnelService.isConnected();
-          if (id != null) await _reply(id, {'connected': connected});
-        } catch (e) {
-          if (id != null) {
-            await _reply(id, {'connected': null, 'message': e.toString()});
-          }
+        } catch (_) {
+          // Best-effort — still report disconnected so the UI doesn't get stuck.
         }
+        if (id != null) await _reply(id, {'connected': false});
         return;
 
       case 'open_bot_bpjs':

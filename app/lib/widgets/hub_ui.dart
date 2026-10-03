@@ -21,7 +21,7 @@ class GradientButton extends StatelessWidget {
     ),
     child: Ink(
       decoration: BoxDecoration(
-        color: AppColors.accent,
+        gradient: AppColors.gradient,
         borderRadius: BorderRadius.circular(14),
       ),
       child: InkWell(
@@ -38,6 +38,8 @@ class GradientButton extends StatelessWidget {
                 Flexible(
                   child: Text(
                     label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.surface,
                       fontWeight: FontWeight.w700,
@@ -78,8 +80,15 @@ class HubCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: fill ?? AppColors.surface,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(18),
       border: Border.all(color: AppColors.line),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0D244B95),
+          blurRadius: 22,
+          offset: Offset(0, 5),
+        ),
+      ],
     ),
     child: Material(
       color: Colors.transparent,
@@ -255,6 +264,8 @@ class _HubLogoPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+/// Flat, calm backdrop — no floating gradient orbs. Splash/empty states sit
+/// on the same neutral surface as the rest of the app.
 class AuroraBackdrop extends StatelessWidget {
   const AuroraBackdrop({super.key, required this.child});
   final Widget child;

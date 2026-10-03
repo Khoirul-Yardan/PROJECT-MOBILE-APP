@@ -2,15 +2,12 @@
 // the `supabase` global) — mirrors what `SupabaseService` used to do in
 // Dart, now running directly in the web page since auth/data no longer
 // round-trip through the native shell.
-import { Native } from './bridge.js';
-import { setChatOwner } from './chat-state.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase-config.js';
 
 export const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export async function currentUser() {
-  const { data, error } = await sb.auth.getUser();
-  if (error) throw error;
+  const { data } = await sb.auth.getUser();
   return data.user ?? null;
 }
 
@@ -22,12 +19,7 @@ export function onAuthChange(handler) {
 export const signUpWithEmail = (email, password) => sb.auth.signUp({ email, password });
 export const signInWithEmail = (email, password) =>
   sb.auth.signInWithPassword({ email, password });
-export async function signOut() {
-  const { error } = await sb.auth.signOut();
-  if (error) throw error;
-  setChatOwner(null);
-  await Native.signOut();
-}
+export const signOut = () => sb.auth.signOut();
 
 export async function myProfile() {
   const user = await currentUser();
@@ -37,9 +29,9 @@ export async function myProfile() {
 }
 
 export async function logActivity({ category, title, subtitle, badge = 'Info' }) {
+  const user = await currentUser();
+  if (!user) return;
   try {
-    const user = await currentUser();
-    if (!user) return;
     await sb.from('activity_log').insert({
       user_id: user.id,
       category,
@@ -69,13 +61,12 @@ export function watchActivity(onChange) {
 export async function fetchActivity() {
   const user = await currentUser();
   if (!user) return [];
-  const { data, error } = await sb
+  const { data } = await sb
     .from('activity_log')
     .select()
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(100);
-  if (error) throw error;
   return data ?? [];
 }
 
@@ -93,34 +84,31 @@ export async function fetchActivity() {
 export async function fetchNurseBpjsSessions() {
   const user = await currentUser();
   if (!user) return [];
-  const { data, error } = await sb
+  const { data } = await sb
     .from('bpjs_sessions')
     .select('*')
     .eq('perawat_id', user.id)
     .order('created_at', { ascending: false });
-  if (error) throw error;
   return data ?? [];
 }
 
 export async function fetchBpjsDocument(sessionId) {
-  const { data, error } = await sb
+  const { data } = await sb
     .from('bpjs_documents')
     .select('*')
     .eq('session_id', sessionId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw error;
   return data ?? null;
 }
 
 export async function fetchBpjsTranscript(sessionId) {
-  const { data, error } = await sb
+  const { data } = await sb
     .from('bpjs_transcripts')
     .select('*')
     .eq('session_id', sessionId)
     .order('timestamp_offset_ms');
-  if (error) throw error;
   return data ?? [];
 }
 

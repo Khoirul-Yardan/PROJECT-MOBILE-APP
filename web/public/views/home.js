@@ -1,55 +1,79 @@
 ﻿import { h, icon, escapeHtml, initial } from '../ui.js';
-import { currentUser, fetchActivity, watchActivity } from '../db.js';
+import { currentUser, myProfile, fetchActivity, watchActivity } from '../db.js';
 import { listRegisteredProviders } from '../ai.js';
-import { Native } from '../bridge.js';
 import { navigate } from '../router.js';
 
 export default async function render(root) {
-  const user = await currentUser();
-  const el = h(`<div class="page home-page">
-    <div class="topbar"><h1>Beranda</h1><button class="avatar" data-go="/settings/profile" aria-label="Buka akun">${escapeHtml(initial(user?.email))}</button></div>
-    <section class="card task-panel"><h2>Mulai bekerja</h2><p>Buka percakapan atau siapkan dokumentasi Anda.</p>
-      <button class="btn btn-primary" data-go="/chat">${icon('chat')} Buka Chat</button>
-      <button class="list-row" data-go="/bots">${icon('document')}<span class="grow"><strong>Dokumentasi Bot BPJS</strong><span class="muted small">Rekam, periksa draf, lalu ekspor</span></span><span aria-hidden="true">›</span></button>
-    </section>
-    <section aria-label="Status layanan" class="group-list">
-      <button class="list-row" data-go="/settings/apikeys">${icon('layers')}<span class="grow"><strong>Provider &amp; Agent</strong><span id="provider-count" class="muted small">Memuat layanan…</span></span><span>Kelola</span></button>
-      <button class="list-row" data-go="/vpn">${icon('shield')}<span class="grow"><strong>VPN</strong><span id="vpn-status" class="muted small">Memeriksa status…</span></span><span>Lihat</span></button>
-    </section>
-    <div class="row-between"><h2 class="section-title">Aktivitas terbaru</h2><button class="btn-text" data-go="/settings/activity">Lihat semua</button></div>
-    <div id="recent-activity" aria-live="polite"></div>
-  </div>`);
+  const [user, profile] = await Promise.all([currentUser(), myProfile()]);
+  const name = profile?.display_name || user?.email?.split('@')[0] || 'Explorer';
+  const hour = new Date().getHours();
+  const greeting = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
+  const el = h(`
+    <div class="page home-page">
+      <div class="topbar">
+        <h1>Home Dashboard</h1>
+        <div class="row" style="gap:6px;">
+          <button class="icon-button" data-go="/settings/activity" aria-label="Lihat aktivitas">${icon('bell')}</button>
+          <button class="avatar" data-go="/settings/profile" aria-label="Buka profil">${escapeHtml(initial(name))}</button>
+        </div>
+      </div>
+      <section class="home-greeting">
+        <p>${greeting},</p><h2>${escapeHtml(name)}</h2>
+        <p class="muted small">Siap membuat hari ini lebih produktif?</p>
+      </section>
+      <div class="module-grid">
+        <button class="card tappable module-card" data-go="/settings/apikeys">
+          <span class="feature-icon tone-green">${icon('spark')}</span>
+          <h3>Provider &amp; Agent</h3><p id="provider-count">Memuat...</p>
+        </button>
+        <button class="card tappable module-card" data-go="/chat">
+          <span class="feature-icon tone-blue">${icon('chat')}</span>
+          <h3>Chat</h3><p>Pakai provider atau agent pilihanmu</p>
+        </button>
+        <button class="card tappable module-card" data-go="/bots">
+          <span class="feature-icon">${icon('bot')}</span>
+          <h3>Bots</h3><p>Jarvis &amp; Bot BPJS</p>
+        </button>
+        <button class="card tappable module-card" data-go="/vpn">
+          <span class="feature-icon tone-green">${icon('shield')}</span>
+          <h3>VPN</h3><p>Kelola koneksi aman</p>
+        </button>
+      </div>
+      <div class="row-between" style="margin-top:22px;">
+        <h2 class="section-title" style="margin:0;">Aktivitas terbaru</h2>
+        <button class="btn-text" data-go="/settings/activity">Lihat semua</button>
+      </div>
+      <div id="recent-activity" aria-live="polite"><p class="muted small">Memuat aktivitas...</p></div>
+      <button class="card tappable chat-cta" data-go="/chat">
+        <div class="row"><span class="feature-icon tone-blue">${icon('chat')}</span><div><h3>Ada ide hari ini?</h3><p>Mulai percakapan dengan asisten AI pilihanmu.</p></div></div>
+        <span class="cta-label">Mulai chat &rarr;</span>
+      </button>
+    </div>`);
   root.appendChild(el);
-  el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => navigate(b.dataset.go));
+  el.querySelectorAll('[data-go]').forEach((button) => {
+    button.onclick = () => navigate(button.dataset.go);
+  });
+  const registered = await listRegisteredProviders();
+  el.querySelector('#provider-count').textContent =
+    registered.length === 0 ? 'Belum ada — tambah sekarang' : `${registered.length} terhubung`;
+
   let disposed = false;
-  async function loadProviders() {
-    try {
-      const rows = await listRegisteredProviders();
-      el.querySelector('#provider-count').textContent = rows.length ? `${rows.length} layanan tersimpan` : 'Tambahkan provider untuk mulai chat';
-    } catch { el.querySelector('#provider-count').textContent = 'Layanan belum dapat dimuat. Buka Kelola untuk mencoba lagi.'; }
-  }
-  function vpnStatus(payload) {
-    el.querySelector('#vpn-status').textContent = !Native.attached ? 'Tersedia di aplikasi mobile' : typeof payload?.connected === 'boolean' ? (payload.connected ? 'Terhubung' : 'Tidak terhubung') : 'Status belum diketahui';
-  }
   async function refreshActivity() {
+    const rows = await fetchActivity();
+    if (disposed) return;
     const list = el.querySelector('#recent-activity');
-    list.textContent = 'Memuat aktivitas…';
-    try {
-      const rows = await fetchActivity();
-      if (disposed) return;
-      list.replaceChildren();
-      if (!rows.length) list.appendChild(h('<p class="empty-state">Belum ada aktivitas.</p>'));
-      for (const row of rows.slice(0, 3)) list.appendChild(h(`<div class="row activity-row">${icon(row.category === 'VPN' ? 'shield' : 'document')}<div class="grow"><strong>${escapeHtml(row.category === 'Bots' ? 'Aktivitas dokumentasi BPJS' : row.title)}</strong><time>${escapeHtml(new Date(row.created_at).toLocaleString('id-ID'))}</time></div></div>`));
-    } catch {
-      list.replaceChildren(h('<p role="alert">Aktivitas belum dapat dimuat.</p>'));
-      const retry = h('<button class="btn-text">Coba lagi</button>');
-      retry.onclick = refreshActivity; list.appendChild(retry);
+    list.replaceChildren();
+    if (!rows.length) {
+      list.appendChild(h('<div class="empty-state">Belum ada aktivitas. Mulai chat atau atur provider AI pertamamu.</div>'));
+      return;
+    }
+    for (const row of rows.slice(0, 3)) {
+      const mark = row.category === 'VPN' ? 'shield' : row.category === 'AI' ? 'chat' : 'document';
+      const tone = row.category === 'VPN' ? 'tone-green' : 'tone-blue';
+      list.appendChild(h(`<div class="row activity-row"><span class="feature-icon ${tone}">${icon(mark)}</span><div class="grow"><strong>${escapeHtml(row.title)}</strong><time>${escapeHtml(new Date(row.created_at).toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }))}</time></div></div>`));
     }
   }
-  loadProviders();
-  Native.getVpnStatus().then(vpnStatus);
-  refreshActivity();
-  const unwatch = watchActivity(refreshActivity);
-  const unvpn = Native.on('vpn_status', vpnStatus);
-  return { dispose() { disposed = true; unwatch(); unvpn(); } };
+  await refreshActivity();
+  const unwatch = watchActivity(() => refreshActivity());
+  return { dispose() { disposed = true; unwatch(); } };
 }
