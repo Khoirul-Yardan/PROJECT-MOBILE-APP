@@ -228,7 +228,7 @@ class _HubLogoPainter extends CustomPainter {
     canvas.save();
     canvas.scale(size.width / 100, size.height / 100);
     final line = Paint()
-      ..color = const Color(0xFF4275FF)
+      ..color = AppColors.accent
       ..strokeWidth = 5
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(const Offset(20, 48), const Offset(64, 12), line);
@@ -243,16 +243,12 @@ class _HubLogoPainter extends CustomPainter {
       Offset(76, 84),
     ];
     for (final node in nodes) {
-      final fill = Paint()
-        ..shader = AppColors.gradient.createShader(
-          Rect.fromCircle(center: node, radius: 14),
-        );
-      canvas.drawCircle(node, 10, fill);
+      canvas.drawCircle(node, 10, Paint()..color = AppColors.accent);
       canvas.drawCircle(
         node,
         10,
         Paint()
-          ..color = AppColors.accent
+          ..color = AppColors.accentInk
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1,
       );
