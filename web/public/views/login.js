@@ -11,7 +11,7 @@ export default async function render(root) {
       <div class="brand-mark login-brand">${logoSvg(84)}<span>AI Hub</span></div>
       <p class="login-tagline">Satu aplikasi untuk AI, agen, kolaborasi, dan akses aman.</p>
       <h1 id="title" class="login-title">Masuk</h1>
-      <p class="muted login-intro">Gunakan akun asli agar percakapan, teman, dan sesi tersimpan aman untukmu.</p>
+      <p class="muted login-intro">Gunakan akun asli agar percakapan dan sesi dokumentasi tersimpan aman untukmu.</p>
       <div class="field">
         <label for="email">Email</label>
         <input id="email" type="email" autocomplete="email" placeholder="nama@instansi.go.id" />
