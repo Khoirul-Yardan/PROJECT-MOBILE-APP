@@ -11,7 +11,7 @@ export default async function render(root) {
   const el = h(`
     <div class="page home-page">
       <div class="topbar">
-        <h1>Home Dashboard</h1>
+        <h1>Beranda</h1>
         <div class="row" style="gap:6px;">
           <button class="icon-button" data-go="/settings/activity" aria-label="Lihat aktivitas">${icon('bell')}</button>
           <button class="avatar" data-go="/settings/profile" aria-label="Buka profil">${escapeHtml(initial(name))}</button>

@@ -41,7 +41,7 @@ export default async function render(root) {
           <span class="feature-icon">${icon('document')}</span>
           <div class="grow">
             <div class="item-title">Dokumentasi BPJS</div>
-            <div class="muted small">Lihat sesi yang sudah direkam — review (dokter) atau riwayat (perawat).</div>
+            <div class="muted small">Lihat sesi yang sudah direkam, salin atau ekspor untuk dikirim ke dokter.</div>
           </div>
         </div>
       </button>
