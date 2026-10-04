@@ -16,17 +16,17 @@ class GradientButton extends StatelessWidget {
   Widget build(BuildContext context) => Material(
     color: Colors.transparent,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       side: BorderSide.none,
     ),
     child: Ink(
       decoration: BoxDecoration(
         color: AppColors.accent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 50),
           child: Padding(
@@ -80,21 +80,10 @@ class HubCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: fill ?? AppColors.surface,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.line),
-      // Layered low-opacity shadow (Notion's card elevation) instead of a
-      // single hard drop-shadow — depth that's felt rather than seen.
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: AppColors.lineStrong, width: 1.5),
       boxShadow: const [
-        BoxShadow(
-          color: Color(0x0A1F1B16),
-          blurRadius: 20,
-          offset: Offset(0, 8),
-        ),
-        BoxShadow(
-          color: Color(0x061F1B16),
-          blurRadius: 4,
-          offset: Offset(0, 1),
-        ),
+        BoxShadow(color: AppColors.lineStrong, offset: Offset(0, 3)),
       ],
     ),
     child: Material(

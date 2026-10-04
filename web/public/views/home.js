@@ -2,6 +2,7 @@
 import { currentUser, myProfile, fetchActivity, watchActivity } from '../db.js';
 import { listRegisteredProviders } from '../ai.js';
 import { navigate } from '../router.js';
+import { illustration } from '../illustrations.js';
 
 export default async function render(root) {
   const [user, profile] = await Promise.all([currentUser(), myProfile()]);
@@ -18,25 +19,31 @@ export default async function render(root) {
         </div>
       </div>
       <section class="home-greeting">
-        <p>${greeting},</p><h2>${escapeHtml(name)}</h2>
-        <p class="muted small">Siap membuat hari ini lebih produktif?</p>
+        <div><p class="greeting-line">${greeting},</p><h2>${escapeHtml(name)}</h2>
+        <p class="muted small">Ruang untuk ide dan pekerjaanmu.</p></div>
+        <span class="greeting-stamp" aria-hidden="true">${icon('spark')}</span>
       </section>
+      <div class="collection-heading"><h2>Ruang kerjamu</h2><span class="collection-note">Pilih, buka, mulai.</span></div>
       <div class="module-grid">
         <button class="card tappable module-card" data-go="/settings/apikeys">
-          <span class="feature-icon tone-green">${icon('spark')}</span>
-          <h3>Provider &amp; Agent</h3><p id="provider-count">Memuat...</p>
+          ${illustration('providers')}
+          <div class="card-copy"><h3>Asisten AI</h3><p id="provider-count">Memuat...</p></div>
+          <span class="card-action">Kelola provider <span aria-hidden="true">↗</span></span>
         </button>
         <button class="card tappable module-card" data-go="/chat">
-          <span class="feature-icon tone-blue">${icon('chat')}</span>
-          <h3>Chat</h3><p>Pakai provider atau agent pilihanmu</p>
+          ${illustration('chat')}
+          <div class="card-copy"><h3>Chat AI</h3><p>Diskusi dan kembangkan ide</p></div>
+          <span class="card-action">Mulai chat <span aria-hidden="true">↗</span></span>
         </button>
         <button class="card tappable module-card" data-go="/bots">
-          <span class="feature-icon">${icon('bot')}</span>
-          <h3>Bots</h3><p>Jarvis &amp; Bot BPJS</p>
+          ${illustration('bot')}
+          <div class="card-copy"><h3>Bot Hub</h3><p>Bantuan untuk tugas harian</p></div>
+          <span class="card-action">Jelajahi bot <span aria-hidden="true">↗</span></span>
         </button>
         <button class="card tappable module-card" data-go="/vpn">
-          <span class="feature-icon tone-green">${icon('shield')}</span>
-          <h3>VPN</h3><p>Kelola koneksi aman</p>
+          ${illustration('vpn')}
+          <div class="card-copy"><h3>Koneksi VPN</h3><p>Atur server dan koneksimu</p></div>
+          <span class="card-action">Kelola koneksi <span aria-hidden="true">↗</span></span>
         </button>
       </div>
       <div class="row-between" style="margin-top:22px;">
@@ -55,7 +62,7 @@ export default async function render(root) {
   });
   const registered = await listRegisteredProviders();
   el.querySelector('#provider-count').textContent =
-    registered.length === 0 ? 'Belum ada — tambah sekarang' : `${registered.length} terhubung`;
+    registered.length === 0 ? 'Hubungkan provider & agent' : `${registered.length} asisten terhubung`;
 
   let disposed = false;
   async function refreshActivity() {

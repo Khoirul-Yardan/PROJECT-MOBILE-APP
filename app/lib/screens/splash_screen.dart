@@ -39,7 +39,18 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             children: [
               const Spacer(flex: 3),
-              const HubLogo(size: 108),
+              Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: AppColors.mint,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: AppColors.lineStrong, width: 1.5),
+                  boxShadow: const [
+                    BoxShadow(color: AppColors.lineStrong, offset: Offset(0, 4)),
+                  ],
+                ),
+                child: const HubLogo(size: 108),
+              ),
               const SizedBox(height: 20),
               const Text(
                 'AI Hub',

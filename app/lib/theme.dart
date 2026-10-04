@@ -1,32 +1,31 @@
 import 'package:flutter/material.dart';
 
-/// Warm paper surfaces with a single confident blue accent — adapted from
-/// Notion's design language (warm neutrals, whisper borders, layered soft
-/// shadows) to match web/public/style.css exactly. No gradient/purple
-/// decoration; depth comes from shadow + hairline border, not hue shift.
+/// Pastel paper cards with ink outlines, matching web/public/style.css.
 class AppColors {
-  static const bg = Color(0xFFFAF9F6);
-  static const surface = Color(0xFFFFFFFF);
-  static const surfaceSunken = Color(0xFFF1EFEA);
+  static const bg = Color(0xFFF7F8F2);
+  static const surface = Color(0xFFFFFEFA);
+  static const surfaceSunken = Color(0xFFEEEEE6);
 
-  static const ink = Color(0xFF1F1B16);
-  static const inkMuted = Color(0xFF6B6358);
-  static const inkFaint = Color(0xFF8F887C);
+  static const ink = Color(0xFF282D2B);
+  static const inkMuted = Color(0xFF616760);
+  static const inkFaint = Color(0xFF737970);
 
-  static const accent = Color(0xFF0B66C3);
-  static const accentInk = Color(0xFF0A4F97);
-  static const accentTint = Color(0xFFEAF3FC);
+  static const accent = Color(0xFF286A64);
+  static const accentInk = Color(0xFF1C504B);
+  static const accentTint = Color(0xFFD4EEE5);
+  static const mint = Color(0xFFCCECE3);
+  static const butter = Color(0xFFFFF0B4);
+  static const sky = Color(0xFFD6EAF7);
+  static const lilac = Color(0xFFE7DEF6);
 
-  static const ok = Color(0xFF1C7A4B);
-  static const warn = Color(0xFF93650A);
-  static const danger = Color(0xFFB23B3B);
-  static const info = Color(0xFF0B66C3);
+  static const ok = Color(0xFF285D48);
+  static const warn = Color(0xFF66528A);
+  static const danger = Color(0xFFA83D3D);
+  static const info = Color(0xFF285C78);
 
-  // Whisper borders — approximated as opaque warm-gray since native
-  // BoxDecoration borders don't composite over the page the way a
-  // translucent `rgba(31,27,22,.12)` would on the web's paper background.
-  static const line = Color(0xFFE6E2DA);
-  static const lineStrong = Color(0xFFCFC8BB);
+  // Ink outlines keep native controls consistent with the web cards.
+  static const line = Color(0xFF858B80);
+  static const lineStrong = Color(0xFF343A35);
 
   // Aliases so screens/widgets referencing the previous palette names
   // keep resolving without a mass find/replace across lib/.
@@ -79,7 +78,7 @@ ThemeData buildAppTheme() {
     scaffoldBackgroundColor: AppColors.bg,
   );
   final border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
+    borderRadius: BorderRadius.circular(10),
     borderSide: const BorderSide(color: AppColors.lineStrong),
   );
   return base.copyWith(
@@ -190,8 +189,8 @@ ThemeData buildAppTheme() {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.lineStrong, width: 1.5),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -201,7 +200,7 @@ ThemeData buildAppTheme() {
         minimumSize: const Size(48, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
         ),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         animationDuration: const Duration(milliseconds: 150),
@@ -212,7 +211,7 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.ink,
         minimumSize: const Size(48, 48),
         side: const BorderSide(color: AppColors.lineStrong),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         animationDuration: const Duration(milliseconds: 150),
       ),

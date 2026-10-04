@@ -1,4 +1,4 @@
-import { h, toast } from '../ui.js';
+import { h, toast, icon as uiIcon, pageIntro } from '../ui.js';
 import { Native } from '../bridge.js';
 import { navigate } from '../router.js';
 import { logActivity } from '../db.js';
@@ -10,16 +10,16 @@ export default async function render(root) {
 
   const el = h(`
     <div class="page vpn-page">
-      <div class="topbar"><h1>VPN Connection</h1></div>
+      <div class="topbar"><h1>Koneksi VPN</h1></div>
       <div class="vpn-hero">
         <div id="status-circle" role="status" aria-live="polite">
-          <span id="status-icon" aria-hidden="true" style="font-size:34px;">🔓</span>
-          <span id="status-text" style="font-weight:700;margin-top:8px;">Disconnected</span>
+          <span id="status-icon" aria-hidden="true">${uiIcon('shield')}</span>
+          <span id="status-text" style="font-weight:700;margin-top:8px;">Belum terhubung</span>
         </div>
       </div>
       <button type="button" class="card tappable" id="server-card" style="margin-bottom:12px;">
         <div class="row">
-          <span style="font-size:20px;">🖧</span>
+          <span class="feature-icon">${uiIcon('layers')}</span>
           <span id="server-text" class="grow item-title">Loading…</span>
           <span>›</span>
         </div>
@@ -31,20 +31,21 @@ export default async function render(root) {
             <div id="stat-host" class="vpn-stat">—</div>
           </div>
           <div style="text-align:center;">
-            <div class="muted small">Protocol</div>
+            <div class="muted small">Protokol</div>
             <div id="stat-protocol" class="vpn-stat">—</div>
           </div>
           <div style="text-align:center;">
-            <div class="muted small">Since</div>
+            <div class="muted small">Sejak</div>
             <div id="stat-since" class="vpn-stat">—</div>
           </div>
         </div>
       </div>
-      <p id="vpn-note" class="muted small center vpn-note"></p>
-      <button id="connect-btn" class="btn btn-primary" style="margin-top:18px;">Connect</button>
+      <button id="connect-btn" class="btn btn-primary vpn-connect">Hubungkan VPN</button>
+      <p id="vpn-note" class="muted small vpn-note"></p>
     </div>
   `);
   root.appendChild(el);
+  el.querySelector('.topbar').after(pageIntro('Terhubung dengan tenang.', 'Atur server dan kelola koneksi dari satu tempat.', { art: 'vpn', label: 'KONEKSI PRIBADI', tone: 'intro-mint' }));
 
   const circle = el.querySelector('#status-circle');
   const icon = el.querySelector('#status-icon');
@@ -85,13 +86,10 @@ export default async function render(root) {
   }
 
   function refresh() {
-    icon.textContent = connected ? '🔒' : '🔓';
-    text.textContent = connected ? 'Connected' : 'Disconnected';
-    circle.style.background = connected
-      ? 'linear-gradient(135deg,#20d7e5,#6588ff,#c15aff)'
-      : 'linear-gradient(135deg,#fff,#e7faff,#e3d7ff)';
-    circle.style.color = connected ? '#fff' : 'var(--text-dark)';
-    btn.textContent = connected ? 'Disconnect' : 'Connect';
+    icon.innerHTML = uiIcon(connected ? 'lock' : 'shield');
+    text.textContent = connected ? 'Terhubung' : 'Belum terhubung';
+    circle.classList.toggle('is-connected', connected);
+    btn.textContent = connected ? 'Putuskan koneksi' : 'Hubungkan VPN';
     const label = serverLabel(config);
     serverText.textContent = label
       ? `${config.protocol} · ${label}`

@@ -67,7 +67,11 @@ async function decryptValue(uid, encryptedKey, iv) {
   return new TextDecoder().decode(plain);
 }
 
-/** entry: {id,label,type,format,endpoint,model}. */
+/** entry: {id,label,type,format,endpoint,model}. One `id` (provider_id) can
+ * now hold several rows ("slots") distinguished by `label` — e.g. two
+ * Gemini keys saved as "Gemini" and "Gemini 2" — so multiple keys for the
+ * same provider can be rotated through instead of the newest silently
+ * overwriting the last one. */
 export async function saveCredential(entry, apiKey) {
   const user = await currentUser();
   if (!user) throw new Error('Belum masuk akun.');
@@ -85,21 +89,24 @@ export async function saveCredential(entry, apiKey) {
       iv,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: 'user_id,provider_id' }
+    { onConflict: 'user_id,provider_id,label' }
   );
   if (error) throw error;
 }
 
-/** Metadata only (label/type/format/endpoint/model) — never the key itself. */
-export async function listCredentials() {
+/** Every saved slot, ungrouped — one row per key, even when several share a
+ * provider_id. Used by the management screen (so each slot is individually
+ * removable) and by the rotation logic in ai.js. */
+export async function listCredentialSlots() {
   const user = await currentUser();
   if (!user) return [];
   const { data } = await sb
     .from('api_credentials')
-    .select('provider_id,label,type,format,endpoint,model')
+    .select('id,provider_id,label,type,format,endpoint,model')
     .eq('user_id', user.id)
     .order('created_at');
   return (data || []).map((r) => ({
+    slotId: r.id,
     id: r.provider_id,
     label: r.label,
     type: r.type,
@@ -107,6 +114,22 @@ export async function listCredentials() {
     endpoint: r.endpoint,
     model: r.model,
   }));
+}
+
+/** Metadata only, one entry per provider_id — what the Chat picker and the
+ * management screen show by default. Several key slots behind the same
+ * provider_id collapse into a single entry (`slotCount` says how many),
+ * using the first slot's metadata since every slot of the same provider
+ * shares endpoint/format/model. */
+export async function listCredentials() {
+  const slots = await listCredentialSlots();
+  const grouped = new Map();
+  for (const s of slots) {
+    const existing = grouped.get(s.id);
+    if (existing) existing.slotCount++;
+    else grouped.set(s.id, { id: s.id, label: s.label, type: s.type, format: s.format, endpoint: s.endpoint, model: s.model, slotCount: 1 });
+  }
+  return [...grouped.values()];
 }
 
 export async function hasCredential(providerId) {
@@ -117,27 +140,79 @@ export async function hasCredential(providerId) {
     .select('id')
     .eq('user_id', user.id)
     .eq('provider_id', providerId)
+    .limit(1)
     .maybeSingle();
   return !!data;
 }
 
-/** Decrypts and returns the raw key, fetched fresh each time — never cached
- * in this module longer than the one call site that needs it right now. */
-export async function getCredentialKey(providerId) {
+/** How many key slots are already saved for this provider — used by the
+ * "Add API key" screen to suggest the next slot name (e.g. "Gemini 2"). */
+export async function countCredentialSlots(providerId) {
   const user = await currentUser();
-  if (!user) return null;
-  const { data } = await sb
+  if (!user) return 0;
+  const { count } = await sb
     .from('api_credentials')
-    .select('encrypted_key,iv')
+    .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
-    .eq('provider_id', providerId)
-    .maybeSingle();
-  if (!data) return null;
-  return decryptValue(user.id, data.encrypted_key, data.iv);
+    .eq('provider_id', providerId);
+  return count || 0;
 }
 
+/** Decrypts every slot for this provider, oldest first — ai.js tries them
+ * in this order and rotates to the next one on a rate-limit/quota error. */
+export async function getCredentialKeySlots(providerId) {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data } = await sb
+    .from('api_credentials')
+    .select('id,label,encrypted_key,iv')
+    .eq('user_id', user.id)
+    .eq('provider_id', providerId)
+    .order('created_at');
+  if (!data) return [];
+  return Promise.all(
+    data.map(async (r) => ({
+      slotId: r.id,
+      label: r.label,
+      apiKey: await decryptValue(user.id, r.encrypted_key, r.iv),
+    }))
+  );
+}
+
+/** Decrypts and returns just the first slot's key — for call sites that
+ * only ever need one key (model discovery), not the full rotation list. */
+export async function getCredentialKey(providerId) {
+  const slots = await getCredentialKeySlots(providerId);
+  return slots[0]?.apiKey ?? null;
+}
+
+/** Removes every slot for this provider (the whole entry, as shown in the
+ * Chat picker). */
 export async function removeCredential(providerId) {
   const user = await currentUser();
   if (!user) return;
   await sb.from('api_credentials').delete().eq('user_id', user.id).eq('provider_id', providerId);
+}
+
+/** Removes just one key slot by its row id, leaving any other slots for the
+ * same provider intact. */
+export async function removeCredentialSlot(slotId) {
+  const user = await currentUser();
+  if (!user) return;
+  await sb.from('api_credentials').delete().eq('user_id', user.id).eq('id', slotId);
+}
+
+/** Update only model metadata, preserving the encrypted key and provider
+ * URL — applies to every slot of this provider (they share one model),
+ * which is why this can no longer use `.maybeSingle()` (that throws once a
+ * provider has more than one slot to update). */
+export async function updateCredentialModel(providerId, model) {
+  const user = await currentUser();
+  if (!user) throw new Error('Belum masuk akun.');
+  const { data, error } = await sb.from('api_credentials')
+    .update({ model, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id).eq('provider_id', providerId)
+    .select('provider_id');
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('Provider tidak ditemukan. Muat ulang daftar asisten.');
 }

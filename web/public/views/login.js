@@ -1,15 +1,23 @@
 import { h, toast, logoSvg } from '../ui.js';
 import { signInWithEmail, signUpWithEmail } from '../db.js';
 import { navigate } from '../router.js';
+import { illustration } from '../illustrations.js';
 
 export default async function render(root) {
   let isRegister = false;
   let loading = false;
 
   const el = h(`
-    <div class="page card login-page">
-      <div class="brand-mark login-brand">${logoSvg(84)}<span>AI Hub</span></div>
-      <p class="login-tagline">Satu aplikasi untuk AI, agen, kolaborasi, dan akses aman.</p>
+    <div class="page login-page">
+      <section class="login-showcase">
+        <div class="brand-mark login-brand">${logoSvg(36)}<span>AI Hub</span><span class="edition-tag">RUANG IDEMU</span></div>
+        <h2>Ide besar.<br>Mulai dari sini.</h2>
+        <p>Asisten AI, pekerjaan, dan koneksi.<br>Satu ruang untuk semuanya.</p>
+        ${illustration('chat')}
+        <div class="login-tags"><span>Berpikir</span><span>Berkarya</span><span>Terhubung</span></div>
+      </section>
+      <section class="login-form">
+      <span class="eyebrow">SELAMAT DATANG KEMBALI</span>
       <h1 id="title" class="login-title">Masuk</h1>
       <p class="muted login-intro">Gunakan akun asli agar percakapan dan sesi dokumentasi tersimpan aman untukmu.</p>
       <div class="field">
@@ -25,6 +33,7 @@ export default async function render(root) {
       <button id="toggle" class="btn btn-text login-toggle">
         Belum punya akun? Daftar
       </button>
+      </section>
     </div>
   `);
   root.appendChild(el);

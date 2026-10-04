@@ -336,6 +336,11 @@ end $$;
 -- screen-share, CSV export, or a misconfigured read-only replica).
 -- ---------------------------------------------------------------------------
 
+-- One `provider_id` can now have more than one row ("slot") — e.g. two
+-- Gemini API keys saved as labels "Gemini" and "Gemini 2". The Chat picker
+-- still only shows one entry per provider_id (credentials.js groups them);
+-- ai.js rotates to the next slot automatically when one hits a rate
+-- limit/quota error, instead of the user juggling several "Gemini" chips.
 create table if not exists public.api_credentials (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -349,8 +354,21 @@ create table if not exists public.api_credentials (
   iv text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint api_credentials_unique_provider unique (user_id, provider_id)
+  constraint api_credentials_unique_slot unique (user_id, provider_id, label)
 );
+
+-- Migration for an existing table created before slots existed (safe to
+-- re-run: both steps are no-ops once already applied).
+alter table public.api_credentials drop constraint if exists api_credentials_unique_provider;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'api_credentials_unique_slot'
+  ) then
+    alter table public.api_credentials
+      add constraint api_credentials_unique_slot unique (user_id, provider_id, label);
+  end if;
+end $$;
 
 create index if not exists api_credentials_user_idx on public.api_credentials (user_id);
 

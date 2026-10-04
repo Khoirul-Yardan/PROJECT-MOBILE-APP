@@ -1,4 +1,4 @@
-import { h, header, toast } from '../ui.js';
+import { h, header, toast, pageIntro } from '../ui.js';
 import { Native } from '../bridge.js';
 import { logActivity } from '../db.js';
 
@@ -14,13 +14,7 @@ export default async function render(root) {
 
   const el = h(`<div class="page vpn-config-page"></div>`);
   el.appendChild(header('Server VPN', { back: true }));
-  el.appendChild(
-    h(`
-    <p class="muted small" style="margin-top:-8px;">
-      Field yang diminta menyesuaikan protokol yang kamu pilih.
-    </p>
-  `)
-  );
+  el.appendChild(pageIntro('Siapkan jalur koneksimu.', 'Pilih protokol, lalu isi detail dari penyedia servermu.', { art: 'vpn', label: 'PENGATURAN SERVER', tone: 'intro-mint' }));
 
   const protocolTabs = h('<div id="protocol-tabs" class="tabs"></div>');
   el.appendChild(protocolTabs);

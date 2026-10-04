@@ -1,6 +1,7 @@
-import { h, icon } from '../ui.js';
+import { h, icon, pageIntro } from '../ui.js';
 import { Native } from '../bridge.js';
 import { navigate } from '../router.js';
+import { illustration } from '../illustrations.js';
 
 // Bots are deliberately separate from Chat: each one has its own fixed
 // flow (Bot BPJS: wake word → record → transcript → send to doctor), not a
@@ -10,13 +11,13 @@ const ITEMS = [
   {
     icon: 'bot',
     title: 'Bot BPJS',
-    subtitle: 'Dokumentasi perawat-pasien otomatis, siap format form BPJS',
+    subtitle: 'Dokumentasi percakapan untuk form BPJS',
     available: true,
   },
   {
     icon: 'chat',
     title: 'Bot FAQ',
-    subtitle: 'Jawab pertanyaan umum seputar aplikasi',
+    subtitle: 'Jawaban untuk pertanyaan seputar aplikasi',
     available: false,
   },
   {
@@ -31,10 +32,6 @@ export default async function render(root) {
   const el = h(`
     <div class="page bots-page">
       <div class="topbar"><h1>Bot Hub</h1></div>
-      <p class="muted small">
-        Bot punya alur kerja sendiri (bukan chat bebas) — beda dari provider/agent AI
-        yang dipakai langsung dari tab Chat.
-      </p>
       <div id="grid" class="agent-grid"></div>
       <button type="button" class="card tappable" id="bpjs-review-link" style="margin-top:14px;text-align:left;">
         <div class="row">
@@ -48,6 +45,7 @@ export default async function render(root) {
     </div>
   `);
   root.appendChild(el);
+  el.querySelector('.topbar').after(pageIntro('Bantuan kecil. Dampak besar.', 'Pilih asisten dengan alur kerja yang sesuai kebutuhanmu.', { art: 'bot', label: 'KOLEKSI BOT', tone: 'intro-mint' }));
 
   el.querySelector('#bpjs-review-link').onclick = () => navigate('/bpjs');
 
@@ -55,12 +53,13 @@ export default async function render(root) {
   ITEMS.forEach((item) => {
     const card = h(`
       <button type="button" class="card tappable agent-card">
+        ${illustration(item.available ? 'bot' : item.title === 'Bot FAQ' ? 'providers' : 'chat')}
         <div class="agent-heading">
-          <span class="agent-icon" aria-hidden="true">${icon(item.icon)}</span>
           <span class="pill ${item.available ? 'pill--ok' : 'pill--warn'}">${item.available ? 'Aktif' : 'Segera'}</span>
         </div>
         <h3>${item.title}</h3>
         <p>${item.subtitle}</p>
+        <span class="card-action">${item.available ? 'Buka bot' : 'Info bot'} <span aria-hidden="true">↗</span></span>
       </button>
     `);
     card.onclick = () => openItem(item, el);

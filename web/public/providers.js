@@ -46,8 +46,8 @@ export const KNOWN_PROVIDERS = [
     type: 'chat',
     format: 'gemini',
     endpoint:
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-    model: 'gemini-1.5-flash',
+      'https://generativelanguage.googleapis.com/v1beta/models',
+    model: 'auto',
     // Google has issued two key shapes from aistudio.google.com/apikey:
     // the classic `AIzaSy...` (still valid for existing keys) and the newer
     // `AQ.Ab8R...`-style key (dot-separated, starts with "AQ.").

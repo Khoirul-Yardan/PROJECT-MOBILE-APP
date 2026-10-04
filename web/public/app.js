@@ -2,6 +2,7 @@ import { route, start, navigate } from './router.js';
 import { sb } from './db.js';
 import { Native } from './bridge.js';
 import { mountNavigation } from './navigation.js';
+import { mountMobileViewport } from './mobile.js';
 
 import login from './views/login.js';
 import home from './views/home.js';
@@ -50,6 +51,7 @@ route('/bpjs', guard(bpjsReview));
 
 const root = document.getElementById('app');
 mountNavigation();
+mountMobileViewport();
 start(root, '/home');
 
 // Re-render on sign-in/out so the guard above redirects appropriately, and

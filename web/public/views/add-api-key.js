@@ -1,6 +1,7 @@
-import { h, header, icon, toast } from '../ui.js';
+import { h, header, icon, toast, pageIntro } from '../ui.js';
 import { KNOWN_PROVIDERS, SELF_HOSTED_PROVIDERS, detectProvider, slugify } from '../providers.js';
 import { saveProvider } from '../ai.js';
+import { countCredentialSlots } from '../credentials.js';
 import { logActivity } from '../db.js';
 
 // Two entry points into the same underlying flow: "Hubungkan Provider AI"
@@ -24,23 +25,14 @@ export default async function render(root) {
 
   const el = h(`<div class="page add-api-page"></div>`);
   el.appendChild(header(isAgent ? 'Hubungkan Agent' : 'Hubungkan Provider AI', { back: true }));
-  el.appendChild(
-    h(`
-    <p class="muted small" style="margin-top:-8px;">
-      ${
-        isAgent
-          ? 'Tempel API key agent (Hermes) atau hubungkan gateway self-hosted (OpenClaw) di bawah — agent bisa mengambil aksi, bukan cuma membalas teks.'
-          : 'Tempel API key provider AI (ChatGPT, Claude, Gemini, OpenRouter) — sistem mengenali sendiri jenisnya.'
-      }
-    </p>
-  `)
-  );
+  el.appendChild(pageIntro(isAgent ? 'Undang asisten barumu.' : 'Bawa AI favoritmu.', isAgent ? 'Hubungkan agent untuk membantu tugas sehari-hari.' : 'Siapkan API key dari provider pilihanmu untuk mulai mengobrol.', { art: isAgent ? 'bot' : 'providers', label: 'KONEKSI BARU', tone: isAgent ? 'intro-mint' : '' }));
 
   const pasteCard = h(`
     <div class="card form-panel">
       <div class="field" style="margin-bottom:0;">
         <label for="key-input">Tempel API key</label>
-        <textarea id="key-input" rows="2" placeholder="sk-..., sk-ant-..., AIza..., atau key lainnya" autocomplete="off" spellcheck="false"></textarea>
+        <textarea id="key-input" rows="2" placeholder="Tempel kunci API di sini" autocomplete="off" spellcheck="false"></textarea>
+        <p class="field-hint">${isAgent ? 'Gunakan key agent atau pilih gateway di bawah.' : 'Jenis provider dikenali otomatis dari kunci API.'}</p>
       </div>
       <div id="detect-result" style="margin-top:14px;"></div>
     </div>
@@ -79,7 +71,7 @@ export default async function render(root) {
         </div>
       `));
       const saveBtn = h('<button class="btn btn-primary" style="margin-top:12px;">Simpan &amp; Hubungkan</button>');
-      saveBtn.onclick = () => saveDetected(detected, raw, saveBtn);
+      saveBtn.onclick = () => confirmAndSave(detected, raw, saveBtn);
       wrap.appendChild(saveBtn);
       detectResult.appendChild(wrap);
     } else {
@@ -97,7 +89,7 @@ export default async function render(root) {
       const quickRow = h('<div class="tabs" style="margin-top:12px;"></div>');
       providersForMode.forEach((p) => {
         const chip = h(`<button class="chip">${icon(p.icon)}<span>${p.label}</span></button>`);
-        chip.onclick = () => saveDetected(p, raw, chip);
+        chip.onclick = () => confirmAndSave(p, raw, chip);
         quickRow.appendChild(chip);
       });
       wrap.appendChild(quickRow);
@@ -117,6 +109,40 @@ export default async function render(root) {
     manualSection.innerHTML = '';
     renderDetectResult();
   });
+
+  /** If this provider has no key yet, saves immediately (fast path, same as
+   * before). If it's already connected, asks for a slot name first instead
+   * of silently overwriting the existing key — e.g. a second Gemini key
+   * becomes a "Gemini 2" slot, and Chat still only shows one "Gemini"
+   * entry that rotates between slots when one hits a rate limit. */
+  async function confirmAndSave(entry, rawKey, triggerEl) {
+    const existingCount = await countCredentialSlots(entry.id);
+    if (existingCount === 0) {
+      return saveDetected(entry, rawKey, triggerEl);
+    }
+    detectResult.innerHTML = '';
+    const suggested = `${entry.label} ${existingCount + 1}`;
+    const wrap = h(`
+      <div class="card form-panel">
+        <p class="muted small" style="margin-top:0;">
+          ${entry.label} sudah terhubung (${existingCount} kunci). Simpan kunci ini sebagai
+          slot baru — kalau salah satu kena limit, Chat otomatis beralih ke slot lain,
+          tetap tampil sebagai satu "${entry.label}".
+        </p>
+        <div class="field">
+          <label for="slot-label">Nama slot</label>
+          <input id="slot-label" value="${suggested}" />
+        </div>
+        <button id="slot-save" class="btn btn-primary">Simpan sebagai slot baru</button>
+      </div>
+    `);
+    const slotSaveBtn = wrap.querySelector('#slot-save');
+    slotSaveBtn.onclick = () => {
+      const label = wrap.querySelector('#slot-label').value.trim() || suggested;
+      saveDetected({ ...entry, label }, rawKey, slotSaveBtn);
+    };
+    detectResult.appendChild(wrap);
+  }
 
   async function saveDetected(entry, rawKey, triggerEl) {
     if (triggerEl) {

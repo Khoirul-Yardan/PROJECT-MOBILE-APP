@@ -380,17 +380,25 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
           children: [
             if (_stage != _Stage.review) ...[
               const SizedBox(height: 16),
-              const Center(
-                child: Text(
-                  'Jarvis',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Center(
-                child: Text(
-                  'Asisten suara untuk dokumentasi klinis',
-                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              HubCard(
+                fill: AppColors.mint,
+                child: const Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('ASISTEN DOKUMENTASI', style: TextStyle(fontSize: 10, letterSpacing: 1.4)),
+                          SizedBox(height: 10),
+                          Text('Halo, Jarvis.', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700)),
+                          SizedBox(height: 6),
+                          Text('Asisten suara untuk dokumentasi klinis', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Icon(Icons.smart_toy_outlined, size: 48, color: AppColors.accentInk),
+                  ],
                 ),
               ),
               const SizedBox(height: 28),
@@ -400,16 +408,17 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.gradient,
+                    color: AppColors.butter,
                     border: Border.all(
-                      color: const Color(0xFFE1EBFF),
-                      width: 8,
+                      color: AppColors.lineStrong,
+                      width: 1.5,
                     ),
+                    boxShadow: const [BoxShadow(color: AppColors.lineStrong, offset: Offset(0, 4))],
                   ),
                   child: const Icon(
                     Icons.mic_none_rounded,
                     size: 46,
-                    color: Colors.white,
+                    color: AppColors.accentInk,
                   ),
                 ),
               ),

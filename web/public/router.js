@@ -75,6 +75,7 @@ async function render(root, fallback) {
 
   current = result;
   root.replaceChildren(...container.childNodes);
+  window.scrollTo(0, 0);
 }
 
 export function navigate(path) {

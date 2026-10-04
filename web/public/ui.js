@@ -1,16 +1,31 @@
 // Tiny render/DOM helpers shared by every view — no framework, just enough
 // sugar to keep the view files readable.
 
+import { illustration } from './illustrations.js';
+
 export function h(html) {
   const t = document.createElement('template');
   t.innerHTML = html.trim();
   return t.content.firstElementChild;
 }
 
+export function pageIntro(title, description, { art = 'providers', label = 'RUANG KERJA', tone = '' } = {}) {
+  return h(`<section class="page-intro ${tone}">
+    <div class="intro-copy"><span class="eyebrow">${escapeHtml(label)}</span>
+    <h2>${escapeHtml(title)}</h2><p>${escapeHtml(description)}</p></div>
+    ${illustration(art)}
+  </section>`);
+}
+
+export function emptyState(title, description, art = 'providers') {
+  return h(`<div class="empty-state illustrated-empty">${illustration(art)}
+    <h3>${escapeHtml(title)}</h3><p>${escapeHtml(description)}</p></div>`);
+}
+
 export function header(title, { back = false } = {}) {
   const el = h(`
     <div class="topbar">
-      ${back ? '<button class="btn-text" id="back-btn" aria-label="Kembali" style="font-size:20px;padding:0 8px 0 0;">←</button>' : ''}
+      ${back ? '<button class="icon-button back-button" id="back-btn" aria-label="Kembali"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13"/></svg></button>' : ''}
       <h1 style="flex:1">${title}</h1>
     </div>
   `);
@@ -40,11 +55,11 @@ export function initial(name) {
 // Connected nodes mirror the native HubLogo painter.
 export function logoSvg(size = 44) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" role="img" aria-label="AI Hub">
-    <path d="M20 48 64 12M20 84 74 42M44 64 76 84" stroke="#0b66c3" stroke-width="5" stroke-linecap="round"/>
-    <g stroke="#0a4f97" stroke-width="1.5">
-      <circle cx="64" cy="12" r="10" fill="#0b66c3"/><circle cx="20" cy="48" r="10" fill="#0b66c3"/>
-      <circle cx="74" cy="42" r="10" fill="#0b66c3"/><circle cx="44" cy="64" r="10" fill="#0b66c3"/>
-      <circle cx="20" cy="84" r="10" fill="#0b66c3"/><circle cx="76" cy="84" r="10" fill="#0b66c3"/>
+    <path d="M20 48 64 12M20 84 74 42M44 64 76 84" stroke="#286a64" stroke-width="5" stroke-linecap="round"/>
+    <g stroke="#1c504b" stroke-width="1.5">
+      <circle cx="64" cy="12" r="10" fill="#286a64"/><circle cx="20" cy="48" r="10" fill="#286a64"/>
+      <circle cx="74" cy="42" r="10" fill="#286a64"/><circle cx="44" cy="64" r="10" fill="#286a64"/>
+      <circle cx="20" cy="84" r="10" fill="#286a64"/><circle cx="76" cy="84" r="10" fill="#286a64"/>
     </g></svg>`;
 }
 

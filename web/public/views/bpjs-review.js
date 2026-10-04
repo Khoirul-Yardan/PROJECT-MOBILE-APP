@@ -1,4 +1,4 @@
-import { h, header, toast } from '../ui.js';
+import { h, header, toast, pageIntro, emptyState } from '../ui.js';
 import { fetchNurseBpjsSessions, fetchBpjsDocument, fetchBpjsTranscript, markBpjsSessionSent, watchBpjsSessions } from '../db.js';
 
 const STATUS_LABEL = {
@@ -23,6 +23,7 @@ const STATUS_TONE = {
 export default async function render(root) {
   const el = h(`<div class="page bpjs-review-page"></div>`);
   el.appendChild(header('Riwayat Bot BPJS', { back: true }));
+  el.appendChild(pageIntro('Catatan yang tertata.', 'Temukan kembali sesi dan dokumentasi untuk diteruskan ke dokter.', { art: 'bot', label: 'DOKUMENTASI BPJS', tone: 'intro-mint' }));
   el.appendChild(
     h(`
     <p class="muted small" style="margin-top:-8px;">
@@ -44,7 +45,7 @@ export default async function render(root) {
     listEl.innerHTML = '';
     if (sessions.length === 0) {
       listEl.appendChild(
-        h('<div class="empty-state">Belum ada sesi Bot BPJS. Buka Bot Hub → Bot BPJS di aplikasi untuk mulai merekam.</div>')
+        emptyState('Sesi pertamamu menunggu.', 'Buka Bot Hub → Bot BPJS di aplikasi untuk mulai merekam.', 'bot')
       );
       return;
     }
