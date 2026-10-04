@@ -16,17 +16,17 @@ class GradientButton extends StatelessWidget {
   Widget build(BuildContext context) => Material(
     color: Colors.transparent,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(8),
       side: BorderSide.none,
     ),
     child: Ink(
       decoration: BoxDecoration(
-        gradient: AppColors.gradient,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.accent,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 50),
           child: Padding(
@@ -42,7 +42,7 @@ class GradientButton extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.surface,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       fontSize: 15,
                     ),
                   ),
@@ -80,13 +80,20 @@ class HubCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: fill ?? AppColors.surface,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(color: AppColors.line),
+      // Layered low-opacity shadow (Notion's card elevation) instead of a
+      // single hard drop-shadow — depth that's felt rather than seen.
       boxShadow: const [
         BoxShadow(
-          color: Color(0x0D244B95),
-          blurRadius: 22,
-          offset: Offset(0, 5),
+          color: Color(0x0A1F1B16),
+          blurRadius: 20,
+          offset: Offset(0, 8),
+        ),
+        BoxShadow(
+          color: Color(0x061F1B16),
+          blurRadius: 4,
+          offset: Offset(0, 1),
         ),
       ],
     ),
@@ -115,7 +122,7 @@ class IconTile extends StatelessWidget {
     height: size,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(11),
       color: solid ? color : color.withValues(alpha: .10),
       border: solid ? null : Border.all(color: AppColors.line),
     ),
@@ -152,13 +159,13 @@ class FilterTabs extends StatelessWidget {
             child: Material(
               color: selected == i ? AppColors.accent : AppColors.surfaceSunken,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(999),
                 side: BorderSide(
                   color: selected == i ? AppColors.accent : AppColors.line,
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(999),
                 onTap: () => onSelected(i),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -169,8 +176,8 @@ class FilterTabs extends StatelessWidget {
                     labels[i],
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: .3,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: .2,
                       color: selected == i
                           ? AppColors.surface
                           : AppColors.inkMuted,

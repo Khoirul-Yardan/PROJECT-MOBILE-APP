@@ -40,11 +40,11 @@ export function initial(name) {
 // Connected nodes mirror the native HubLogo painter.
 export function logoSvg(size = 44) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" role="img" aria-label="AI Hub">
-    <path d="M20 48 64 12M20 84 74 42M44 64 76 84" stroke="#2056e0" stroke-width="5" stroke-linecap="round"/>
-    <g stroke="#15409e" stroke-width="1.5">
-      <circle cx="64" cy="12" r="10" fill="#2056e0"/><circle cx="20" cy="48" r="10" fill="#2056e0"/>
-      <circle cx="74" cy="42" r="10" fill="#2056e0"/><circle cx="44" cy="64" r="10" fill="#2056e0"/>
-      <circle cx="20" cy="84" r="10" fill="#2056e0"/><circle cx="76" cy="84" r="10" fill="#2056e0"/>
+    <path d="M20 48 64 12M20 84 74 42M44 64 76 84" stroke="#0b66c3" stroke-width="5" stroke-linecap="round"/>
+    <g stroke="#0a4f97" stroke-width="1.5">
+      <circle cx="64" cy="12" r="10" fill="#0b66c3"/><circle cx="20" cy="48" r="10" fill="#0b66c3"/>
+      <circle cx="74" cy="42" r="10" fill="#0b66c3"/><circle cx="44" cy="64" r="10" fill="#0b66c3"/>
+      <circle cx="20" cy="84" r="10" fill="#0b66c3"/><circle cx="76" cy="84" r="10" fill="#0b66c3"/>
     </g></svg>`;
 }
 

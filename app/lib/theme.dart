@@ -1,28 +1,32 @@
 import 'package:flutter/material.dart';
 
-/// Confident solid blue accent with warm neutral surfaces, shared with the
-/// WebView. No gradient/purple decoration — a single accent hue plus
-/// semantic status colors (amber/green/red) is the whole palette.
+/// Warm paper surfaces with a single confident blue accent — adapted from
+/// Notion's design language (warm neutrals, whisper borders, layered soft
+/// shadows) to match web/public/style.css exactly. No gradient/purple
+/// decoration; depth comes from shadow + hairline border, not hue shift.
 class AppColors {
-  static const bg = Color(0xFFF6F8FC);
+  static const bg = Color(0xFFFAF9F6);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceSunken = Color(0xFFEEF2FA);
+  static const surfaceSunken = Color(0xFFF1EFEA);
 
-  static const ink = Color(0xFF14192B);
-  static const inkMuted = Color(0xFF5B6479);
-  static const inkFaint = Color(0xFF7B869C);
+  static const ink = Color(0xFF1F1B16);
+  static const inkMuted = Color(0xFF6B6358);
+  static const inkFaint = Color(0xFF8F887C);
 
-  static const accent = Color(0xFF2056E0);
-  static const accentInk = Color(0xFF15409E);
-  static const accentTint = Color(0xFFEAEFFC);
+  static const accent = Color(0xFF0B66C3);
+  static const accentInk = Color(0xFF0A4F97);
+  static const accentTint = Color(0xFFEAF3FC);
 
-  static const ok = Color(0xFF15804F);
-  static const warn = Color(0xFF9A6400);
-  static const danger = Color(0xFFC53350);
-  static const info = Color(0xFF2056E0);
+  static const ok = Color(0xFF1C7A4B);
+  static const warn = Color(0xFF93650A);
+  static const danger = Color(0xFFB23B3B);
+  static const info = Color(0xFF0B66C3);
 
-  static const line = Color(0xFFE3E7F0);
-  static const lineStrong = Color(0xFFC7CEDE);
+  // Whisper borders — approximated as opaque warm-gray since native
+  // BoxDecoration borders don't composite over the page the way a
+  // translucent `rgba(31,27,22,.12)` would on the web's paper background.
+  static const line = Color(0xFFE6E2DA);
+  static const lineStrong = Color(0xFFCFC8BB);
 
   // Aliases so screens/widgets referencing the previous palette names
   // keep resolving without a mass find/replace across lib/.
@@ -75,7 +79,7 @@ ThemeData buildAppTheme() {
     scaffoldBackgroundColor: AppColors.bg,
   );
   final border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(8),
     borderSide: const BorderSide(color: AppColors.lineStrong),
   );
   return base.copyWith(
@@ -186,7 +190,7 @@ ThemeData buildAppTheme() {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.line),
       ),
     ),
@@ -197,10 +201,9 @@ ThemeData buildAppTheme() {
         minimumSize: const Size(48, 48),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppColors.ink),
+          borderRadius: BorderRadius.circular(8),
         ),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         animationDuration: const Duration(milliseconds: 150),
       ),
     ),
@@ -209,8 +212,8 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.ink,
         minimumSize: const Size(48, 48),
         side: const BorderSide(color: AppColors.lineStrong),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         animationDuration: const Duration(milliseconds: 150),
       ),
     ),
@@ -218,7 +221,7 @@ ThemeData buildAppTheme() {
       style: TextButton.styleFrom(
         foregroundColor: AppColors.accentInk,
         minimumSize: const Size(44, 44),
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
     dividerTheme: const DividerThemeData(color: AppColors.line),
