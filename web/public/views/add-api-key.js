@@ -79,7 +79,7 @@ export default async function render(root) {
         </div>
       `));
       const saveBtn = h('<button class="btn btn-primary" style="margin-top:12px;">Simpan &amp; Hubungkan</button>');
-      saveBtn.onclick = () => saveDetected(detected, raw);
+      saveBtn.onclick = () => saveDetected(detected, raw, saveBtn);
       wrap.appendChild(saveBtn);
       detectResult.appendChild(wrap);
     } else {
@@ -97,7 +97,7 @@ export default async function render(root) {
       const quickRow = h('<div class="tabs" style="margin-top:12px;"></div>');
       providersForMode.forEach((p) => {
         const chip = h(`<button class="chip">${icon(p.icon)}<span>${p.label}</span></button>`);
-        chip.onclick = () => saveDetected(p, raw);
+        chip.onclick = () => saveDetected(p, raw, chip);
         quickRow.appendChild(chip);
       });
       wrap.appendChild(quickRow);
@@ -118,11 +118,25 @@ export default async function render(root) {
     renderDetectResult();
   });
 
-  async function saveDetected(entry, rawKey) {
-    await saveProvider(entry, rawKey);
-    await logActivity({ category: 'AI', title: 'API terhubung', subtitle: entry.label, badge: 'Success' });
-    toast(`${entry.label} terhubung.`);
-    history.back();
+  async function saveDetected(entry, rawKey, triggerEl) {
+    if (triggerEl) {
+      triggerEl.disabled = true;
+      triggerEl.dataset.originalText = triggerEl.textContent;
+      triggerEl.textContent = 'Menyimpan…';
+    }
+    try {
+      await saveProvider(entry, rawKey);
+      await logActivity({ category: 'AI', title: 'API terhubung', subtitle: entry.label, badge: 'Success' });
+      toast(`${entry.label} terhubung.`);
+      history.back();
+    } catch (e) {
+      console.error('Gagal menyimpan kredensial:', e);
+      toast(`Gagal menyimpan: ${e.message || 'Periksa koneksi dan coba lagi.'}`);
+      if (triggerEl) {
+        triggerEl.disabled = false;
+        triggerEl.textContent = triggerEl.dataset.originalText;
+      }
+    }
   }
 
   function renderManualForm(rawKey) {
@@ -175,7 +189,7 @@ export default async function render(root) {
         endpoint,
         model: model || undefined,
       };
-      await saveDetected(entry, rawKey);
+      await saveDetected(entry, rawKey, manualSection.querySelector('#manual-save'));
     };
   }
 
@@ -243,7 +257,7 @@ export default async function render(root) {
           return;
         }
         const entry = { id: p.id, label: p.label, type: p.type, format: p.format, endpoint: url };
-        await saveDetected(entry, token);
+        await saveDetected(entry, token, card.querySelector(`#${p.id}-save`));
       };
       el.appendChild(card);
     });
