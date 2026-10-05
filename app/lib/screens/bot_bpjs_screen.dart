@@ -31,18 +31,51 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
   String? _sessionId;
   String _liveTranscript = '';
   final List<Map<String, String>> _segments = []; // {speaker, text}
-  Map<String, dynamic>? _draft;
   String? _providerLabel;
   String? _errorMessage;
   bool _exporting = false;
+  bool _restartingSpeech = false;
+  final Map<String, TextEditingController> _draftControllers = {};
+
+  /// The draft as currently edited in the review screen — export/copy reads
+  /// this instead of `_draft` directly, so a nurse's corrections are what
+  /// actually gets sent, not the AI's first pass.
+  Map<String, dynamic> get _editedDraft => {
+    for (final entry in _draftControllers.entries) entry.key: entry.value.text,
+  };
 
   @override
   void dispose() {
     _speech.stop();
+    for (final c in _draftControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _sayHalo() async {
+  /// Restarting the recognizer immediately (synchronously, back-to-back
+  /// with it just stopping) is what tends to produce 'error_client' on
+  /// Android — a short delay plus a re-entrancy guard (two overlapping
+  /// restart triggers, e.g. onStatus *and* onError firing for the same
+  /// pause) avoids hammering it.
+  void _restartListening() {
+    if (_restartingSpeech) return;
+    _restartingSpeech = true;
+    Future.delayed(const Duration(milliseconds: 350), () {
+      _restartingSpeech = false;
+      if (!mounted || _stage != _Stage.recording) return;
+      _speech.listen(
+        onResult: _onSpeechResult,
+        listenOptions: stt.SpeechListenOptions(
+          partialResults: true,
+          cancelOnError: false,
+          localeId: 'id_ID',
+        ),
+      );
+    });
+  }
+
+  Future<void> _startSession() async {
     setState(() {
       _stage = _Stage.listening;
       _errorMessage = null;
@@ -53,18 +86,30 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
           // The platform speech engine stops itself after a pause; restart
           // it so a real multi-turn conversation keeps being captured
           // instead of the session silently going deaf after one utterance.
-          _speech.listen(
-            onResult: _onSpeechResult,
-            listenOptions: stt.SpeechListenOptions(
-              partialResults: true,
-              cancelOnError: false,
-              localeId: 'id_ID',
-            ),
-          );
+          if (mounted && _errorMessage != null) setState(() => _errorMessage = null);
+          _restartListening();
         }
       },
       onError: (error) {
         if (!mounted) return;
+        // Once recording has moved on to processing/review/idle, a trailing
+        // STT event (the engine can fire onError slightly after stop()
+        // returns) is no longer relevant to anything on screen — drop it
+        // instead of leaving a stale "error" banner on a screen that has
+        // nothing to do with the microphone anymore.
+        if (_stage != _Stage.recording && _stage != _Stage.listening) return;
+        // These fire naturally on every pause (or around a listen→relisten
+        // restart, which 'error_client' usually means — the engine was
+        // asked to start again while still tearing down the previous
+        // session) — onStatus above (or the restart itself) already
+        // recovers, so surfacing them as a red error would wrongly read as
+        // the session being broken when it's just a normal hiccup.
+        if (error.errorMsg == 'error_speech_timeout' ||
+            error.errorMsg == 'error_no_match' ||
+            error.errorMsg == 'error_client') {
+          if (_stage == _Stage.recording) _restartListening();
+          return;
+        }
         setState(() {
           _errorMessage = 'Mikrofon/STT error: ${error.errorMsg}';
         });
@@ -200,7 +245,10 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
     if (_liveTranscript.trim().isNotEmpty) {
       _segments.add({'speaker': 'perawat', 'text': _liveTranscript.trim()});
     }
-    setState(() => _stage = _Stage.processing);
+    setState(() {
+      _stage = _Stage.processing;
+      _errorMessage = null;
+    });
 
     if (_segments.isEmpty) {
       if (!mounted) return;
@@ -269,7 +317,12 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
       };
       _providerLabel = null;
     }
-    _draft = draft;
+    for (final c in _draftControllers.values) {
+      c.dispose();
+    }
+    _draftControllers
+      ..clear()
+      ..addEntries(draft.entries.map((e) => MapEntry(e.key, TextEditingController(text: '${e.value}'))));
 
     await BpjsSessionRepo.saveDocumentation(
       sessionId: sessionId,
@@ -295,7 +348,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
       dokterInstansi: _doctorInstansi,
       pasienNama: _patientName ?? 'Pasien',
       createdAt: _sessionCreatedAt ?? DateTime.now(),
-      structured: _draft ?? const {},
+      structured: _editedDraft,
       transcript: _segments,
     );
     await Clipboard.setData(ClipboardData(text: text));
@@ -314,7 +367,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
           dokterInstansi: _doctorInstansi,
           pasienNama: _patientName ?? 'Pasien',
           createdAt: createdAt,
-          structured: _draft ?? const {},
+          structured: _editedDraft,
           transcript: _segments,
         );
         await BpjsExport.shareFile(
@@ -328,7 +381,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
           dokterInstansi: _doctorInstansi,
           pasienNama: _patientName ?? 'Pasien',
           createdAt: createdAt,
-          structured: _draft ?? const {},
+          structured: _editedDraft,
           transcript: _segments,
         );
         await BpjsExport.shareFile(
@@ -364,13 +417,16 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
     _sessionCreatedAt = null;
     _liveTranscript = '';
     _segments.clear();
-    _draft = null;
+    for (final c in _draftControllers.values) {
+      c.dispose();
+    }
+    _draftControllers.clear();
     _errorMessage = null;
   });
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Jarvis / Bot BPJS')),
+    appBar: AppBar(title: const Text('Bot BPJS')),
     body: SafeArea(
       top: false,
       child: SingleChildScrollView(
@@ -390,9 +446,9 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                         children: [
                           Text('ASISTEN DOKUMENTASI', style: TextStyle(fontSize: 10, letterSpacing: 1.4)),
                           SizedBox(height: 10),
-                          Text('Halo, Jarvis.', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700)),
+                          Text('Bot BPJS', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700)),
                           SizedBox(height: 6),
-                          Text('Asisten suara untuk dokumentasi klinis', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                          Text('Nyalakan mikrofon untuk mulai mendokumentasikan sesi', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                         ],
                       ),
                     ),
@@ -403,25 +459,37 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
               ),
               const SizedBox(height: 28),
               Center(
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.butter,
-                    border: Border.all(
-                      color: AppColors.lineStrong,
-                      width: 1.5,
+                child: GestureDetector(
+                  onTap: (_stage == _Stage.idle || _stage == _Stage.denied) ? _startSession : null,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.butter,
+                      border: Border.all(
+                        color: AppColors.lineStrong,
+                        width: 1.5,
+                      ),
+                      boxShadow: const [BoxShadow(color: AppColors.lineStrong, offset: Offset(0, 4))],
                     ),
-                    boxShadow: const [BoxShadow(color: AppColors.lineStrong, offset: Offset(0, 4))],
-                  ),
-                  child: const Icon(
-                    Icons.mic_none_rounded,
-                    size: 46,
-                    color: AppColors.accentInk,
+                    child: const Icon(
+                      Icons.mic_none_rounded,
+                      size: 46,
+                      color: AppColors.accentInk,
+                    ),
                   ),
                 ),
               ),
+              if (_stage == _Stage.idle || _stage == _Stage.denied) ...[
+                const SizedBox(height: 10),
+                const Center(
+                  child: Text(
+                    'Tekan untuk mulai merekam',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                ),
+              ],
               const SizedBox(height: 30),
             ],
             HubCard(
@@ -467,10 +535,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
             ],
             const SizedBox(height: 20),
             if (_stage == _Stage.idle || _stage == _Stage.denied)
-              GradientButton(
-                label: 'Ucapkan "Halo Jarvis"',
-                onPressed: _sayHalo,
-              )
+              const SizedBox.shrink()
             else if (_stage == _Stage.listening)
               const Center(child: CircularProgressIndicator())
             else if (_stage == _Stage.recording) ...[
@@ -568,11 +633,16 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                 'Bagikan draf ini langsung ke dokter — salin teksnya, atau kirim sebagai file PDF/DOCX lewat WhatsApp, email, atau aplikasi lain di HP Anda.',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 4),
+              const Text(
+                'Benarkan tulisannya langsung di sini sebelum disalin atau diekspor.',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontStyle: FontStyle.italic),
+              ),
+              const SizedBox(height: 10),
               HubCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: (_draft?.entries ?? const <MapEntry<String, dynamic>>[])
+                  children: _draftControllers.entries
                       .map(
                         (e) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),
@@ -586,8 +656,17 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                                   color: AppColors.textMuted,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text('${e.value}', style: const TextStyle(fontSize: 13)),
+                              const SizedBox(height: 4),
+                              TextField(
+                                controller: e.value,
+                                maxLines: null,
+                                style: const TextStyle(fontSize: 13),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.all(10),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -644,7 +723,7 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
   );
 
   String get _statusLabel => switch (_stage) {
-    _Stage.idle => 'Menunggu wake word',
+    _Stage.idle => 'Siap merekam',
     _Stage.listening => 'Menyiapkan mikrofon...',
     _Stage.recording => 'Merekam sesi...',
     _Stage.processing => 'Memproses (STT + LLM + simpan ke database)...',

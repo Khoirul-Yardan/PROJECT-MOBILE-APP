@@ -1,295 +1,243 @@
 # Rincian Sistem — AI Hub (Aplikasi Mobile)
 
-> Dokumen ini merangkum **seluruh sistem** dari tiga PRD yang ada di folder `PRD/` menjadi satu penjelasan teknis yang koheren, ditambah **kajian pertimbangan arsitektur hybrid Flutter + WebView** secara mendalam (kelebihan, kekurangan, alternatif, dan rekomendasi). Dokumen ini adalah dokumen *pembacaan*, bukan pengganti PRD — jika ada perbedaan detail fitur, PRD tetap acuan utama.
+> Dokumen ini merangkum **kondisi sistem yang sudah dibangun dan berjalan**, ditulis ulang per **5 Oktober 2026** dengan membaca kode sumber langsung (`app/lib/`, `web/public/`, `app/supabase/schema.sql`) — bukan dari PRD awal lagi. Dokumen aslinya (lihat riwayat git) ditulis saat proyek masih tahap *UI preview* murni native tanpa backend; sejak itu arsitekturnya **sudah berubah signifikan** dari rencana awal, dan beberapa fitur yang direncanakan (Friend System, wake word "Halo Jarvis", TTS, alur review-dokter-berbasis-akun) **sengaja dihapus total** atas keputusan eksplisit pemilik produk setelah diuji — bukan belum selesai dikerjakan.
+>
+> Untuk alur teknis step-by-step + diagram Mermaid, lihat `docs/diagram-alur.md` — dokumen ini fokus ke gambaran sistem secara keseluruhan dan alasan di balik keputusan arsitektur.
 
-Sumber:
-- `PRD/PRD-Hub-Multi-Provider-AI-Agent-VPN.md` — produk umum (hub AI/agent/VPN)
-- `PRD/PRD-AI-Hub-Jarvis-BPJS.md` — revisi gabungan + modul Bot BPJS/Jarvis (Proyek Akhir)
-- `PRD/PRD-Dokumentasi-Percakapan-Perawat-Pasien.md` — PRD akademik murni (Proyek Akhir, PENS PSDKU Lamongan)
-- `app/` — codebase Flutter saat ini (UI preview, belum terhubung backend penuh)
-
----
-
-> **Update status implementasi (terbaru menggantikan asumsi di dokumen ini):**
-> Arsitektur hybrid yang dibahas di §4 **sudah diimplementasikan penuh**, dengan
-> keputusan akhir yang lebih agresif dari rekomendasi awal dokumen ini: hampir
-> seluruh UI (Login, Home, Chat, Bot/Agent Hub, Friends, Settings, Profile, VPN
-> status) sekarang **berjalan di layer web** (`web/`, kontainer Docker nginx
-> terpisah, di-load lewat satu `WebView` persisten), sehingga submit ke
-> Play Store/App Store cukup sekali dan pembaruan berikutnya tidak perlu rilis
-> ulang. Native Flutter (`app/lib/screens/web_shell_screen.dart`) kini jadi
-> cangkang tipis: bottom navigation asli + jembatan (bridge) dua arah ke web.
-> **Tetap 100% native** (sesuai batasan wajib di §3.1 dan §4.5 dokumen ini):
-> mikrofon/wake-word/TTS Bot BPJS (`bot_bpjs_screen.dart`), penyimpanan
-> kredensial API key & VPN (Keystore/Keychain), dan aksi koneksi VPN itu
-> sendiri. Detail kontrak bridge, tabel trade-off, dan catatan risiko App
-> Store ada di `web/README.md` dan `app/README.md`. Bagian lain dokumen ini
-> (ringkasan fitur PRD, model data, risiko akademik) tetap berlaku sebagai
-> acuan produk.
+Sumber PRD asli (masih relevan sebagai konteks tujuan produk, **tidak lagi akurat soal fitur spesifik** — lihat §2 untuk daftar fitur yang benar-benar berjalan):
+- `PRD/PRD-Hub-Multi-Provider-AI-Agent-VPN.md`
+- `PRD/PRD-AI-Hub-Jarvis-BPJS.md`
+- `PRD/PRD-Dokumentasi-Percakapan-Perawat-Pasien.md`
 
 ---
 
 ## 1. Gambaran Umum Sistem
 
-**AI Hub** adalah aplikasi mobile cross-platform (Android & iOS, dibangun dengan Flutter) yang berfungsi sebagai **hub terpusat** untuk:
+**AI Hub** adalah aplikasi mobile Android (dibangun dengan Flutter sebagai cangkang tipis + WebView) yang berfungsi sebagai **hub terpusat** untuk:
 
-1. **Chat multi-provider AI** — satu antarmuka untuk berbicara dengan berbagai provider (OpenAI/ChatGPT, Claude, Gemini, dll.), tinggal berpindah provider tanpa ganti aplikasi.
-2. **AI Agent Hub** — menjalankan agent otonom (riset, coding, data, planner, dll.) yang bisa memanfaatkan provider AI yang sudah dikonfigurasi dan (bila perlu) VPN untuk mengakses server pribadi.
-3. **Bot Hub** — bot dengan skenario percakapan/voice yang sudah dipaketkan (berbeda dari agent bebas), termasuk **Bot BPJS "Jarvis"**.
-4. **VPN terintegrasi** dengan protokol yang bisa diganti (WireGuard, OpenVPN, dst.).
-5. **Login, profil, dan Friend System** — pertemanan antar pengguna (terutama perawat ↔ dokter) sehingga hasil kerja bot/agent bisa diarahkan ke orang yang tepat.
-6. **Activity Log** terpusat tersimpan di Supabase, untuk audit dan (untuk modul Bot BPJS) evaluasi akademik.
+1. **Chat multi-provider & multi-agent AI** — satu antarmuka untuk ChatGPT, Claude, Gemini, OpenRouter (provider), serta Hermes dan OpenClaw (agent) — setara, bisa dipilih bebas, tanpa hierarki "agent vs provider" yang dibeda-bedakan di Chat.
+2. **Universal API key** — pengguna tempel satu API key apa pun, sistem mengenali sendiri vendornya dari bentuk key-nya (atau quick-pick manual jika tidak dikenali). Bisa menyimpan **lebih dari satu key untuk provider yang sama** (mis. 2 akun Gemini gratis) — sistem otomatis berpindah key kalau satu kena limit, tanpa pengguna harus bolak-balik ganti chip di Chat.
+3. **VPN** — WireGuard dengan tunnel jaringan **sungguhan** (via `VpnService` Android, bukan simulasi); OpenVPN/SSH baru sebatas form konfigurasi (jujur ditampilkan ke pengguna sebagai belum punya tunnel nyata).
+4. **Bot BPJS** — asisten suara untuk mendokumentasikan percakapan perawat-pasien: tekan mikrofon, bicara, dapat draf dokumentasi dari LLM yang **bisa diedit langsung** di layar, lalu disalin/diekspor (PDF/DOCX) untuk dikirim ke dokter lewat kanal apa pun yang perawat pakai sehari-hari (WhatsApp, email, cetak).
+5. **Riwayat Chat** — percakapan tersimpan permanen per AI/agent, bisa diakses lagi lewat halaman Riwayat meski sempat pindah menu atau menutup aplikasi.
+6. **Login & profil** sederhana (email/password via Supabase Auth), dan **Activity Log** append-only untuk jejak aktivitas.
 
-Produk ini menggabungkan dua tujuan sekaligus secara *win-win*:
-- **Tujuan produk umum**: aplikasi produktivitas AI serbaguna.
-- **Tujuan akademik (Proyek Akhir)**: modul **Bot BPJS/Jarvis** adalah implementasi nyata dari topik PA pemilik produk — *"Pengembangan Aplikasi Mobile untuk Otomatisasi Dokumentasi Percakapan Perawat-Pasien sebagai Pendukung Verifikasi Diagnosis Pasien Menggunakan Speech-to-Text dan Large Language Model"* (studi kasus RS Ahmad Yani Surabaya, PENS PSDKU Lamongan).
+**Yang sudah tidak ada** (dihapus total, bukan belum dibangun): Friend System (pertemanan antar pengguna), AI Agent Hub bergaya "jalankan task card simulasi" (diganti pendekatan "agent = chip setara provider di Chat"), wake word "Halo Jarvis" + Text-to-Speech, dan alur review-dokter-via-akun (`matches_bpjs_form`/`needs_revision`).
 
-Bot BPJS berjalan **di atas** infrastruktur umum AI Hub (autentikasi, friend list, chat, logging) sehingga PA tidak perlu membangun aplikasi terpisah, dan produk umum mendapat fitur nyata bernilai tinggi.
+Produk ini tetap menggabungkan dua tujuan: **produk produktivitas AI serbaguna** (chat, agent, VPN) dan **modul akademik Bot BPJS** (dokumentasi klinis berbasis STT + LLM) — tapi jalur kerja Bot BPJS sekarang jauh lebih sederhana daripada rencana awal: tidak butuh akun dokter, tidak butuh pertemanan, tidak ada verdict/approval — perawat merekam, mengedit draf, lalu mengirim sendiri seperti mengisi dan membagikan form rujukan kertas.
 
 ---
 
-## 2. Ruang Lingkup Fitur
+## 2. Ruang Lingkup Fitur (Kondisi Riil)
 
 ### 2.1 Fitur umum (produk)
-| Modul | Deskripsi singkat |
-|---|---|
-| Onboarding & Login | Setup API key AI, kredensial VPN, login/registrasi email+password, upgrade dari sesi anonim |
-| Multi-Provider AI Chat | Pilih provider aktif per percakapan; riwayat tersimpan per konteks |
-| AI Agent Hub | Menjalankan agent otonom (Research, Code, Data, Planner, dll.) |
-| Bot Hub | Bot siap pakai dengan alur percakapan/voice yang sudah dipaketkan (modular — bot baru tinggal didaftarkan) |
-| VPN | Koneksi VPN dengan protokol dinamis (WireGuard/OpenVPN), status real-time |
-| Friend System | Cari pengguna, kirim/terima permintaan pertemanan, status online |
-| Manajemen Kredensial | API key, config VPN, kredensial akun — semua di Settings, terenkripsi |
-| Activity Log | Log semua aktivitas (AI, Agents, Bots, VPN, Friends, System), bisa difilter |
 
-### 2.2 Modul akademik: Bot BPJS "Jarvis"
-Alur inti (voice assistant untuk dokumentasi klinis):
+| Modul | Status | Deskripsi |
+|---|---|---|
+| Login & Registrasi | ✅ Berjalan | Email + password via Supabase Auth |
+| Chat multi-provider & agent | ✅ Berjalan (butuh API key milik pengguna) | Satu picker, provider dan agent setara, histori tersimpan |
+| Skills chat (`/system`, `/clear`, `/help`) | ✅ Berjalan | Gaya Telegram — ketik `/` memunculkan palet perintah |
+| Riwayat Chat | ✅ Berjalan | Tabel `chat_messages`, halaman `/history` mengelompokkan per AI/agent |
+| Universal API key + deteksi otomatis | ✅ Berjalan | Regex per vendor, quick-pick untuk yang tidak dikenali |
+| Multi-key per provider + auto-rotation | ✅ Berjalan | Simpan beberapa key per provider sebagai "slot", otomatis pindah slot saat kena limit |
+| Gemini: pemilihan & fallback model otomatis | ✅ Berjalan | Model tidak tersedia/limit:0/503 → coba model lain otomatis, bukan langsung gagal |
+| VPN WireGuard | ✅ Berjalan | Tunnel jaringan asli via Android `VpnService` |
+| VPN OpenVPN/SSH | 🟡 Parsial | Form config tersimpan, tunnel belum nyata |
+| Manajemen Kredensial | ✅ Berjalan | API key dienkripsi AES-GCM sebelum disimpan ke Supabase; config VPN di Keystore/Keychain lewat native |
+| Activity Log | ✅ Berjalan | Append-only, realtime, bisa difilter |
+| Friend System | ❌ Dihapus total | Bukan belum dibangun — sempat ada, lalu dicabut atas permintaan eksplisit karena menambah friksi tanpa manfaat sepadan |
+| AI Agent Hub (task card simulasi) | ❌ Dihapus dari desain | Diganti: agent (Hermes, OpenClaw) jadi entri setara provider di Chat, dipanggil via API/gateway sungguhan, bukan kartu tugas simulasi |
 
-1. Perawat ucapkan wake word **"Halo Jarvis"** → dideteksi on-device.
-2. Jarvis menjawab via TTS: *"Iya, ada yang bisa saya bantu?"*
-3. Perawat: *"Bantu saya mendiagnosis penyakit"* → intent dikenali.
-4. Jarvis mengaktifkan Bot BPJS dan mulai merekam sesi.
-5. Audio diproses: **Speech-to-Text** → **Speaker Diarization** (pisahkan ucapan perawat vs pasien) → **LLM** (ekstraksi info, ringkasan, dokumentasi terstruktur, timeline percakapan).
-6. Jarvis menanyakan tujuan pengiriman ("dikirim ke dokter siapa?") → dicocokkan ke **Friend List** perawat.
-7. Dokumentasi + transkrip + metadata dikirim ke dokter tujuan.
-8. Dokter meninjau (boleh dibantu provider LLM pilihannya sendiri), menandai **Sesuai** (`matches_bpjs_form`) atau **Perlu Perbaikan** (`needs_revision`, balik ke perawat).
-9. Semua tahap tercatat di Activity Log untuk audit klinis dan evaluasi akademik (WER, waktu proses, dsb.).
+### 2.2 Modul akademik: Bot BPJS
 
-**Batasan penting yang wajib dijaga (etik & hukum):**
-- Sistem **tidak pernah** menetapkan diagnosis — hanya menyediakan draf/dokumentasi pendukung.
-- Sistem **tidak** memutuskan/memproses pencairan dana BPJS — itu wewenang penuh sistem internal RS/BPJS Kesehatan. Status yang dikelola aplikasi hanya `pending_review` → `matches_bpjs_form` / `needs_revision`.
-- Setiap output AI wajib berlabel **"Draf AI — perlu verifikasi dokter"**.
-- Data kesehatan (audio, transkrip, dokumentasi) adalah data sensitif — enkripsi wajib, akses dibatasi RLS (hanya perawat pengirim & dokter tujuan), selaras Permenkes No. 24/2022 dan UU PDP.
+Alur inti saat ini (jauh lebih sederhana dari rencana awal):
+
+1. Perawat buka Bot BPJS, **tekan lingkaran mikrofon langsung** — tidak ada wake word, tidak ada "Halo Jarvis", tidak ada balasan suara (TTS).
+2. Aplikasi menanyakan nama pasien, lalu nama + instansi dokter tujuan (diketik bebas, seperti mengisi form rujukan kertas — bukan memilih dari daftar akun/pertemanan).
+3. Perawat bicara dengan pasien; audio diproses **Speech-to-Text on-device** (`speech_to_text`, locale Indonesia) secara langsung, teks tampil real-time.
+4. Perawat tekan "Hentikan Sesi" → transkrip dikirim ke LLM (provider/agent AI yang sudah terhubung oleh perawat) untuk disusun jadi draf dokumentasi terstruktur (ringkasan, catatan, dll).
+5. **Draf ditampilkan di layar Review dan bisa diedit langsung** (bukan teks statis) — perawat membenarkan tulisan sebelum lanjut.
+6. Perawat memilih: **Salin Teks**, **Ekspor PDF**, atau **Ekspor DOCX** — lalu membagikannya sendiri lewat share sheet OS (WhatsApp, email, Drive, dll) ke dokter tujuan.
+7. Sesi ditandai `terkirim` di database (`bpjs_sessions.status`) sebagai jejak riwayat perawat sendiri.
+
+**Yang dihapus dari rencana awal (dan kenapa):**
+- **Wake word "Halo Jarvis" + TTS** — tidak pernah diimplementasikan sebagai deteksi suara pasif sungguhan (selalu terpicu tombol), dan atas permintaan eksplisit pemilik produk, klaim "Jarvis" dihapus total dari UI/copy — bot ini sekarang murni *tekan-mic-lalu-bicara*, tanpa persona asisten bernama.
+- **Friend List sebagai syarat kirim dokumentasi** — pendekatan lama mewajibkan dokter sudah punya akun aplikasi dan sudah "berteman" dengan perawat sebelum dokumentasi bisa dibuat. Ini terbukti jadi penghambat nyata (dokter jarang memakai aplikasi internal rumah sakit). Diganti: nama dokter + instansi cukup diketik manual, dokumentasi dikirim keluar aplikasi oleh perawat sendiri — meniru alur kerja rumah sakit yang sudah ada.
+- **Review & verdict dokter via akun** (`matches_bpjs_form` / `needs_revision`) — ikut dihapus bersama Friend System karena bergantung pada akun dokter.
+- **Speaker diarization** (pisah suara perawat vs pasien) — **belum ada**, semua segmen percakapan masih ditandai `speaker: 'perawat'` secara default (keterbatasan jujur, bukan fitur yang diklaim selesai).
+
+**Batasan etik & hukum yang tetap dijaga:**
+- Sistem tidak pernah menetapkan diagnosis — hanya draf dokumentasi yang **wajib diverifikasi/diedit perawat** sebelum dikirim (kini difasilitasi langsung lewat field yang bisa diedit di layar Review, bukan sekadar label peringatan).
+- Sistem tidak memutuskan/memproses klaim BPJS — hanya alat bantu dokumentasi.
+- Data kesehatan (transkrip, dokumentasi) dibatasi lewat Row Level Security: hanya `perawat_id` pemilik sesi yang bisa membaca/menulis baris terkait, tidak ada akses lintas akun sama sekali (lebih ketat dari rencana awal yang membuka akses ke dokter tujuan juga).
 
 ---
 
 ## 3. Arsitektur Sistem
 
-### 3.1 Prinsip inti: Hybrid Flutter Native Shell + WebView
+### 3.1 Keputusan akhir: Hybrid Flutter Shell + WebView — lebih agresif dari rencana awal
 
-Aplikasi menggunakan pendekatan **hybrid**: sebagian UI/logic native (Flutter dikompilasi ke Android/iOS), sebagian lagi di-*hosting* sebagai konten web yang dimuat via WebView di dalam shell native.
+Rencana awal (§4 versi lama dokumen ini) mempertimbangkan hybrid secara hati-hati, menyisakan opsi "tunda WebView, selesaikan dulu versi native". Keputusan akhir yang **sungguh-sungguh diimplementasikan** justru lebih jauh ke arah web: **hampir seluruh UI aplikasi** (Login, Home, Chat, Riwayat, Bot Hub, VPN status & config, Settings, Provider & Agent, Activity Log) berjalan di **satu WebView persisten** yang memuat SPA vanilla JS dari kontainer Docker nginx terpisah (`web/`). Flutter (`app/lib/screens/web_shell_screen.dart`) kini betul-betul jadi cangkang tipis: hanya memuat WebView dan menjembatani 7 jenis pesan native (lihat §3.3).
 
-**Yang wajib native** (butuh akses OS-level atau keamanan tinggi):
-- Secure Credential Store (Android Keystore / iOS Keychain) — API key, config VPN, token sesi.
-- VPN Manager (WireGuard/OpenVPN) — butuh VPN service/permission tingkat OS.
-- Wake Word Engine (on-device, "Halo Jarvis") — hemat baterai, tidak mengirim audio terus-menerus ke server.
-- Voice Session Recorder — mengelola izin mikrofon, aktif hanya setelah wake word + intent terdeteksi.
-- Text-to-Speech (TTS) untuk respons suara Jarvis.
-- Push notification, biometric lock, navigasi bawah, splash screen.
-- WebView container (`webview_flutter` / `flutter_inappwebview`) sebagai host konten.
+**Yang tetap 100% native** (sesuai prinsip awal — tidak berubah):
+- **Mikrofon & Speech-to-Text** Bot BPJS (`BotBpjsScreen`, widget Flutter penuh, bukan WebView) — demi latensi rendah dan kontrol izin OS langsung.
+- **VPN**: config tersimpan di `FlutterSecureStorage` (Keystore/Keychain), dan koneksi WireGuard sungguhan lewat `wireguard_flutter` (`VpnService` Android) — butuh akses OS-level yang tidak bisa dilakukan dari web.
+- **Enkripsi/dekripsi kredensial** di sisi native untuk kebutuhan Bot BPJS (mirror dari enkripsi yang dilakukan web lewat Web Crypto API).
 
-**Yang berada di Web Layer** (sering berubah, tidak butuh akses native langsung):
-- UI & logic chat multi-provider.
-- AI Agent Hub (daftar agent, konfigurasi, progres eksekusi).
-- Bot Hub (daftar bot, termasuk tampilan sesi Bot BPJS — kecuali kontrol mikrofon/rekaman yang tetap native).
-- Friend list & pencarian pengguna.
-- Settings/Credentials UI (form input — data dikirim ke native lewat bridge, **tidak pernah** disimpan di layer web).
-- Activity Log viewer.
-
-**JS Bridge (native ↔ web)** — jembatan komunikasi dua arah (`JavascriptChannel` / `postMessage`):
-- Web meminta native menyimpan/membaca kredensial terenkripsi (kredensial mentah tidak pernah "lewat" di layer JS di luar sesi aktif).
-- Web meminta native connect/disconnect VPN, menerima status real-time.
-- Native mengirim event (status VPN, hasil agent, status sesi Bot BPJS) ke web untuk update UI.
+**Yang berubah dari rencana awal**: penyimpanan **API key provider/agent AI** semula direncanakan lewat Keystore/Keychain native. Implementasi akhir memindahkannya ke **Supabase, terenkripsi AES-GCM di sisi web** (`web/public/credentials.js`) — alasannya: key yang hanya tersimpan di satu device hilang total setiap kali aplikasi di-uninstall/reinstall atau pengguna ganti HP. Row Level Security tetap jadi kontrol akses sesungguhnya; enkripsi klien adalah lapisan defense-in-depth tambahan, bukan pengganti RLS.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     FLUTTER NATIVE SHELL                        │
-│                (dikompilasi sekali per rilis store)              │
 │                                                                   │
-│  Secure Credential Store   VPN Manager   Wake Word / TTS / Mic   │
-│         │                       │                  │             │
-│         └───────────────────────┴──────────────────┘             │
+│   FlutterSecureStorage      WireGuard/VpnService    Mic + STT    │
+│     (config VPN)              (tunnel asli)       (Bot BPJS)     │
+│         │                        │                    │          │
+│         └────────────────────────┴────────────────────┘          │
 │                              │                                    │
-│                        JS Bridge (native ↔ web)                   │
+│                     NativeBridge (postMessage)                    │
+│                   7 tipe pesan — lihat §3.3                       │
 │                              │                                    │
-│                       WebView Container                           │
+│                       WebViewController                           │
+│              (immersiveSticky — nav bar Android disembunyikan)    │
 └──────────────────────────────┼───────────────────────────────────┘
-                                 │ HTTPS (domain whitelist/pinned)
+                                 │ http://localhost:8090 (dev)
                                  ▼
                     ┌────────────────────────────┐
-                    │       WEB LAYER (server)     │
-                    │  Chat UI · Agent Hub · Bot   │
-                    │  Hub · Friends · Settings ·  │
-                    │  Activity Log                │
-                    │  (di-update tanpa rebuild)   │
+                    │   SPA (nginx, Docker)       │
+                    │  Login · Home · Chat ·      │
+                    │  Riwayat · Bot Hub ·        │
+                    │  VPN · Settings · Activity  │
                     └──────────────┬───────────────┘
-                                    │
-              ┌─────────────────────┼─────────────────────┐
-              ▼                     ▼                     ▼
-      Provider AI            AI Agent Hub            Logging Service
-      (OpenAI/Claude/         (agent framework)        (Supabase)
-       Gemini, dll.)
+                                    │ fetch() langsung (tanpa server AI Hub)
+              ┌─────────────────────┼──────────────────────────┐
+              ▼                     ▼                          ▼
+      Supabase (Auth,         Provider AI                Agent (Hermes,
+      PostgreSQL+RLS,       (OpenAI/Claude/              OpenClaw gateway
+      Realtime)              Gemini/OpenRouter)           self-hosted)
 ```
 
-### 3.2 Model Data (Supabase)
+### 3.2 Model Data (Supabase) — 7 tabel, semua RLS aktif
 
-**Tabel umum:**
-- `profiles` — id, display_name, role (`general`/`perawat`/`dokter`), instansi, spesialisasi.
-- `friendships` — user_id_a, user_id_b, status (`pending`/`accepted`/`blocked`), created_at.
-- `activity_log` — provider/agent/bot/VPN/friend, waktu, status.
-
-**Tabel khusus Bot BPJS:**
-- `bpjs_sessions` — id, perawat_id, dokter_id, pasien_nama/identifier, status (`recording`/`processing`/`sent`/`needs_revision`/`matches_bpjs_form`), created_at, updated_at.
-- `bpjs_transcripts` — session_id, speaker (`perawat`/`pasien`), text_segment, timestamp_offset.
-- `bpjs_documents` — session_id, ringkasan, dokumentasi_terstruktur (json), alur_percakapan (json), generated_by_llm_provider.
-- `bpjs_reviews` — session_id, dokter_id, verdict (`approved`/`needs_revision`), catatan, reviewed_at.
-
-Semua tabel menggunakan **Row Level Security (RLS)**: baris hanya bisa diakses oleh pihak yang relevan (mis. perawat pengirim & dokter tujuan saja), bukan seluruh pengguna.
-
-### 3.3 Status Implementasi Saat Ini (`app/`)
-
-Codebase Flutter yang ada sekarang (`app/lib/`) adalah **UI preview murni**, belum terhubung ke backend penuh:
-- Layar sudah ada: splash, onboarding API key, onboarding VPN, home dashboard, chat, agent hub, agent execution, bot hub, bot BPJS, VPN connection, settings, activity log (`app/lib/screens/`).
-- Dependency `supabase_flutter` sudah terpasang, ada `app/supabase/schema.sql`, tapi menurut `app/README.md`: *"No AI requests or VPN connections are made. API keys and credentials are neither persisted nor transmitted."* — artinya ini masih tahap **mockup interaktif** dengan data contoh (sample data), belum ada WebView, JS bridge, VPN service, wake-word engine, atau koneksi provider AI/LLM sungguhan.
-- Belum ada implementasi hybrid WebView — seluruh UI saat ini murni native Flutter widgets.
-
-Ini penting untuk konteks pertimbangan arsitektur di bagian berikut: keputusan hybrid vs full-native **belum terkunci** oleh implementasi — masih di tahap desain/PRD, sehingga masih terbuka untuk dievaluasi ulang.
-
----
-
-## 4. Pertimbangan Arsitektur: Hybrid Flutter + WebView
-
-Ini adalah bagian inti yang diminta — kajian mendalam tentang keputusan arsitektur hybrid, karena ini pilihan besar yang memengaruhi biaya, kecepatan iterasi, dan risiko produk.
-
-### 4.1 Mengapa hybrid dipertimbangkan (alasan di balik PRD)
-
-Motivasi utama di PRD adalah **"build sekali, tetap bisa diupdate tanpa build ulang"**:
-- Perubahan UI, penambahan provider AI/bot/agent baru, perbaikan tampilan → cukup update konten web di server, langsung terlihat semua pengguna **tanpa** submit ulang ke App Store/Play Store.
-- Fungsi sensitif (VPN, penyimpanan kredensial, mikrofon/wake-word) tetap 100% native — aman & sesuai kebijakan platform.
-- Iterasi produk jauh lebih cepat karena tidak terikat siklus review App Store/Play Store untuk *setiap* perubahan non-native.
-
-### 4.2 Kelebihan (Pros)
-
-| Aspek | Manfaat |
-|---|---|
-| **Kecepatan iterasi** | Update fitur chat/agent/bot/UI hub bisa tayang dalam hitungan menit (deploy web), bukan hari/minggu (review store) |
-| **Modularitas provider/agent/bot** | Provider/agent/bot baru bisa didaftarkan lewat konten web + config, tanpa rebuild aplikasi (selaras NFR-03/NFR-10) |
-| **Eksperimen A/B & rollback cepat** | Konten web bisa di-rollback instan jika ada bug, tanpa menunggu approval store |
-| **Keamanan fungsi sensitif tetap terjaga** | VPN, kredensial, mikrofon tetap native — tidak diserahkan ke lapisan web (NFR-01) |
-| **Satu codebase native untuk shell** | Tetap cross-platform Android/iOS dengan satu basis Flutter untuk bagian yang benar-benar perlu native |
-| **Relevan untuk skenario akademik** | Bot BPJS bisa terus disempurnakan (prompt LLM, alur UI dokumentasi) selama masa evaluasi PA tanpa perlu build ulang tiap iterasi |
-
-### 4.3 Kekurangan & Risiko (Cons)
-
-| Risiko | Penjelasan | Tingkat keseriusan |
+| Tabel | Isi | Catatan |
 |---|---|---|
-| **Kebijakan App Store 4.7 / Play Console** | Apple secara eksplisit mengatur "remote code/content" — WebView yang memuat & mengeksekusi logic dari server bisa dianggap upaya bypass review jika tidak didokumentasikan dan dibatasi dengan jelas | **Tinggi** — bisa berujung penolakan/takedown jika salah kelola |
-| **Kompleksitas JS Bridge** | Setiap fitur yang butuh native (kredensial, VPN, mikrofon) butuh desain bridge API yang aman dan stabil dua arah; makin banyak fitur, makin kompleks permukaan bridge | Sedang–Tinggi |
-| **Versioning mismatch** | Shell native versi lama + konten web versi baru bisa menyebabkan fitur error/crash jika bridge API berubah tanpa strategi versi | Sedang |
-| **Performa & UX** | WebView pada umumnya terasa kurang "native" dibanding widget Flutter asli (animasi, scrolling, transisi) — terutama terasa untuk layar dengan interaksi kompleks (chat streaming, animasi rekaman waveform) | Sedang |
-| **Ketergantungan jaringan** | Konten web harus dimuat dari server — perlu mode fallback/offline yang matang (NFR-08/NFR-12) agar fitur inti (VPN, kredensial, wake-word) tetap jalan tanpa koneksi | Sedang |
-| **Keamanan WebView** | Harus HTTPS + domain whitelist ketat untuk JS bridge, karena WebView yang memuat domain sembarang berisiko injeksi/XSS yang bisa menyentuh bridge native | Tinggi jika lalai |
-| **Untuk modul Bot BPJS khususnya** | Sensor mikrofon, indikator rekaman, dan animasi waveform sebaiknya tetap native agar transparansi rekaman (etika) benar-benar real-time dan tidak tertunda oleh loading WebView | Perlu native murni di bagian ini |
+| `profiles` | id, display_name, role, bio | role hanya label diri sendiri, tidak lagi dipakai untuk logika Friend System |
+| `activity_log` | category, title, badge | Append-only (tidak ada policy update/delete) |
+| `api_credentials` | provider_id, **label (nama slot)**, type, format, endpoint, model, encrypted_key, iv | Constraint unik **`(user_id, provider_id, label)`** — bukan lagi `(user_id, provider_id)` — supaya satu provider bisa punya banyak slot key |
+| `chat_messages` | provider_id, provider_label, role, content, is_error | **Tabel baru** — persist riwayat chat per AI/agent per pengguna |
+| `bpjs_sessions` | perawat_id, **dokter_nama + dokter_instansi (teks bebas)**, pasien_nama, status | `dokter_id` (FK ke akun) **sudah dihapus** — bukan lagi relasi akun |
+| `bpjs_transcripts` | session_id, speaker, text_segment, timestamp_offset_ms | |
+| `bpjs_documents` | session_id, ringkasan, dokumentasi_terstruktur (jsonb), alur_percakapan (jsonb) | |
 
-### 4.4 Alternatif yang dipertimbangkan (untuk perbandingan)
+**Tabel yang sudah dihapus permanen**: `friendships`, `messages` (chat 1:1 Friend System), `bpjs_reviews` (verdict dokter berbasis akun).
 
-| Pendekatan | Kecepatan iterasi | Kualitas UX native | Risiko kebijakan store | Kompleksitas dev |
-|---|---|---|---|---|
-| **Full-native Flutter** (tanpa WebView) | Rendah — tiap perubahan UI butuh build+release ulang | Tinggi | Rendah | Rendah–Sedang |
-| **Hybrid Flutter + WebView** (pendekatan PRD) | Tinggi untuk layer web | Sedang (campuran) | Sedang–Tinggi (perlu mitigasi) | Tinggi (perlu bridge) |
-| **Full WebView/PWA-wrapper** (shell tipis) | Sangat tinggi | Rendah (semua terasa web) | Tinggi (fungsi sensitif seperti VPN/mic sulit diakses aman dari web) | Sedang, tapi limitasi akses native besar |
-| **Server-driven UI native** (native tapi layout dikirim dari server, mis. JSON schema → widget Flutter) | Tinggi, tanpa risiko kebijakan WebView | Tinggi | Rendah | Tinggi (butuh engine render dinamis sendiri) |
+Aturan RLS kunci: semua tabel Bot BPJS hanya bisa diakses oleh `perawat_id` pemilik baris — **tidak ada lagi** syarat relasi/pertemanan dengan akun lain seperti rencana awal.
 
-### 4.5 Rekomendasi
+### 3.3 Native Bridge — 7 jenis pesan (bukan rencana, ini yang betul-betul diimplementasikan)
 
-1. **Pertahankan hybrid, tapi batasi cakupannya dengan tegas**: WebView hanya untuk UI/logic yang **benar-benar** non-sensitif dan sering berubah (chat, agent hub, bot hub tampilan non-mikrofon, friends, settings, activity log). Semua yang menyentuh VPN, kredensial, mikrofon, wake-word, TTS **wajib** tetap 100% native — ini sudah selaras dengan PRD dan harus dijaga ketat saat implementasi.
-2. **Dokumentasikan justifikasi WebView ke reviewer store sejak awal** (App Store Guideline 4.7 / Play Console): jelaskan bahwa WebView hanya menyajikan UI aplikasi sendiri (bukan mini-app pihak ketiga), domain di-whitelist, dan fungsi inti native tidak terpengaruh oleh update konten web.
-3. **Rancang versioning bridge API secara eksplisit sejak MVP** — server konten web sebaiknya bisa mendeteksi versi shell dan menyajikan konten kompatibel, agar tidak ada breaking change tiba-tiba bagi pengguna yang belum update shell.
-4. **Untuk layar Bot BPJS sesi aktif (indikator rekaman, waveform, tombol stop) — implementasikan sebagai widget Flutter native**, bukan WebView, demi latensi rendah dan transparansi etis (indikator harus real-time, tidak menunggu load WebView).
-5. **Pertimbangkan menunda WebView untuk MVP/skripsi**: mengingat codebase saat ini masih 100% native preview dan deadline akademik (PA) umumnan terbatas, ada opsi pragmatis: **selesaikan dulu Bot BPJS + alur inti secara full-native** (lebih cepat diverifikasi, lebih rendah risiko kebijakan store, cukup untuk kebutuhan evaluasi PA), lalu **migrasi bertahap ke hybrid WebView** untuk modul non-akademik (chat multi-provider, agent hub umum) setelah PA selesai/pada fase produk lanjutan. Ini memisahkan risiko: kebutuhan akademik yang berbatas waktu tidak tersandera kompleksitas bridge yang belum matang.
+`session_changed`, `get_vpn_config`, `save_vpn_config`, `vpn_connect`, `vpn_disconnect`, `open_bot_bpjs`, `sign_out`. **Kredensial API AI/agent tidak lewat bridge ini sama sekali** (lihat §3.1) — hanya VPN, Bot BPJS, dan sesi yang butuh jembatan native.
 
 ---
 
-## 5. Kebutuhan Non-Fungsional Kunci
+## 4. Retrospektif: Hybrid WebView — Apa yang Terbukti Benar, Apa yang Meleset
 
-| Kategori | Kebutuhan |
+Bagian ini menggantikan kajian "pertimbangan" versi lama (yang masih berupa opsi sebelum implementasi) dengan **evaluasi setelah dibangun dan diuji di device fisik**.
+
+### 4.1 Yang terbukti sesuai prediksi (kelebihan)
+
+| Prediksi awal | Realitas setelah dibangun |
 |---|---|
-| Keamanan | Kredensial (API key, VPN config, token sesi) wajib terenkripsi via Keystore/Keychain, tidak pernah diserahkan ke layer WebView |
-| Privasi data kesehatan | Transkrip & dokumentasi pasien wajib dienkripsi in-transit & at-rest, akses dibatasi RLS, selaras Permenkes No. 24/2022 & UU PDP |
-| Cross-platform | Satu codebase Flutter untuk Android & iOS |
-| Modularitas | Provider/agent/bot/protokol VPN baru ditambahkan tanpa mengubah arsitektur inti |
-| Reliabilitas | Koneksi & pergantian protokol VPN tidak boleh membuat aplikasi crash |
-| Updatability | Konten non-native diperbarui via OTA tanpa submit ulang ke store |
-| Ketersediaan offline | Fitur inti (VPN, kredensial, wake-word) tetap berfungsi tanpa koneksi WebView |
-| Auditability | Setiap transisi status dokumentasi Bot BPJS tercatat dengan timestamp untuk audit klinis & evaluasi akademik |
-| Identitas | Pengiriman dokumentasi pasien hanya ke pengguna berstatus "friend" — mencegah salah kirim |
+| Iterasi fitur web jauh lebih cepat dari rebuild native | Terbukti — puluhan perubahan UI/logic (skills chat, riwayat, multi-key, deteksi provider baru) selesai lewat `docker compose up --build` dalam hitungan detik, tanpa sentuh APK sama sekali |
+| Modularitas provider/agent tanpa rebuild | Terbukti — menambah Hermes dan OpenClaw ke katalog hanya mengedit `providers.js`, tidak menyentuh kode Flutter |
+| Fungsi sensitif tetap aman di native | Terbukti — VPN (WireGuard asli) dan mikrofon Bot BPJS tidak pernah tersentuh layer web |
+
+### 4.2 Yang meleset atau butuh perbaikan tambahan (realita operasional)
+
+| Masalah nyata yang ditemukan | Akar penyebab | Status |
+|---|---|---|
+| Konten web "basi" meski server sudah di-rebuild | ES module browser/WebView tetap cache modul lama per-dokumen walau header `Cache-Control: no-store` sudah benar | Mitigasi operasional: hard refresh/tab baru/force-stop app — bukan bug kode, keterbatasan platform |
+| `adb reverse` (port forward USB) sering ter-reset setelah install ulang APK | Perilaku normal ADB, bukan bug aplikasi | Perlu dipasang ulang tiap kali reinstall saat development |
+| Render halaman dobel saat startup | `onAuthStateChange` Supabase bisa fire lebih dari sekali beruntun, masing-masing memicu render | Diperbaiki dengan `renderToken` guard di `router.js` |
+| Plugin native (`wireguard_flutter`) gagal build berkali-kali | Plugin pihak ketiga meng-hardcode `compileSdkVersion` lama yang bentrok dengan dependency transitifnya sendiri | Diperbaiki dengan override Gradle di level project, bukan menunggu plugin di-update upstream |
+| APK debug terasa berat/lambat di device kelas menengah | Build debug (JIT, Dart VM service aktif) secara inheren lambat — cold start pertama bisa ~4 detik | Bukan bug arsitektur hybrid — build `--release` jauh lebih responsif; perlu dibedakan saat menilai performa |
+
+### 4.3 Risiko kebijakan App Store/Play Console — masih relevan, belum teruji di proses review sungguhan
+
+Kajian §4.3 versi lama (soal Apple Guideline 4.7 "remote code") **masih berlaku sebagai risiko**, karena aplikasi memang belum pernah disubmit ke store sungguhan. Mitigasi yang sudah berjalan sesuai rencana: WebView hanya menyajikan UI aplikasi sendiri (bukan mini-app pihak ketiga), domain tetap terbatas ke kontainer milik sendiri. Yang **belum** dilakukan: dokumentasi formal ke reviewer store, dan strategi versioning bridge API jika shell native dan konten web suatu saat berbeda versi signifikan — ini tetap jadi pekerjaan rumah sebelum rilis produksi, bukan sesuatu yang sudah selesai.
 
 ---
 
-## 6. Risiko Utama & Mitigasi (Ringkasan)
+## 5. Kebutuhan Non-Fungsional — Status Riil
 
-| Risiko | Mitigasi |
+| Kategori | Kebutuhan | Status |
+|---|---|---|
+| Keamanan kredensial | API key terenkripsi, tidak pernah plaintext di database | ✅ AES-GCM (web) + mirror dekripsi native; RLS sebagai kontrol akses sesungguhnya |
+| Privasi data kesehatan | Transkrip/dokumentasi dibatasi akses | ✅ RLS per `perawat_id`, **lebih ketat** dari rencana awal (tidak ada lagi akses dokter via akun) |
+| Modularitas | Provider/agent baru tanpa ubah arsitektur inti | ✅ Terbukti — `providers.js` katalog-driven |
+| Updatability | Konten non-native diperbarui tanpa submit ulang store | ✅ Terbukti berulang kali selama development |
+| Reliabilitas panggilan AI | Tidak gagal total saat satu key/model bermasalah | ✅ Auto-rotation slot key (kena limit) + auto-fallback model Gemini (model tak tersedia/503) |
+| Ketersediaan tanpa koneksi | Fitur inti (VPN, kredensial, mic) tetap jalan tanpa web | 🟡 Parsial — VPN config & koneksi WireGuard tidak butuh web aktif; Bot BPJS butuh koneksi untuk panggil LLM (fallback: transkrip mentah tersimpan jika LLM gagal) |
+| Auditability | Setiap transisi status Bot BPJS tercatat | ✅ `bpjs_sessions.status` + `activity_log` |
+| Identitas penerima dokumentasi | ~~Hanya ke "friend"~~ | ❌ Persyaratan ini **dicabut** — pengiriman sekarang di luar aplikasi (WhatsApp/email/cetak), bukan lagi lewat sistem pertemanan internal |
+
+---
+
+## 6. Risiko Utama & Mitigasi (Diperbarui)
+
+| Risiko | Mitigasi riil yang sudah berjalan |
 |---|---|
-| Kebocoran API key/kredensial | Enkripsi wajib, tidak pernah log plain text |
-| WebView dianggap bypass review store | Batasi WebView untuk UI non-sensitif, whitelist domain, dokumentasikan ke reviewer |
-| Wake word salah terpicu / rekam tanpa sadar | Konfirmasi visual+suara jelas, tombol stop selalu terlihat, izin eksplisit tiap sesi |
-| Salah kirim dokumentasi pasien | Kirim hanya via Friend List, konfirmasi ulang nama dokter, log lengkap |
-| Halusinasi LLM | Label "Draf AI — perlu verifikasi dokter", dokter wajib approve, transkrip asli selalu tersedia |
-| Kesalahpahaman soal pencairan BPJS | PRD & laporan PA menegaskan aplikasi hanya menandai kecocokan dokumentasi dengan form BPJS, bukan memutuskan klaim |
-| Data kesehatan bocor | RLS ketat per sesi, enkripsi penuh, retensi data dibatasi, audit log lengkap |
+| Kebocoran API key | Enkripsi AES-GCM sebelum simpan, RLS per user, tidak pernah lewat server perantara (fetch langsung dari klien ke vendor) |
+| WebView dianggap bypass review store | Domain terbatas ke kontainer sendiri; **belum** didokumentasikan formal ke reviewer — tetap risiko terbuka sebelum submit produksi |
+| Satu API key kena limit menghentikan seluruh chat | Auto-rotation ke slot key lain milik provider yang sama (§7 `diagram-alur.md`) |
+| Model AI tidak tersedia/overload menghentikan chat | Auto-fallback ke model lain (khusus Gemini, §8 `diagram-alur.md`) |
+| Salah kirim dokumentasi pasien | **Berubah pendekatan**: bukan lagi dicegah lewat sistem Friend List, melainkan diserahkan ke kebiasaan kerja perawat (mengetik nama dokter manual, mengirim sendiri lewat kanal yang sudah dipercaya seperti form rujukan kertas) |
+| Halusinasi LLM dalam draf dokumentasi | Draf **wajib ditampilkan sebagai field yang bisa diedit** sebelum disalin/diekspor — bukan sekadar label peringatan pasif |
+| Kesalahpahaman soal pencairan BPJS | Aplikasi tidak pernah mengklaim memproses klaim — hanya alat bantu dokumentasi |
+| Chat hilang saat pindah layar | Diperbaiki — riwayat chat dipersist ke `chat_messages`, bukan hanya di memori halaman |
+| Navigation bar Android mengganggu tampilan | `SystemUiMode.immersiveSticky` + reapply otomatis saat app resume |
 
 ---
 
-## 7. Pemetaan Fitur ke Proyek Akhir (Akademik)
-
-| Permasalahan/Tujuan PA | Fitur/Komponen Terkait |
-|---|---|
-| Menangkap percakapan perawat-pasien sebagai sumber dokumentasi | Wake word + rekaman sesi Bot BPJS |
-| Menerapkan Speech-to-Text | Komponen STT pada arsitektur alur data Bot BPJS |
-| Menerapkan LLM untuk ekstraksi & ringkasan terstruktur | Komponen LLM, tabel `bpjs_documents` |
-| Menyediakan dokumentasi untuk verifikasi dokter | Layar dokumentasi Bot BPJS, status `approved`/`needs_revision` |
-| Evaluasi kinerja sistem (WER, kelengkapan, factual consistency, waktu) | Auditability timestamp tiap tahap → data mentah evaluasi baseline (STT-only) vs proposed (STT+LLM) |
-| Speaker diarization + role identification | Komponen diarization, tabel `bpjs_transcripts` |
-
----
-
-## 8. Struktur Proyek Saat Ini
+## 7. Struktur Proyek Saat Ini
 
 ```
 PROJECT MOBILE APP/
-├── PRD/                                          # Dokumen kebutuhan produk
-│   ├── PRD-Hub-Multi-Provider-AI-Agent-VPN.md     # Produk umum
-│   ├── PRD-AI-Hub-Jarvis-BPJS.md                  # Revisi gabungan + modul akademik
-│   └── PRD-Dokumentasi-Percakapan-Perawat-Pasien.md  # PRD akademik murni (PA)
+├── PRD/                                   # Dokumen kebutuhan awal (konteks tujuan, bukan acuan fitur terkini)
 ├── docs/
-│   └── RINCIAN-SISTEM.md                          # Dokumen ini
-└── app/                                           # Codebase Flutter
-    ├── lib/
-    │   ├── main.dart
-    │   ├── screens/     # splash, onboarding, dashboard, chat, agent hub,
-    │   │                # bot hub, bot BPJS, VPN, settings, activity log
-    │   ├── widgets/      # komponen UI bersama (hub_ui.dart, onboarding_scaffold.dart)
-    │   ├── services/     # supabase_service.dart
-    │   └── theme.dart
-    ├── supabase/
-    │   └── schema.sql
-    └── pubspec.yaml     # dependency: supabase_flutter, dll.
+│   ├── RINCIAN-SISTEM.md                  # Dokumen ini
+│   └── diagram-alur.md                    # Diagram alur Mermaid + status fitur detail
+├── app/                                   # Flutter — cangkang native tipis
+│   ├── lib/
+│   │   ├── main.dart                      # immersiveSticky + lifecycle observer
+│   │   ├── screens/
+│   │   │   ├── splash_screen.dart
+│   │   │   ├── web_shell_screen.dart      # WebView persisten + NativeBridge (7 pesan)
+│   │   │   └── bot_bpjs_screen.dart       # 100% native: mic, STT, review-bisa-edit, export
+│   │   ├── services/
+│   │   │   ├── supabase_service.dart      # mirror sesi native
+│   │   │   ├── vpn_config_service.dart    # FlutterSecureStorage
+│   │   │   ├── vpn_tunnel_service.dart    # wireguard_flutter → VpnService
+│   │   │   └── bpjs_service.dart          # kredensial + panggilan LLM + export PDF/DOCX
+│   │   ├── widgets/hub_ui.dart
+│   │   └── theme.dart
+│   ├── android/build.gradle.kts           # override compileSdk untuk wireguard_flutter
+│   └── supabase/schema.sql                # 7 tabel, migrasi idempotent
+├── web/                                   # SPA aktif — INI yang disajikan nginx
+│   ├── public/
+│   │   ├── app.js                         # router + daftar route
+│   │   ├── db.js, credentials.js, chat-history.js, ai.js, gemini.js
+│   │   ├── providers.js                   # katalog provider/agent + deteksi key
+│   │   └── views/                         # chat.js, history.js, apikeys.js,
+│   │                                       # add-api-key.js, vpn.js, vpn-config.js, dst.
+│   ├── nginx.conf
+│   └── docker-compose.yml
+└── app/web/                                # Output build Flutter-web bawaan — TIDAK DIPAKAI
 ```
-
-Status saat ini: **UI preview native Flutter dengan data contoh** — belum ada WebView/JS bridge, belum ada koneksi provider AI/LLM sungguhan, belum ada VPN service atau wake-word engine yang berfungsi nyata.
 
 ---
 
-## 9. Kesimpulan
+## 8. Kesimpulan
 
-AI Hub adalah platform mobile hybrid yang menggabungkan produk agregator AI/agent/VPN dengan modul akademik Bot BPJS/Jarvis untuk dokumentasi klinis perawat-pasien. Arsitektur yang direncanakan adalah **Flutter native shell + WebView untuk konten yang sering berubah**, dengan batasan tegas: seluruh fungsi sensitif (kredensial, VPN, mikrofon, wake-word, TTS) tetap native. Pendekatan hybrid memberi kecepatan iterasi tinggi dan modularitas, tapi membawa risiko kebijakan store dan kompleksitas bridge yang harus dikelola secara sengaja sejak desain awal — bukan ditambal belakangan. Mengingat implementasi saat ini masih berupa preview 100% native, ada ruang untuk memulai dari fondasi native yang solid (terutama untuk modul akademik berbatas waktu) sebelum memperluas ke arsitektur hybrid penuh untuk fitur produk jangka panjang.
+AI Hub sudah bertransisi dari tahap *UI preview native* ke **sistem hybrid yang benar-benar berjalan**: satu WebView persisten menyajikan hampir seluruh antarmuka dari kontainer web yang bisa diperbarui tanpa rebuild APK, sementara fungsi yang betul-betul butuh akses OS (mikrofon, VPN, secure storage) tetap native. Keputusan ini terbukti memberi kecepatan iterasi yang dijanjikan di kajian awal — puluhan perbaikan dan fitur baru (multi-key rotation, fallback model Gemini, riwayat chat, integrasi Hermes/OpenClaw, penyederhanaan Bot BPJS) selesai lewat deploy Docker, bukan rilis ulang aplikasi.
+
+Dua keputusan produk terbesar yang mengubah arah dari rencana awal: **Friend System dihapus total** (dokumentasi Bot BPJS dikirim langsung oleh perawat lewat kanal yang sudah dipakai sehari-hari, bukan lewat sistem pertemanan internal), dan **wake word "Halo Jarvis" beserta TTS tidak pernah dipertahankan sebagai fitur** — Bot BPJS disederhanakan jadi tekan-mic-langsung-bicara, dengan penekanan baru pada **draf yang bisa diedit perawat** sebelum dikirim, menggantikan alur review-dokter-berbasis-akun yang dinilai menambah friksi tanpa manfaat sepadan di lapangan. Risiko kebijakan App Store/Play Console terhadap WebView tetap belum teruji lewat proses submit sungguhan dan masih jadi pekerjaan rumah sebelum rilis produksi.

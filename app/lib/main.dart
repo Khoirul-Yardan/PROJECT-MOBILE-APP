@@ -8,13 +8,13 @@ import 'services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Edge-to-edge: let the app draw behind Android's own status/navigation
-  // bars instead of reserving separate black bands for them (the "double
-  // nav bar, too tall" look). The WebView's CSS already reserves the right
-  // amount of space via `env(safe-area-inset-bottom)` in style.css, so this
-  // alone makes the on-screen system nav overlay transparently instead of
-  // stacking below our own bottom nav.
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // Immersive sticky: actually hide Android's on-screen nav bar (not just
+  // draw transparently behind it, which still leaves it visible) — a swipe
+  // from the screen edge reveals it briefly, then it auto-hides again,
+  // which is the standard immersive-video/game behavior. The WebView's own
+  // CSS already reserves bottom space via `env(safe-area-inset-bottom)` in
+  // style.css for when the bar is swiped back in.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.transparent,
@@ -32,8 +32,36 @@ void main() async {
   runApp(const AiHubApp());
 }
 
-class AiHubApp extends StatelessWidget {
+class AiHubApp extends StatefulWidget {
   const AiHubApp({super.key});
+
+  @override
+  State<AiHubApp> createState() => _AiHubAppState();
+}
+
+// Android resets to showing the system nav bar on its own after things like
+// resuming from background or the keyboard closing — a single startup call
+// to immersiveSticky doesn't stick through those, so it has to be
+// reapplied every time the app resumes.
+class _AiHubAppState extends State<AiHubApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

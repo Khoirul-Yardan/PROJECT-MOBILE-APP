@@ -80,14 +80,14 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(theme: buildAppTheme(), home: const BotBpjsScreen()),
     );
-    await tester.tap(find.text('Ucapkan "Halo Jarvis"'));
+    await tester.tap(find.byIcon(Icons.mic_none_rounded).first);
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Mikrofon/STT error:', findRichText: true),
       findsNothing, // this path is the init-false branch, not onError
     );
-    expect(find.text('Ucapkan "Halo Jarvis"'), findsOneWidget);
+    expect(find.text('Tekan untuk mulai merekam'), findsOneWidget);
     expect(
       find.textContaining('Izin mikrofon ditolak'),
       findsOneWidget,

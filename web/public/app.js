@@ -7,6 +7,7 @@ import { mountMobileViewport } from './mobile.js';
 import login from './views/login.js';
 import home from './views/home.js';
 import chat from './views/chat.js';
+import historyView from './views/history.js';
 import bots from './views/bots.js';
 import vpn from './views/vpn.js';
 import vpnConfig from './views/vpn-config.js';
@@ -39,6 +40,7 @@ function guard(render) {
 route('/login', guard(login));
 route('/home', guard(home));
 route('/chat', guard(chat));
+route('/history', guard(historyView));
 route('/bots', guard(bots));
 route('/vpn', guard(vpn));
 route('/vpn-config', guard(vpnConfig));

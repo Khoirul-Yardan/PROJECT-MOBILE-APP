@@ -1,5 +1,6 @@
 import { h, icon, emptyState } from '../ui.js';
 import { sendChat, listRegisteredProviders } from '../ai.js';
+import { saveMessage, loadMessages, clearConversation } from '../chat-history.js';
 import { logActivity } from '../db.js';
 import { navigate } from '../router.js';
 import { openModelPicker, modelLabel } from '../model-picker.js';
@@ -44,7 +45,10 @@ export default async function render(root) {
     <div class="page chat-page">
       <div class="topbar">
         <h1 id="chat-title">Chat</h1>
-        <button class="icon-button" id="manage-provider" aria-label="Kelola asisten">${icon('layers')}</button>
+        <div class="row" style="gap:8px;flex-shrink:0;">
+          <button class="icon-button" id="chat-history" aria-label="Riwayat chat">${icon('clock')}</button>
+          <button class="icon-button" id="manage-provider" aria-label="Kelola asisten">${icon('layers')}</button>
+        </div>
       </div>
       <div id="picker" class="tabs"></div>
       <button id="chat-model" class="provider-model-control chat-model" hidden><span class="model-caption">Pilih model</span><span class="current-model"></span><span aria-hidden="true">⌄</span></button>
@@ -60,6 +64,7 @@ export default async function render(root) {
   `);
   root.appendChild(el);
   el.querySelector('#manage-provider').onclick = () => navigate('/settings/apikeys');
+  el.querySelector('#chat-history').onclick = () => navigate('/history');
 
   const titleEl = el.querySelector('#chat-title');
   const pickerEl = el.querySelector('#picker');
@@ -137,10 +142,12 @@ export default async function render(root) {
     else hideSkillMenu();
   });
 
-  async function loadPicker() {
+  async function loadPicker(preferredId) {
     providers = await listRegisteredProviders();
+    if (preferredId) entry = providers.find((p) => p.id === preferredId) || null;
     if (!entry && providers.length > 0) entry = providers[0];
     renderPicker();
+    if (entry) await hydrateMessages(entry);
   }
 
   function renderPicker() {
@@ -178,12 +185,29 @@ export default async function render(root) {
     updateModel();
   }
 
-  function selectEntry(next) {
+  async function selectEntry(next) {
     if (sending) return;
     entry = next;
     noticeEl.hidden = true;
     renderPicker();
+    await hydrateMessages(next);
+    if (disposed || entry !== next) return;
     renderMessages();
+  }
+
+  /** Loads this provider's saved history from Supabase the first time it's
+   * opened in this page instance (messagesByEntry is otherwise just an
+   * in-memory cache so re-selecting an already-open entry doesn't re-fetch). */
+  async function hydrateMessages(target) {
+    if (messagesByEntry.has(target.id)) return;
+    const saved = await loadMessages(target.id);
+    if (disposed) return;
+    messagesByEntry.set(
+      target.id,
+      saved.length > 0
+        ? saved
+        : [{ text: `Hai! Kamu terhubung ke ${target.label}. Tanyakan apa saja.`, fromMe: false, local: true }]
+    );
   }
 
   function bubble(text, fromMe, { isError = false } = {}) {
@@ -243,6 +267,7 @@ export default async function render(root) {
       }
       case '/clear': {
         list.length = 0;
+        clearConversation(entry.id);
         break;
       }
       case '/help': {
@@ -275,6 +300,7 @@ export default async function render(root) {
     updateModel();
     renderMessages();
     logActivity({ category: 'AI', title: `Pesan dikirim · ${entry.label}` });
+    saveMessage(requestEntry.id, requestEntry.label, 'user', text);
     try {
       const systemPrompt = systemPromptByEntry.get(entry.id);
       const history = list.filter((m) => !m.isError && !m.local).map((m) => ({ role: m.fromMe ? 'user' : 'assistant', text: m.text }));
@@ -298,6 +324,7 @@ export default async function render(root) {
         } }
       );
       list.push({ text: reply, fromMe: false });
+      saveMessage(requestEntry.id, requestEntry.label, 'assistant', reply);
     } catch (e) {
       list.push({ text: e.message, fromMe: false, isError: true });
     } finally {
@@ -314,7 +341,9 @@ export default async function render(root) {
     }
   });
 
-  await loadPicker();
+  const params = new URLSearchParams((location.hash.split('?')[1] || ''));
+  await loadPicker(params.get('provider'));
+  if (disposed) return { dispose() { disposed = true; } };
   titleEl.textContent = 'Chat';
   updateModel();
   renderMessages();

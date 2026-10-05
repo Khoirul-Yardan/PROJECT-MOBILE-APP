@@ -66,17 +66,19 @@ export default async function render(root) {
         toast(`${p.label} dihapus.`);
         renderList();
       };
-      listEl.appendChild(card);
 
-      // Multiple key slots behind this one provider — list each so a single
-      // slot (e.g. a dead key) can be removed without disconnecting the rest.
+      // Multiple key slots behind this one provider — list each inside the
+      // same card (not a separate block) so a single slot (e.g. a dead key)
+      // can be removed without disconnecting the rest.
       const providerSlots = slots.filter((s) => s.id === p.id);
       if (providerSlots.length > 1) {
-        const slotList = h('<div class="list slot-list" style="margin:0 0 4px 44px;"></div>');
+        const slotSection = h('<div class="slot-section"></div>');
+        slotSection.appendChild(h('<p class="slot-section-label">Kunci tersimpan — otomatis bergantian saat salah satu kena limit</p>'));
         providerSlots.forEach((slot) => {
           const slotRow = h(`
-            <div class="row" style="padding:6px 2px;">
-              <span class="muted small grow">${escapeHtml(slot.label)}</span>
+            <div class="slot-row">
+              <span class="slot-dot" aria-hidden="true"></span>
+              <span class="grow">${escapeHtml(slot.label)}</span>
               <button class="icon-button" aria-label="Hapus kunci ${escapeHtml(slot.label)}" data-remove-slot>${icon('trash')}</button>
             </div>
           `);
@@ -86,10 +88,12 @@ export default async function render(root) {
             toast(`Kunci "${slot.label}" dihapus.`);
             renderList();
           };
-          slotList.appendChild(slotRow);
+          slotSection.appendChild(slotRow);
         });
-        listEl.appendChild(slotList);
+        card.appendChild(slotSection);
       }
+
+      listEl.appendChild(card);
     });
   }
 

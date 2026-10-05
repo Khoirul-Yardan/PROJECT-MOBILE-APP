@@ -22,33 +22,58 @@ export function geminiEndpoint(endpoint, model) {
   return url.toString();
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// "High demand" 503s from Google are explicitly documented as usually
+// transient, so a couple of short retries clear most of them before
+// bothering the model-fallback logic at all.
+const RETRY_503_DELAYS_MS = [700, 1800];
+
 async function request(url, apiKey, payload) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60000);
-  try {
-    const response = await fetch(url, {
-      method: payload ? 'POST' : 'GET',
-      headers: { 'x-goog-api-key': apiKey, ...(payload ? { 'Content-Type': 'application/json' } : {}) },
-      ...(payload ? { body: JSON.stringify(payload) } : {}),
-      signal: controller.signal,
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      // Some provider errors echo their request; never expose a credential.
-      const message = String(body.error?.message || response.statusText || 'Permintaan gagal.').split(apiKey).join('[key]');
-      const error = new Error(`Gemini: ${message}`);
-      error.status = response.status;
-      error.modelUnavailable = [400, 404].includes(response.status)
-        && /model/i.test(message)
-        && /not found|not supported|no longer|not available|does not exist|deprecated/i.test(message);
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60000);
+    try {
+      const response = await fetch(url, {
+        method: payload ? 'POST' : 'GET',
+        headers: { 'x-goog-api-key': apiKey, ...(payload ? { 'Content-Type': 'application/json' } : {}) },
+        ...(payload ? { body: JSON.stringify(payload) } : {}),
+        signal: controller.signal,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 503 && attempt < RETRY_503_DELAYS_MS.length) {
+          await sleep(RETRY_503_DELAYS_MS[attempt]);
+          continue;
+        }
+        // Some provider errors echo their request; never expose a credential.
+        const message = String(body.error?.message || response.statusText || 'Permintaan gagal.').split(apiKey).join('[key]');
+        const error = new Error(`Gemini: ${message}`);
+        error.status = response.status;
+        error.modelUnavailable =
+          ([400, 404].includes(response.status)
+            && /model/i.test(message)
+            && /not found|not supported|no longer|not available|does not exist|deprecated/i.test(message))
+          // A 429 quoting "limit: 0" for this model means the model itself
+          // has no free-tier quota at all (a paid/preview-only model) —
+          // permanent for every key on this tier, not a transient rate
+          // limit. Switching API keys can't fix it; switching *model* can,
+          // so route it through the same model-fallback path instead of
+          // key rotation.
+          || (response.status === 429 && /limit:\s*0\b/i.test(message))
+          // Still 503 after retrying — this model specifically is
+          // overloaded right now; let another model take over instead of
+          // surfacing "try again later" straight to the user.
+          || response.status === 503;
+        throw error;
+      }
+      return body;
+    } catch (error) {
+      if (error.name === 'AbortError') throw new Error('Gemini terlalu lama merespons. Silakan coba lagi.');
       throw error;
+    } finally {
+      clearTimeout(timer);
     }
-    return body;
-  } catch (error) {
-    if (error.name === 'AbortError') throw new Error('Gemini terlalu lama merespons. Silakan coba lagi.');
-    throw error;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -131,7 +156,10 @@ export async function generateGemini(entry, apiKey, history) {
   // Discover using this provider's existing host/API version, then retry only
   // model-availability errors. Auth, quota, safety and network errors stop here.
   const available = await listGeminiModels(entry, apiKey);
-  for (const model of available.filter((m) => !attempted.has(m.id)).slice(0, 3)) {
+  // 5 instead of 3: a 503 (transient "high demand") now also counts as a
+  // model-fallback case, not just missing/zero-quota models, so a couple
+  // of extra candidates keep the odds reasonable without retrying forever.
+  for (const model of available.filter((m) => !attempted.has(m.id)).slice(0, 5)) {
     const result = await attempt(model.id);
     if (result) return result;
   }

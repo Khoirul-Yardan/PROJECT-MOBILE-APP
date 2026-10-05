@@ -393,3 +393,44 @@ drop policy if exists "Users can delete own api credentials" on public.api_crede
 create policy "Users can delete own api credentials"
   on public.api_credentials for delete
   using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- Chat history — so switching screens (or reopening the app) doesn't lose a
+-- conversation. One row per message; `provider_id`/`provider_label` repeat
+-- the values already in api_credentials so history.js can list and label
+-- conversations by AI/agent without a join (a provider can be renamed or
+-- disconnected later without rewriting past messages).
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  provider_id text not null,
+  provider_label text not null,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  is_error boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists chat_messages_user_provider_idx
+  on public.chat_messages (user_id, provider_id, created_at);
+
+alter table public.chat_messages enable row level security;
+
+drop policy if exists "Users can view own chat messages" on public.chat_messages;
+create policy "Users can view own chat messages"
+  on public.chat_messages for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own chat messages" on public.chat_messages;
+create policy "Users can insert own chat messages"
+  on public.chat_messages for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own chat messages" on public.chat_messages;
+create policy "Users can delete own chat messages"
+  on public.chat_messages for delete
+  using (auth.uid() = user_id);
+
+-- No update policy: messages are append-only, same as activity_log.
