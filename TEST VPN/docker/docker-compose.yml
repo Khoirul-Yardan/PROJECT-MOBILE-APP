@@ -1,0 +1,28 @@
+# Server OpenVPN TIRUAN untuk uji coba — meniru profil asli (kp-la-2.ovpn):
+# tcp/1194, dev tun, AES-128-CBC, auth SHA512, auth-user-pass, sertifikat klien
+# dengan private key TERENKRIPSI (password key terpisah dari password login),
+# remote-cert-tls server. Dipakai supaya tes tidak membebani server asli.
+#
+# Jalankan:   docker compose up -d --build
+# Hasil:      ./out/kp-la-test.ovpn  (remote = PUBLIC_HOST)
+services:
+  ovpn-test:
+    build: .
+    container_name: ovpn-test
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun:/dev/net/tun"]
+    ports:
+      - "1194:1194/tcp"
+    environment:
+      # Emulator Android -> host: 10.0.2.2 ; HP fisik sewifi: IP LAN laptop ;
+      # tes dari laptop sendiri: 127.0.0.1
+      - PUBLIC_HOST=${PUBLIC_HOST:-10.0.2.2}
+      - VPN_USER=${VPN_USER:-tester}
+      - VPN_PASS=${VPN_PASS:-tester123}
+      - KEY_PASS=${KEY_PASS:-keypass123}
+    volumes:
+      - ./out:/out
+      - ovpn-pki:/pki
+    restart: unless-stopped
+volumes:
+  ovpn-pki:

@@ -88,6 +88,7 @@ const ICONS = {
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>',
+  download: '<path d="M12 3v12m0 0-4-4m4 4 4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/>',
 };
 export function icon(name) {
   return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.spark}</svg>`;

@@ -77,7 +77,14 @@ export const KNOWN_PROVIDERS = [
     type: 'agent',
     format: 'openai',
     endpoint: 'https://inference-api.nousresearch.com/v1/chat/completions',
-    model: 'Hermes-4-70B',
+    // The Portal is an OpenRouter-style aggregator across many vendors'
+    // models, not a single dedicated "Hermes" model — there's no model
+    // literally named Hermes in its catalog. Default to a known-working
+    // free-tier model (confirmed reachable, and it's Hermes Agent's own
+    // config.yaml default too) so a first message doesn't 404; the model
+    // picker (see model-picker.js) lets the user pick a real one from the
+    // live /v1/models list instead of typing an ID blind.
+    model: 'stepfun/step-3.7-flash:free',
     keyPattern: /^sk-nous-/,
     icon: 'layers',
   },
@@ -101,6 +108,58 @@ export const SELF_HOSTED_PROVIDERS = [
     urlPlaceholder: 'https://gateway-openclaw-kamu.example.com',
     urlHelp: 'URL Gateway OpenClaw kamu (Settings → API di instance-mu) — bukan URL Telegram.',
     tokenHelp: 'Bearer token dari OpenClaw (Custom Webhook / Gateway API, config receiveSecret).',
+    directSessionLabel: 'Link channel resmi (opsional)',
+    directSessionPlaceholder: 'https://t.me/nama_bot_kamu',
+    directSessionHelp: 'Link Telegram/WhatsApp/dsb yang sudah terhubung ke OpenClaw-mu — dipakai Chat untuk tombol "buka sesi langsung" saat agent minta persetujuan yang tidak bisa diberikan lewat sini.',
+  },
+  {
+    // Nous Research's "Hermes Agent" (hermes-agent.nousresearch.com) is a
+    // self-hosted agent, separate from the hosted Hermes inference API
+    // (that one just needs an sk-nous-... key — see KNOWN_PROVIDERS). To
+    // reach a self-hosted Hermes Agent instance from here, it exposes the
+    // A2A (Agent2Agent) protocol — JSON-RPC over HTTP, not a plain REST
+    // webhook — enabled via `hermes gateway setup` → A2A, which prints the
+    // base URL (http://host:9900/) and the bearer token you set there.
+    id: 'hermes-agent',
+    label: 'Hermes Agent (A2A)',
+    vendor: 'Self-hosted (Nous Research Hermes Agent)',
+    type: 'agent',
+    format: 'a2a',
+    icon: 'layers',
+    urlPlaceholder: 'http://host-laptopmu:9900/',
+    urlHelp: 'URL dasar A2A Hermes Agent-mu — didapat dari `hermes gateway setup` → aktifkan A2A.',
+    tokenHelp: 'Shared bearer token yang kamu isi saat setup A2A (tersimpan sebagai A2A_BEARER_TOKEN).',
+    // A2A is deliberately untrusted by Hermes Agent for anything sensitive
+    // (device control, etc.) — it'll refuse and ask for approval "in your
+    // direct session" instead. There's no way to grant that consent through
+    // A2A itself (any flag we send could be forged by anyone else talking
+    // A2A too, which is exactly the hole this refusal exists to close), so
+    // the only legitimate fix is a real direct session — Telegram, in most
+    // setups. This link lets Chat offer a one-tap way there.
+    directSessionLabel: 'Link bot Telegram',
+    directSessionPlaceholder: 'https://t.me/nama_bot_kamu',
+    directSessionHelp: 'Opsional — dipakai Chat untuk tombol "buka sesi langsung" saat Hermes Agent menolak aksi (mis. computer_use) karena masuk lewat A2A, bukan sesi langsung.',
+  },
+  {
+    // Hermes Agent's OTHER self-hosted surface, genuinely different trust
+    // model from A2A above: the API Server is the same integration point
+    // apps like Open WebUI/LobeChat use for *full* tool access (terminal,
+    // files, computer_use, ...) — it's the trusted direct-session path, not
+    // sandboxed the way A2A deliberately is. Same OpenAI chat-completions
+    // wire shape as KNOWN_PROVIDERS' 'openai' format (so callOpenAiCompatible
+    // just works), but still routed through selfHostedFetch like the other
+    // self-hosted entries since it's on the user's own LAN/host and won't
+    // have CORS headers unless they set API_SERVER_CORS_ORIGINS themselves —
+    // the relay sidesteps needing that.
+    id: 'hermes-api-server',
+    label: 'Hermes Agent (API Server)',
+    vendor: 'Self-hosted (Nous Research Hermes Agent — akses penuh)',
+    type: 'agent',
+    format: 'hermes-api',
+    icon: 'layers',
+    urlPlaceholder: 'http://host-laptopmu:8642/v1/chat/completions',
+    urlHelp: 'Aktifkan dulu: API_SERVER_ENABLED=true di ~/.hermes/.env (atau folder HERMES_HOME-mu), lalu `hermes gateway restart`. Endpoint defaultnya port 8642.',
+    tokenHelp: 'API_SERVER_KEY yang kamu set di .env yang sama.',
   },
 ];
 

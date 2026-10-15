@@ -6,6 +6,7 @@ const TILES = [
   { icon: 'document', title: 'Riwayat Bot BPJS', subtitle: 'Lihat dan ekspor dokumentasi sesi.', go: '/bpjs' },
   { icon: 'lock', title: 'API &amp; Agent', subtitle: 'Kelola asisten yang terhubung.', go: '/settings/apikeys' },
   { icon: 'shield', title: 'VPN', subtitle: 'Kelola koneksi dan akses aman.', go: '/vpn' },
+  { icon: 'layers', title: 'Terminal', subtitle: 'Akses server lewat SSH setelah VPN tersambung.', go: '/terminal' },
   { icon: 'document', title: 'Log Aktivitas', subtitle: 'Lihat aktivitas terbaru.', go: '/settings/activity' },
   { icon: 'users', title: 'Akun', subtitle: 'Informasi akun dan akses masuk.', go: '/settings/profile' },
 ];

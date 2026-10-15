@@ -95,23 +95,73 @@ class BpjsAiService {
           .from('api_credentials')
           .select('provider_id,label,format,endpoint,model,encrypted_key,iv')
           .eq('user_id', uid)
-          .order('created_at')
-          .limit(1);
-      if (rows.isEmpty) return null;
-      final row = rows.first;
-      final apiKey = await _CredentialCrypto.decrypt(
-        uid,
-        row['encrypted_key'] as String,
-        row['iv'] as String,
+          .order('created_at');
+      // Only formats _callChat can actually speak. 'a2a' (JSON-RPC task
+      // protocol) and 'openclaw' (webhook) are chat-agent surfaces with a
+      // different wire shape - picking one of those just because it was
+      // connected first made the summary silently fail. 'hermes-api' is
+      // OpenAI-compatible, so Hermes API Server works here.
+      const supported = {'hermes-api', 'openai', 'anthropic', 'gemini'};
+      for (final row in rows) {
+        final format = row['format'] as String? ?? 'openai';
+        if (!supported.contains(format)) continue;
+        final apiKey = await _CredentialCrypto.decrypt(
+          uid,
+          row['encrypted_key'] as String,
+          row['iv'] as String,
+        );
+        return BpjsAiCredential(
+          id: row['provider_id'] as String,
+          label: row['label'] as String,
+          format: format,
+          endpoint: row['endpoint'] as String,
+          model: row['model'] as String?,
+          apiKey: apiKey,
+        );
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Last-resort speaker repair for when AssemblyAI collapses the whole
+  /// recording into one voice: asks the connected LLM which sentences the
+  /// nurse said and which the patient said (nurses ask/guide, patients
+  /// describe complaints). Returns one 'perawat'|'pasien' per input line,
+  /// or null if the reply can't be trusted (wrong length, bad JSON) -
+  /// caller then keeps the original labels rather than guessing.
+  static Future<List<String>?> relabelSpeakers({
+    required BpjsAiCredential credential,
+    required List<String> sentences,
+  }) async {
+    if (sentences.length < 2) return null;
+    const systemPrompt =
+        'Kamu menerima kalimat-kalimat berurutan dari rekaman percakapan '
+        'perawat dan pasien (diurutkan waktu, pembicara tidak diketahui). '
+        'Tentukan siapa yang mengucapkan tiap kalimat: perawat biasanya '
+        'bertanya, menjelaskan prosedur, atau mengarahkan; pasien '
+        'menjawab dan menceritakan keluhan. Balas HANYA berupa JSON array '
+        'string berisi "perawat" atau "pasien", panjangnya sama persis '
+        'dengan jumlah kalimat, tanpa teks lain.';
+    final numbered = [
+      for (var i = 0; i < sentences.length; i++) '${i + 1}. ${sentences[i]}',
+    ].join('\n');
+    try {
+      final reply = await _callChat(
+        credential: credential,
+        systemPrompt: systemPrompt,
+        userText: numbered,
       );
-      return BpjsAiCredential(
-        id: row['provider_id'] as String,
-        label: row['label'] as String,
-        format: row['format'] as String? ?? 'openai',
-        endpoint: row['endpoint'] as String,
-        model: row['model'] as String?,
-        apiKey: apiKey,
-      );
+      if (reply == null) return null;
+      final start = reply.indexOf('[');
+      final end = reply.lastIndexOf(']');
+      if (start == -1 || end <= start) return null;
+      final parsed = jsonDecode(reply.substring(start, end + 1));
+      if (parsed is! List || parsed.length != sentences.length) return null;
+      final labels = parsed.map((e) => '$e'.toLowerCase().trim()).toList();
+      if (labels.any((l) => l != 'perawat' && l != 'pasien')) return null;
+      return labels;
     } catch (_) {
       return null;
     }
@@ -187,7 +237,7 @@ class BpjsAiService {
             ],
           }),
         )
-        .timeout(const Duration(seconds: 30));
+        .timeout(const Duration(seconds: 90));
     if (res.statusCode < 200 || res.statusCode >= 300) return null;
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final choices = body['choices'] as List?;
@@ -217,7 +267,7 @@ class BpjsAiService {
             ],
           }),
         )
-        .timeout(const Duration(seconds: 30));
+        .timeout(const Duration(seconds: 90));
     if (res.statusCode < 200 || res.statusCode >= 300) return null;
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final content = body['content'] as List?;
@@ -251,7 +301,7 @@ class BpjsAiService {
             ],
           }),
         )
-        .timeout(const Duration(seconds: 30));
+        .timeout(const Duration(seconds: 90));
     if (res.statusCode < 200 || res.statusCode >= 300) return null;
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final candidates = body['candidates'] as List?;
@@ -314,22 +364,59 @@ class BpjsSessionRepo {
     }
   }
 
+  /// Replaces every stored transcript row for the session with [segments]
+  /// (each {speaker, text, offset}) - used both for the first save and when
+  /// the nurse flips the speaker roles afterward, so history always matches
+  /// what the review screen shows.
+  static Future<void> replaceTranscript(
+    String sessionId,
+    List<Map<String, String>> segments,
+  ) async {
+    try {
+      await SupabaseService.client.from('bpjs_transcripts').delete().eq('session_id', sessionId);
+      if (segments.isEmpty) return;
+      await SupabaseService.client.from('bpjs_transcripts').insert([
+        for (final seg in segments)
+          {
+            'session_id': sessionId,
+            'speaker': seg['speaker'],
+            'text_segment': seg['text'],
+            'timestamp_offset_ms': int.tryParse(seg['offset'] ?? '') ?? 0,
+          },
+      ]);
+    } catch (_) {
+      // Best-effort, same contract as the rest of this repo.
+    }
+  }
+
   static Future<void> saveDocumentation({
     required String sessionId,
     required Map<String, dynamic> structured,
     required List<Map<String, String>> alurPercakapan,
     String? providerId,
+    Map<String, dynamic>? perbandingan,
   }) async {
+    final row = {
+      'session_id': sessionId,
+      'ringkasan': structured['ringkasan'],
+      'dokumentasi_terstruktur': structured,
+      'alur_percakapan': alurPercakapan,
+      'generated_by_llm_provider': providerId,
+    };
     try {
       await SupabaseService.client.from('bpjs_documents').insert({
-        'session_id': sessionId,
-        'ringkasan': structured['ringkasan'],
-        'dokumentasi_terstruktur': structured,
-        'alur_percakapan': alurPercakapan,
-        'generated_by_llm_provider': providerId,
+        ...row,
+        'perbandingan': ?perbandingan,
       });
     } catch (_) {
-      // Best-effort, same contract as the rest of this repo.
+      // Kolom `perbandingan` baru (lihat schema.sql) - kalau migrasinya
+      // belum dijalankan, simpan tanpa kolom itu daripada kehilangan
+      // seluruh dokumentasi.
+      try {
+        await SupabaseService.client.from('bpjs_documents').insert(row);
+      } catch (_) {
+        // Best-effort, same contract as the rest of this repo.
+      }
     }
   }
 
@@ -363,6 +450,7 @@ class BpjsExport {
     required DateTime createdAt,
     required Map<String, dynamic> structured,
     required List<Map<String, String>> transcript,
+    Map<String, dynamic>? comparison,
   }) {
     final buf = StringBuffer()
       ..writeln('DOKUMENTASI PERCAKAPAN PERAWAT-PASIEN')
@@ -379,10 +467,16 @@ class BpjsExport {
         ..writeln();
     }
     if (transcript.isNotEmpty) {
-      buf.writeln('TRANSKRIP PERCAKAPAN:');
+      buf.writeln('HASIL STT (TRANSKRIP PER PEMBICARA):');
       for (final seg in transcript) {
         buf.writeln('${seg['speaker']}: ${seg['text']}');
       }
+      buf.writeln();
+    }
+    final cmp = comparisonLines(comparison);
+    if (cmp.isNotEmpty) {
+      buf.writeln('PERBANDINGAN STT VS RINGKASAN AI:');
+      cmp.forEach(buf.writeln);
       buf.writeln();
     }
     buf.writeln(
@@ -398,6 +492,7 @@ class BpjsExport {
     required DateTime createdAt,
     required Map<String, dynamic> structured,
     required List<Map<String, String>> transcript,
+    Map<String, dynamic>? comparison,
   }) async {
     final doc = pw.Document();
     doc.addPage(
@@ -429,11 +524,20 @@ class BpjsExport {
           if (transcript.isNotEmpty) ...[
             pw.SizedBox(height: 8),
             pw.Text(
-              'Transkrip Percakapan',
+              'Hasil STT (Transkrip per Pembicara)',
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
             ),
             pw.SizedBox(height: 4),
             ...transcript.map((seg) => pw.Text('${seg['speaker']}: ${seg['text']}')),
+          ],
+          if (comparisonLines(comparison).isNotEmpty) ...[
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'Perbandingan STT vs Ringkasan AI',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
+            ),
+            pw.SizedBox(height: 4),
+            ...comparisonLines(comparison).map((l) => pw.Text(l)),
           ],
           pw.SizedBox(height: 16),
           pw.Text(
@@ -453,6 +557,7 @@ class BpjsExport {
     required DateTime createdAt,
     required Map<String, dynamic> structured,
     required List<Map<String, String>> transcript,
+    Map<String, dynamic>? comparison,
   }) async {
     final builder = DocxDocumentBuilder()
         .h1('Dokumentasi Percakapan Perawat-Pasien')
@@ -468,9 +573,16 @@ class BpjsExport {
         ..p('${entry.value}');
     }
     if (transcript.isNotEmpty) {
-      builder.h2('Transkrip Percakapan');
+      builder.h2('Hasil STT (Transkrip per Pembicara)');
       for (final seg in transcript) {
         builder.p('${seg['speaker']}: ${seg['text']}');
+      }
+    }
+    final cmp = comparisonLines(comparison);
+    if (cmp.isNotEmpty) {
+      builder.h2('Perbandingan STT vs Ringkasan AI');
+      for (final l in cmp) {
+        builder.p(l);
       }
     }
     builder.p('');
@@ -479,6 +591,27 @@ class BpjsExport {
     );
     final built = builder.build();
     return Uint8List.fromList(await DocxExporter().exportToBytes(built));
+  }
+
+  /// Human-readable lines for the STT-vs-LLM comparison; empty when no
+  /// metrics were captured (old sessions, or exports from the web layer).
+  static List<String> comparisonLines(Map<String, dynamic>? c) {
+    if (c == null || c.isEmpty) return const [];
+    String sec(num? ms) => ms == null ? '-' : '${(ms / 1000).toStringAsFixed(1)} dtk';
+    if (c['sumber'] == 'anamnesis_terpandu') {
+      return [
+        'Pertanyaan dijawab: ${c['pertanyaan_dijawab']} dari ${c['pertanyaan_total']}',
+        'Jawaban lewat suara: ${c['jawaban_suara']}; diketik: ${c['jawaban_diketik']}; dikoreksi perawat: ${c['jawaban_dikoreksi']}',
+        'Ringkasan AI${c['llm_provider'] != null ? ' (${c['llm_provider']})' : ''}: ${c['llm_berhasil'] == true ? 'berhasil' : 'tidak berhasil, memakai jawaban mentah'}',
+      ];
+    }
+    return [
+      'Durasi audio: ${sec(c['durasi_audio_ms'] as num?)}',
+      'STT: ${c['stt_kata']} kata, ${c['stt_segmen']} segmen, diproses ${sec(c['stt_waktu_ms'] as num?)}',
+      'Ringkasan AI${c['llm_provider'] != null ? ' (${c['llm_provider']})' : ''}: ${c['llm_kata']} kata, diproses ${sec(c['llm_waktu_ms'] as num?)}',
+      'Rasio ringkasan/STT: ${c['rasio_ringkas']}',
+      'Pembicara terdeteksi AssemblyAI: ${c['pembicara_terdeteksi']}${c['relabel_llm'] == true ? ' (dikoreksi LLM)' : ''}',
+    ];
   }
 
   /// Saves [bytes] to a temp file and opens the OS share sheet so the nurse

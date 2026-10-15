@@ -4,67 +4,21 @@
 // device, which is the whole point (local-only storage was losing keys on
 // every reinstall/browser-data-clear, which is what this replaces).
 //
-// Security note, read before assuming this is bulletproof: the AES-GCM key
-// below is *derived* from the signed-in user's own UID plus a fixed pepper
-// baked into this public JS bundle (PBKDF2). Anyone with both (a) this
-// app's source, which is public, and (b) a user's UID — which is already
-// required to query their row, and RLS already restricts that query to the
-// same signed-in user — can derive the same key. This is defense-in-depth
-// against the credential sitting as human-readable plaintext at rest (an
-// accidental dashboard screen-share, a CSV export, a misconfigured
-// read-only replica), not an independent secret the way a real device's
-// Keystore/Keychain is. **Row Level Security remains the actual access
-// control** — nobody but the owning, authenticated user can read the row
-// at all, encrypted or not.
+// Security note, read before assuming this is bulletproof: see
+// secure_store.js's own note — same scheme, same caveats (RLS, not this
+// encryption, is the real access control).
 import { sb, currentUser } from './db.js';
+import { encryptForUser, decryptForUser } from './secure_store.js';
 
 const PEPPER = 'aihub-credentials-v1'; // not secret; just domain-separates the key derivation
-const SALT = 'ai-hub-static-salt';
-
-async function deriveKey(uid) {
-  const enc = new TextEncoder();
-  const material = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(uid + PEPPER),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: enc.encode(SALT), iterations: 100000, hash: 'SHA-256' },
-    material,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-function toBase64(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)));
-}
-function fromBase64(str) {
-  return Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
-}
 
 async function encryptValue(uid, plaintext) {
-  const key = await deriveKey(uid);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    new TextEncoder().encode(plaintext)
-  );
-  return { encrypted_key: toBase64(ciphertext), iv: toBase64(iv) };
+  const { encrypted, iv } = await encryptForUser(uid, PEPPER, plaintext);
+  return { encrypted_key: encrypted, iv };
 }
 
 async function decryptValue(uid, encryptedKey, iv) {
-  const key = await deriveKey(uid);
-  const plain = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: fromBase64(iv) },
-    key,
-    fromBase64(encryptedKey)
-  );
-  return new TextDecoder().decode(plain);
+  return decryptForUser(uid, PEPPER, encryptedKey, iv);
 }
 
 /** entry: {id,label,type,format,endpoint,model}. One `id` (provider_id) can

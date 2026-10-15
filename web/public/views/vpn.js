@@ -2,11 +2,29 @@ import { h, toast, icon as uiIcon, pageIntro } from '../ui.js';
 import { Native } from '../bridge.js';
 import { navigate } from '../router.js';
 import { logActivity } from '../db.js';
+import { ovpnLabel, listRemotes } from '../ovpn_info.js';
+import { loadState, saveState, flatten, activeProfile, profileSummary } from '../vpn_profiles.js';
 
 export default async function render(root) {
   let connected = false;
-  let config = await Native.getVpnConfig();
+  // Banyak profil VPN (lihat vpn_profiles.js): `state` = semua profil + yang
+  // aktif; `config` = profil aktif yang sudah diratakan, yaitu persis yang
+  // dibaca tunnel native saat "Hubungkan".
+  let state = await loadState();
+  let config = state.activeId ? flatten(state) : null;
   let connectedSince = null;
+  // Ask native for the real tunnel state instead of assuming "disconnected"
+  // on every load — otherwise a tunnel that is already up looks off, and
+  // tapping Hubungkan again fights the live connection.
+  try {
+    const st = Native.attached ? await Native.vpnState() : null;
+    if (st && st.connected) {
+      connected = true;
+      connectedSince = new Date();
+    }
+  } catch (e) {
+    console.warn('[vpn] gagal membaca status tunnel', e);
+  }
 
   const el = h(`
     <div class="page vpn-page">
@@ -24,6 +42,7 @@ export default async function render(root) {
           <span>›</span>
         </div>
       </button>
+      <div id="profile-list" style="margin-bottom:12px;"></div>
       <div class="card">
         <div class="status-grid">
           <div style="text-align:center;">
@@ -71,8 +90,8 @@ export default async function render(root) {
       noteEl.textContent = 'Semua protokol butuh server dan kredensialnya sendiri — belum ada server default, ketuk di atas untuk mengisi WireGuard/OpenVPN/SSH milikmu.';
       return;
     }
-    if (config.protocol === 'WireGuard') {
-      noteEl.textContent = 'WireGuard membuka tunnel jaringan asli di HP — trafik benar-benar dialihkan lewat server ini saat Connect.';
+    if (config.protocol === 'WireGuard' || config.protocol === 'OpenVPN') {
+      noteEl.textContent = `${config.protocol} membuka tunnel jaringan asli di HP — trafik benar-benar dialihkan lewat server ini saat Connect.`;
     } else {
       noteEl.textContent = `${config.protocol} baru tersimpan sebagai konfigurasi — tunnel jaringan asli untuk ${config.protocol} belum tersedia, jadi Connect belum benar-benar mengalihkan trafik.`;
     }
@@ -81,7 +100,7 @@ export default async function render(root) {
   function serverLabel(cfg) {
     if (!cfg) return null;
     if (cfg.protocol === 'WireGuard') return cfg.endpoint;
-    if (cfg.protocol === 'OpenVPN') return 'File .ovpn tersimpan';
+    if (cfg.protocol === 'OpenVPN') return ovpnLabel(cfg);
     return cfg.host ? `${cfg.host}:${cfg.port || 22}` : null;
   }
 
@@ -92,8 +111,9 @@ export default async function render(root) {
     btn.textContent = connected ? 'Putuskan koneksi' : 'Hubungkan VPN';
     const label = serverLabel(config);
     serverText.textContent = label
-      ? `${config.protocol} · ${label}`
+      ? `${config.name || config.protocol} · ${config.protocol}`
       : 'Belum ada server — ketuk untuk menambah';
+    renderProfiles();
     el.querySelector('#stat-host').textContent = connected ? label || '—' : '—';
     el.querySelector('#stat-protocol').textContent = config?.protocol || '—';
     el.querySelector('#stat-since').textContent =
@@ -105,16 +125,86 @@ export default async function render(root) {
 
   el.querySelector('#server-card').onclick = () => navigate('/vpn-config');
 
+  const profileListEl = el.querySelector('#profile-list');
+  const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  async function applyState(message) {
+    config = state.activeId ? flatten(state) : null;
+    const { cloudFailed } = await saveState(state);
+    if (cloudFailed) toast('Tersimpan di perangkat ini saja — gagal sinkron ke akun.');
+    else if (message) toast(message);
+    refresh();
+  }
+
+  // Pilih VPN yang dipakai (satu ketukan) dan, untuk file .ovpn yang memuat
+  // beberapa `remote`, host mana yang dipakai.
+  function renderProfiles() {
+    profileListEl.innerHTML = '';
+    if (state.profiles.length === 0) return;
+    const active = activeProfile(state);
+    const rows = state.profiles.map((p) => {
+      const on = p.id === state.activeId;
+      return `<button type="button" class="card tappable" data-id="${esc(p.id)}" style="width:100%;text-align:left;margin-bottom:8px;${on ? 'border-color:var(--accent,#2f6f64);' : ''}">
+        <div class="row-between"><strong>${esc(p.name)}</strong><span class="pill ${on ? 'pill--ok' : ''}">${on ? 'Dipakai' : 'Pilih'}</span></div>
+        <div class="muted small" style="margin-top:4px;">${esc(profileSummary(p))}</div></button>`;
+    });
+    profileListEl.appendChild(h(`<div><div class="muted small" style="margin:0 0 6px;">VPN yang dipakai</div>${rows.join('')}</div>`));
+    profileListEl.querySelectorAll('[data-id]').forEach((b) => {
+      b.onclick = async () => {
+        if (b.dataset.id === state.activeId) return;
+        if (connected) {
+          toast('Putuskan koneksi dulu sebelum pindah VPN.');
+          return;
+        }
+        state.activeId = b.dataset.id;
+        await applyState(`VPN aktif: ${activeProfile(state).name}`);
+      };
+    });
+    const remotes = active?.protocol === 'OpenVPN' ? listRemotes(active.ovpnSource ?? active.ovpnFileContent) : [];
+    if (remotes.length > 1) {
+      const sel = h(`<div class="card"><label class="muted small" for="host-pick">Host yang dipakai</label>
+        <select id="host-pick" style="width:100%;margin-top:6px;">${remotes
+          .map((r) => `<option value="${esc(r.key)}" ${(active.remote || remotes[0].key) === r.key ? 'selected' : ''}>${esc(r.host)}:${esc(r.port)} (${esc(r.proto.toUpperCase())})</option>`)
+          .join('')}</select></div>`);
+      sel.querySelector('select').onchange = async (e) => {
+        if (connected) {
+          toast('Putuskan koneksi dulu sebelum pindah host.');
+          e.target.value = active.remote || remotes[0].key;
+          return;
+        }
+        active.remote = e.target.value;
+        await applyState(`Host dipakai: ${e.target.value}`);
+      };
+      profileListEl.appendChild(sel);
+    }
+  }
+
   btn.onclick = async () => {
     if (!connected && !config) {
       toast('No VPN server configured yet — add one first.');
       navigate('/vpn-config');
       return;
     }
-    const result = connected ? await Native.vpnDisconnect() : await Native.vpnConnect();
+    // OpenVPN in particular can legitimately take tens of seconds to give a
+    // definite yes/no (see bridge.js's vpnConnect timeout note) — without
+    // this, a tap during that window looked exactly like a dead button
+    // (nothing visibly happens), which just invited more taps piling up
+    // more concurrent connect attempts in the background.
+    btn.disabled = true;
+    btn.textContent = connected ? 'Memutuskan…' : 'Menghubungkan…';
+    let result;
+    try {
+      result = connected ? await Native.vpnDisconnect() : await Native.vpnConnect();
+    } finally {
+      btn.disabled = false;
+    }
     connected = !!(result && result.connected);
     connectedSince = connected ? new Date() : null;
-    if (result && result.message) toast(result.message);
+    if (result && result.message) {
+      toast(result.message);
+    } else if (!result) {
+      toast('Tidak ada jawaban dari sisi native — coba lagi, atau cek apakah konfigurasi VPN valid.');
+    }
     logActivity({
       category: 'VPN',
       title: connected ? 'VPN connected' : 'VPN disconnected',

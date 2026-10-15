@@ -12,8 +12,8 @@
 | NRP | 3124521022 |
 | Kelas | IT-A |
 | Program Studi | D3 Teknik Informatika, PSDKU Lamongan — PENS |
-| Dosen Pembimbing 1 | Amma Liesvarastranta Haz, S.Tr.T., M.T. |
-| Dosen Pembimbing 2 | Sritrusta Sukaridhoto, ST., Ph.D. |
+| Dosen Pembimbing 1 | (nama dosen pembimbing 1) |
+| Dosen Pembimbing 2 | (nama dosen pembimbing 2) |
 | Studi Kasus | Rumah Sakit Ahmad Yani Surabaya |
 | Dokumen Versi | v1.0 — disusun berdasarkan Judul Proyek Akhir resmi (17 September 2026) |
 

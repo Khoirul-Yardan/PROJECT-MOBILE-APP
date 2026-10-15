@@ -4,3 +4,8 @@ build/
 .idea/
 *.lock
 .env
+
+# VPN uji coba: profil asli & hasil generate berisi private key
+TEST VPN/kp-la-2.ovpn
+TEST VPN/docker/out/
+TEST VPN/wireguard/out/

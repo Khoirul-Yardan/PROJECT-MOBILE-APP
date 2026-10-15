@@ -122,10 +122,75 @@ export async function markBpjsSessionSent(sessionId) {
   if (error) throw error;
 }
 
+/** Deletes a recorded session for good — schema.sql's "Nurse can delete
+ * their own sessions" RLS policy is what actually enforces this is only
+ * ever the signed-in nurse's own row; bpjs_transcripts/bpjs_documents carry
+ * `on delete cascade` back to bpjs_sessions, so this one delete takes the
+ * transcript and documentation with it, no separate cleanup needed. */
+export async function deleteBpjsSession(sessionId) {
+  const { error } = await sb.from('bpjs_sessions').delete().eq('id', sessionId);
+  if (error) throw error;
+}
+
 export function watchBpjsSessions(onChange) {
   const channel = sb
     .channel(`bpjs-sessions-${Math.random().toString(36).slice(2)}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bpjs_sessions' }, onChange)
+    .subscribe();
+  return () => sb.removeChannel(channel);
+}
+
+// ---------------------------------------------------------------------
+// Dokumentasi — one searchable history over Bot BPJS, Anamnesis Terpandu
+// (both stored as bpjs_sessions, told apart by perbandingan.sumber) and
+// Papan Komunikasi (komunikasi_events). RLS keeps every row to its owner.
+// ---------------------------------------------------------------------
+
+/** Every document of the signed-in nurse's sessions in one query — the
+ * history page searches these client-side instead of one request per
+ * session. */
+export async function fetchAllBpjsDocuments() {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data } = await sb
+    .from('bpjs_documents')
+    .select('session_id,ringkasan,dokumentasi_terstruktur,perbandingan,generated_by_llm_provider,created_at')
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
+export async function fetchAllBpjsTranscripts() {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data } = await sb
+    .from('bpjs_transcripts')
+    .select('session_id,speaker,text_segment,timestamp_offset_ms')
+    .order('timestamp_offset_ms');
+  return data ?? [];
+}
+
+export async function fetchKomunikasiEvents(limit = 1000) {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data } = await sb
+    .from('komunikasi_events')
+    .select('id,pasien_ref,jenis,detail,mendesak,created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function deleteKomunikasiEvents(ids) {
+  if (!ids.length) return;
+  const { error } = await sb.from('komunikasi_events').delete().in('id', ids);
+  if (error) throw error;
+}
+
+export function watchKomunikasi(onChange) {
+  const channel = sb
+    .channel(`komunikasi-${Math.random().toString(36).slice(2)}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'komunikasi_events' }, onChange)
     .subscribe();
   return () => sb.removeChannel(channel);
 }

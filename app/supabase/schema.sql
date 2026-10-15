@@ -275,12 +275,29 @@ create table if not exists public.bpjs_documents (
 
 create index if not exists bpjs_documents_session_idx on public.bpjs_documents (session_id);
 
+-- Metrik perbandingan hasil STT mentah vs ringkasan LLM (tugas akhir):
+-- jumlah kata, waktu proses, rasio ringkas, jumlah pembicara terdeteksi.
+alter table public.bpjs_documents
+  add column if not exists perbandingan jsonb not null default '{}'::jsonb;
+
 alter table public.bpjs_documents enable row level security;
 
 drop policy if exists "Nurse and target doctor can view documentation" on public.bpjs_documents;
 drop policy if exists "Nurse can view documentation for their own session" on public.bpjs_documents;
 create policy "Nurse can view documentation for their own session"
   on public.bpjs_documents for select
+  using (
+    exists (
+      select 1 from public.bpjs_sessions s
+      where s.id = session_id and auth.uid() = s.perawat_id
+    )
+  );
+
+-- Perawat boleh mengganti transkrip sesinya sendiri (tombol "Tukar peran
+-- perawat/pasien" di Bot BPJS menulis ulang baris transkrip).
+drop policy if exists "Nurse can delete transcript segments of their session" on public.bpjs_transcripts;
+create policy "Nurse can delete transcript segments of their session"
+  on public.bpjs_transcripts for delete
   using (
     exists (
       select 1 from public.bpjs_sessions s
@@ -407,14 +424,44 @@ create table if not exists public.chat_messages (
   user_id uuid not null references auth.users (id) on delete cascade,
   provider_id text not null,
   provider_label text not null,
+  session_id uuid not null default gen_random_uuid(),
   role text not null check (role in ('user', 'assistant')),
   content text not null,
   is_error boolean not null default false,
   created_at timestamptz not null default now()
 );
 
+-- Migration for a table created before multi-session chat existed: the
+-- `create table if not exists` above is a no-op on an existing table, so
+-- the column has to be added explicitly here too.
+alter table public.chat_messages add column if not exists session_id uuid;
+
+-- Give every pre-existing row (session_id still null — either just added
+-- above, or added in a previous run before this backfill got added) a
+-- session_id, grouping each provider's existing history into one shared
+-- "first session" per (user, provider) instead of splitting every old
+-- message into its own session (which the column default — a fresh UUID
+-- per row — would do if applied naively here).
+do $$
+declare r record;
+begin
+  for r in
+    select distinct user_id, provider_id from public.chat_messages where session_id is null
+  loop
+    update public.chat_messages
+      set session_id = gen_random_uuid()
+      where user_id = r.user_id and provider_id = r.provider_id and session_id is null;
+  end loop;
+end $$;
+
+alter table public.chat_messages alter column session_id set default gen_random_uuid();
+alter table public.chat_messages alter column session_id set not null;
+
 create index if not exists chat_messages_user_provider_idx
   on public.chat_messages (user_id, provider_id, created_at);
+
+create index if not exists chat_messages_session_idx
+  on public.chat_messages (user_id, provider_id, session_id, created_at);
 
 alter table public.chat_messages enable row level security;
 
@@ -434,3 +481,89 @@ create policy "Users can delete own chat messages"
   using (auth.uid() = user_id);
 
 -- No update policy: messages are append-only, same as activity_log.
+
+-- ---------------------------------------------------------------------------
+-- VPN server config — synced through the user's account instead of only
+-- living in one device's Keystore/Keychain (VpnConfigService), so a server
+-- added on one device is still there after a reinstall or on another
+-- device. One row per user: there's only ever "the" active VPN server, same
+-- as the local-storage version this replaces.
+--
+-- `encrypted_config`/`iv` hold the WHOLE config object (every field for
+-- whichever protocol — WireGuard keys, or the full .ovpn text plus
+-- username/password, or SSH host/password/private key) as one AES-GCM
+-- blob, encrypted client-side exactly like api_credentials — see
+-- credentials.js's deriveKey for the exact scheme and its security note
+-- (PBKDF2 from the user's own uid + a public pepper baked into this JS
+-- bundle: defense-in-depth against the config sitting as plaintext at
+-- rest, not an independent secret the way a device Keystore is — Row
+-- Level Security below is the actual access control).
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.vpn_configs (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  protocol text not null,
+  encrypted_config text not null,
+  iv text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.vpn_configs enable row level security;
+
+drop policy if exists "Users can view own vpn config" on public.vpn_configs;
+create policy "Users can view own vpn config"
+  on public.vpn_configs for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own vpn config" on public.vpn_configs;
+create policy "Users can insert own vpn config"
+  on public.vpn_configs for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update own vpn config" on public.vpn_configs;
+create policy "Users can update own vpn config"
+  on public.vpn_configs for update
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own vpn config" on public.vpn_configs;
+create policy "Users can delete own vpn config"
+  on public.vpn_configs for delete
+  using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- Papan Komunikasi — touch-to-speech board (web/public/views/papan-komunikasi.js).
+-- One row per tap on the patient's board. Health-related data, so RLS limits
+-- every row to the signed-in user who recorded it. `pasien_ref` is a short
+-- code/initials (never a full name) to stay within the data-minimisation
+-- stance in docs/ANALISIS-PEMILIHAN-SISTEM-SPEECH.md §5.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.komunikasi_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  pasien_ref text,
+  jenis text not null,
+  detail jsonb not null default '{}'::jsonb,
+  mendesak boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists komunikasi_events_user_created_idx
+  on public.komunikasi_events (user_id, created_at desc);
+
+alter table public.komunikasi_events enable row level security;
+
+drop policy if exists "Users can view own komunikasi events" on public.komunikasi_events;
+create policy "Users can view own komunikasi events"
+  on public.komunikasi_events for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own komunikasi events" on public.komunikasi_events;
+create policy "Users can insert own komunikasi events"
+  on public.komunikasi_events for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own komunikasi events" on public.komunikasi_events;
+create policy "Users can delete own komunikasi events"
+  on public.komunikasi_events for delete
+  using (auth.uid() = user_id);

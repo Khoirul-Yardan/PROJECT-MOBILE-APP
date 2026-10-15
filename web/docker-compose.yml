@@ -5,3 +5,22 @@ services:
     ports:
       - "8090:80"
     restart: unless-stopped
+    depends_on:
+      - relay
+
+  # Same-origin relay for self-hosted agent calls (A2A, OpenClaw) made from
+  # a plain browser dev preview, where there's no native bridge to route
+  # around their missing CORS headers — see relay/server.js for why this
+  # exists. nginx proxies /relay/ to this service so the browser only ever
+  # talks to :8090 (no cross-origin request at all, hence no CORS problem).
+  relay:
+    build: ./relay
+    container_name: ai-hub-relay
+    restart: unless-stopped
+    # Optional: set this (in a .env file next to this compose file, or in
+    # the shell before `docker compose up`) so Bot BPJS diarization works
+    # for every device with no per-user AssemblyAI key — see
+    # docs/ASSEMBLYAI-DIARIZATION.md. Left unset, the relay still runs fine;
+    # the app just falls back to asking each nurse for her own key.
+    environment:
+      - ASSEMBLYAI_API_KEY=${ASSEMBLYAI_API_KEY:-}

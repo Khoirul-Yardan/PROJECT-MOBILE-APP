@@ -10,21 +10,27 @@ import { illustration } from '../illustrations.js';
 const ITEMS = [
   {
     icon: 'bot',
+    art: 'bot',
     title: 'Bot BPJS',
     subtitle: 'Dokumentasi percakapan untuk form BPJS',
     available: true,
+    open: () => Native.openBotBpjs(),
   },
   {
     icon: 'chat',
-    title: 'Bot FAQ',
-    subtitle: 'Jawaban untuk pertanyaan seputar aplikasi',
-    available: false,
+    art: 'providers',
+    title: 'Papan Komunikasi',
+    subtitle: 'Pasien memilih ikon keluhan, sistem bersuara dan mencatatnya',
+    available: true,
+    open: () => navigate('/papan-komunikasi'),
   },
   {
-    icon: 'chat',
-    title: 'Bot Penerjemah',
-    subtitle: 'Terjemahkan percakapan lintas bahasa',
-    available: false,
+    icon: 'bot',
+    art: 'chat',
+    title: 'Anamnesis Terpandu',
+    subtitle: 'Asisten suara menanyakan anamnesis, jawaban jadi draf form',
+    available: true,
+    open: () => Native.openAnamnesisTerpandu(),
   },
 ];
 
@@ -37,15 +43,15 @@ export default async function render(root) {
         <div class="row">
           <span class="feature-icon">${icon('document')}</span>
           <div class="grow">
-            <div class="item-title">Dokumentasi BPJS</div>
-            <div class="muted small">Lihat sesi yang sudah direkam, salin atau ekspor untuk dikirim ke dokter.</div>
+            <div class="item-title">Dokumentasi &amp; Riwayat</div>
+            <div class="muted small">Cari dan periksa semua data: Bot BPJS, Anamnesis Terpandu, dan Papan Komunikasi.</div>
           </div>
         </div>
       </button>
     </div>
   `);
   root.appendChild(el);
-  el.querySelector('.topbar').after(pageIntro('Bantuan kecil. Dampak besar.', 'Pilih asisten dengan alur kerja yang sesuai kebutuhanmu.', { art: 'bot', label: 'KOLEKSI BOT', tone: 'intro-mint' }));
+  el.querySelector('.topbar').after(pageIntro('Bantuan kecil. Dampak besar.', 'Pilih asisten sesuai kondisi pasien: rekam percakapan, papan sentuh, atau anamnesis terpandu.', { art: 'bot', label: 'KOLEKSI BOT', tone: 'intro-mint' }));
 
   el.querySelector('#bpjs-review-link').onclick = () => navigate('/bpjs');
 
@@ -53,7 +59,7 @@ export default async function render(root) {
   ITEMS.forEach((item) => {
     const card = h(`
       <button type="button" class="card tappable agent-card">
-        ${illustration(item.available ? 'bot' : item.title === 'Bot FAQ' ? 'providers' : 'chat')}
+        ${illustration(item.art)}
         <div class="agent-heading">
           <span class="pill ${item.available ? 'pill--ok' : 'pill--warn'}">${item.available ? 'Aktif' : 'Segera'}</span>
         </div>
@@ -73,9 +79,10 @@ async function openItem(item, el) {
     detailEl.innerHTML = `<p class="small muted" style="margin-top:14px;">${item.title} belum tersedia.</p>`;
     return;
   }
-  // Bot BPJS needs the microphone + wake-word listener — that stays 100%
-  // native for clarity and OS-level permission handling, so the web layer
-  // just asks the shell to open its native screen.
+  // Bot BPJS and Anamnesis Terpandu need the microphone (+ TTS) — those stay
+  // 100% native for OS-level permission handling and reliable audio, so the
+  // web layer just asks the shell to open the native screen. Papan Komunikasi
+  // is plain web and simply navigates to its own route.
   detailEl.innerHTML = '';
-  await Native.openBotBpjs();
+  await item.open();
 }

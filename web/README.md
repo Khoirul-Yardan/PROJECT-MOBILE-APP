@@ -70,9 +70,18 @@ this as `Native.*` promises so views never touch the raw protocol.
 | `get_vpn_config` / `save_vpn_config` | Web → Native (request/response) | VPN/SSH server details |
 | `vpn_connect` / `vpn_disconnect` | Web → Native (request/response) | The (simulated) VPN toggle |
 | `open_bot_bpjs` | Web → Native (fire) | Pushes the fully-native Bot BPJS screen |
+| `http_relay` | Web → Native (request/response) | Relays an HTTP call through native's network stack (no CORS) for self-hosted agent gateways (OpenClaw, Hermes Agent A2A/API Server) — see `web/relay/server.js` for the same job in a plain-browser preview |
+| `export_bpjs` | Web → Native (request/response) | Builds a Bot BPJS session as PDF/DOCX (reuses `BpjsExport` in `bpjs_service.dart`) and opens the native share sheet, from the Riwayat BPJS history page |
 | `sign_out` | Web → Native (fire) | Clears native's mirrored Supabase session |
 | `route_changed` | Web → Native (fire) | Keeps the native bottom-nav highlight in sync |
 | `session_changed` | Web → Native (fire) | Mirrors the web session's refresh token into native, so the native-only Bot BPJS screen can still attribute its `activity_log` writes to the signed-in user |
+
+## The relay container (`relay/`)
+
+A tiny same-origin HTTP relay with two jobs — see `relay/server.js` for the full reasoning:
+
+1. **CORS bypass** for self-hosted agent calls (OpenClaw, Hermes Agent) made from a plain-browser preview, where there's no native bridge to route around their missing CORS headers.
+2. **Shared AssemblyAI diarization key** — set `ASSEMBLYAI_API_KEY` as an environment variable on this service (e.g. in a `.env` file next to `docker-compose.yml`) and Bot BPJS's speaker diarization works on every device with zero per-nurse setup. Left unset, each device just falls back to asking for — and remembering — its own AssemblyAI key, same as before. See `docs/ASSEMBLYAI-DIARIZATION.md`.
 
 ## App Store / Play Store risk — read this before shipping
 

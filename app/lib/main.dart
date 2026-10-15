@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'theme.dart';
 import 'screens/splash_screen.dart';
+import 'screens/web_dev_hub_screen.dart';
 import 'screens/web_shell_screen.dart';
 import 'services/supabase_service.dart';
 
@@ -72,7 +74,8 @@ class _AiHubAppState extends State<AiHubApp> with WidgetsBindingObserver {
       initialRoute: '/',
       routes: {
         '/': (_) => const SplashScreen(),
-        '/shell': (_) => const WebShellScreen(),
+        // webview_flutter has no web implementation, so Chrome gets a dev hub.
+        '/shell': (_) => kIsWeb ? const WebDevHubScreen() : const WebShellScreen(),
       },
     );
   }

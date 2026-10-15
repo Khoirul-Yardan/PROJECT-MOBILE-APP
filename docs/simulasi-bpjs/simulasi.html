@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulasi Alur Bot BPJS</title>
+<style>
+  :root { --bg:#f6f7f3; --ink:#22302c; --muted:#6b7772; --pri:#276a60; --card:#fffefa; --line:#3d4a45; --nurse:#e5dcf4; --pat:#fdeec5; --warn:#8a5a00; --ok:#2e7d4f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,'Segoe UI',sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:20px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .step { color:var(--muted); font-size:13px; margin-bottom:14px; }
+  .stage { display:grid; grid-template-columns:1fr 340px; gap:22px; align-items:start; }
+  .room, .phone { border:2px solid var(--line); border-radius:22px; background:var(--card); }
+  .room { padding:18px; min-height:640px; }
+  .room h2 { font-size:14px; margin:0 0 12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  .people { display:flex; justify-content:space-around; margin:10px 0 16px; }
+  .person { text-align:center; width:130px; }
+  .avatar { width:84px; height:84px; border-radius:50%; margin:0 auto 6px; display:grid; place-items:center; font-size:38px; border:2px solid var(--line); }
+  .nurse .avatar { background:var(--nurse); } .patient .avatar { background:var(--pat); }
+  .person.speaking .avatar { box-shadow:0 0 0 6px rgba(39,106,96,.25); }
+  .bubbles { display:flex; flex-direction:column; gap:10px; }
+  .b { max-width:80%; padding:9px 13px; border-radius:16px; border:2px solid var(--line); }
+  .b.n { background:var(--nurse); align-self:flex-start; } .b.p { background:var(--pat); align-self:flex-end; }
+  .b small { display:block; font-weight:700; font-size:11px; color:var(--muted); }
+  .note { margin-top:14px; padding:10px 12px; border-radius:12px; background:#e8f1ee; color:var(--pri); font-size:13px; }
+  .note.warn { background:#fff1d6; color:var(--warn); }
+  .phone { padding:14px; min-height:640px; position:relative; overflow:hidden; }
+  .bar { display:flex; gap:10px; align-items:center; font-weight:700; font-size:18px; margin-bottom:12px; border-bottom:1px solid #cfd3cc; padding-bottom:10px; }
+  .mic { width:120px; height:120px; border-radius:50%; margin:30px auto 14px; display:grid; place-items:center; font-size:46px; background:var(--nurse); border:2px solid var(--line); }
+  .mic.rec { background:#ffe1e1; animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 14px rgba(200,40,40,.15); } }
+  .center { text-align:center; } .muted { color:var(--muted); font-size:13px; }
+  .btn { display:block; width:100%; text-align:center; padding:13px; border-radius:14px; font-weight:700; margin-top:10px; border:2px solid var(--line); background:#fff; }
+  .btn.pri { background:var(--pri); color:#fff; border-color:var(--pri); }
+  .btn.dan { background:#ffe7e7; color:#b3261e; border-color:#ffe7e7; }
+  .dialog { position:absolute; inset:0; background:rgba(0,0,0,.35); display:grid; place-items:center; padding:18px; }
+  .dialog > div { background:#fff; border-radius:20px; padding:18px; width:100%; }
+  .field { border:1.5px solid #8a948f; border-radius:8px; padding:9px 10px; margin:8px 0; min-height:40px; }
+  .field label { display:block; font-size:11px; color:var(--muted); }
+  .seg { display:grid; grid-template-columns:repeat(3,1fr); border:2px solid var(--line); border-radius:999px; overflow:hidden; margin:10px 0; }
+  .seg span { text-align:center; padding:9px 2px; font-weight:600; font-size:14px; white-space:nowrap; }
+  .seg .on { background:#cde7e2; }
+  .ai { display:flex; gap:8px; padding:10px 12px; border-radius:12px; background:#fff1d6; color:var(--warn); font-size:12px; font-weight:600; }
+  .card { border:2px solid var(--line); border-radius:16px; padding:12px; margin:8px 0; background:#fff; }
+  .lab { font-size:12px; font-weight:600; color:var(--muted); margin-top:8px; }
+  .val { border:1.5px solid #c3c9c4; border-radius:10px; padding:8px 10px; font-size:13px; margin-top:3px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  table { width:100%; font-size:12.5px; border-collapse:collapse; } td,th { text-align:left; padding:5px 3px; } th { color:var(--muted); font-weight:600; border-bottom:1.5px solid #c3c9c4; }
+  .hidden { display:none; }
+  .doctor { margin-top:14px; padding:12px; border:2px dashed var(--line); border-radius:16px; background:#fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Simulasi alur Bot BPJS — perawat &amp; pasien</h1>
+  <div class="step" id="stepLabel"></div>
+  <div class="stage">
+    <section class="room" aria-label="Kondisi di ruang pemeriksaan">
+      <h2>Di ruang pemeriksaan</h2>
+      <div class="people">
+        <div class="person nurse" id="pNurse"><div class="avatar">👩‍⚕️</div><b>Perawat</b><div class="muted">Pengguna aplikasi</div></div>
+        <div class="person patient" id="pPatient"><div class="avatar">🧑</div><b>Pasien</b><div class="muted">Bukan pengguna app</div></div>
+      </div>
+      <div class="bubbles" id="bubbles"></div>
+      <div class="note" id="roomNote"></div>
+    </section>
+    <section class="phone" aria-label="Layar HP perawat">
+      <div class="bar"><span>←</span><span>Bot BPJS</span></div>
+      <div id="screen"></div>
+    </section>
+  </div>
+</div>
+<script>
+const DIALOG = [
+  ['n','Selamat pagi Pak Joko, ada keluhan apa hari ini?'],
+  ['p','Dada kiri saya nyeri, Sus, sudah tiga hari ini.'],
+  ['n','Nyerinya seperti apa? Menjalar ke mana?'],
+  ['p','Seperti ditekan, sampai ke lengan kiri. Kalau naik tangga makin berat.'],
+  ['n','Ada riwayat darah tinggi atau alergi obat?'],
+  ['p','Darah tinggi lima tahun, obatnya tidak rutin. Alergi tidak ada.'],
+];
+const SUM = [
+  ['Ringkasan','Pasien laki-laki 54 th datang dengan nyeri dada kiri sejak 3 hari, memberat saat aktivitas.'],
+  ['Keluhan utama','Nyeri dada kiri seperti ditekan, menjalar ke lengan kiri.'],
+  ['Durasi gejala','3 hari; memberat saat naik tangga.'],
+  ['Riwayat kesehatan','Hipertensi 5 tahun, tidak rutin minum obat. Tidak ada alergi obat.'],
+  ['Hasil anamnesis','Nyeri hilang timbul, sesak ringan saat nyeri.'],
+];
+const bubbles = (n) => DIALOG.slice(0,n).map(([w,t]) => `<div class="b ${w}"><small>${w==='n'?'Perawat':'Pasien'}</small>${t}</div>`).join('');
+const seg = (i) => `<div class="seg">${['Transkrip','Ringkasan','Banding'].map((t,k)=>`<span class="${k===i?'on':''}">${t}</span>`).join('')}</div>`;
+const head = `<div class="ai">✦ <span>Draf AI (ChatGPT) — perlu verifikasi dokter</span></div><p style="margin:12px 0 2px"><b>Untuk: dr. Budi Hartono · RS Ahmad Yani Surabaya</b></p><p class="muted" style="margin:0">Periksa dan benarkan isi draf, lalu salin atau ekspor PDF/DOCX untuk dibagikan ke dokter.</p>`;
+const btns = `<div class="btn pri">Salin Teks</div><div class="row2"><div class="btn">Ekspor PDF</div><div class="btn">Ekspor DOCX</div></div>`;
+const STEPS = [
+ { t:'1. Perawat membuka Bot BPJS', room:'', note:'Pasien duduk di depan perawat. Pasien tidak perlu memasang atau memegang apa pun.', speak:'',
+   scr:`<div class="center"><div class="mic">🎙</div><b>Siap merekam</b><p class="muted">Tekan tombol untuk mulai merekam percakapan.</p></div>` },
+ { t:'2. Perawat mengisi nama pasien & dokter tujuan', room:'', note:'Perawat meminta izin pasien untuk merekam. <b>(Catatan uji: app belum punya langkah persetujuan pasien — lihat ujitest dan dokumentasi.md)</b>', warn:1, speak:'n',
+   scr:`<div class="center"><div class="mic">🎙</div></div><div class="dialog"><div><b>Dokumentasi untuk dokter siapa?</b><div class="field"><label>Nama pasien</label>Joko Santoso</div><div class="field"><label>Nama dokter</label>dr. Budi Hartono</div><div class="field"><label>Instansi / RS (opsional)</label>RS Ahmad Yani Surabaya</div><div class="btn pri">Mulai Rekam</div></div></div>` },
+ { t:'3. Percakapan direkam (giliran perawat)', room:DIALOG.length && 2, note:'HP diletakkan di meja antara perawat dan pasien; audio direkam utuh.', speak:'n',
+   scr:`<div class="center"><div class="mic rec">⏺</div><b>Merekam sesi…</b><p class="muted">00:12 · Bicara dengan pasien — audio direkam utuh.</p></div><div class="btn dan">Hentikan Sesi</div>` },
+ { t:'4. Percakapan direkam (giliran pasien)', room:4, note:'Pasien bercerita seperti biasa. Satu rekaman, dua suara.', speak:'p',
+   scr:`<div class="center"><div class="mic rec">⏺</div><b>Merekam sesi…</b><p class="muted">00:58 · Bicara dengan pasien — audio direkam utuh.</p></div><div class="btn dan">Hentikan Sesi</div>` },
+ { t:'5. Perawat menekan "Hentikan Sesi" — diproses', room:6, note:'Audio dikirim ke AssemblyAI (STT + pemisahan pembicara), lalu transkrip ke LLM untuk diringkas.', warn:1, speak:'',
+   scr:`<div class="center" style="margin-top:80px"><div style="font-size:40px">⏳</div><b>Memproses sesi…</b><p class="muted">Memisahkan suara perawat dan pasien…<br>Menyusun draf dokumentasi…</p></div>` },
+ { t:'6. Review — Transkrip per pembicara', room:6, note:'Perawat membaca transkrip. Bila peran terbalik, ketuk "Tukar peran".', speak:'',
+   scr:`${head}${seg(0)}<div class="card">${DIALOG.map(([w,t])=>`<p style="margin:5px 0;font-size:13px"><b style="color:${w==='n'?'#276a60':'#7a5a00'}">${w==='n'?'Perawat':'Pasien'}:</b> ${t}</p>`).join('')}</div><p style="color:#276a60;font-weight:600;font-size:13px">⇅ Tukar peran perawat ↔ pasien</p>${btns}` },
+ { t:'7. Review — Ringkasan AI (bisa diedit)', room:6, note:'Perawat mengedit kolom yang kurang tepat sebelum dibagikan. Draf = alat bantu, bukan diagnosis.', speak:'',
+   scr:`${head}${seg(1)}<div class="card">${SUM.map(([k,v])=>`<div class="lab">${k}</div><div class="val">${v}</div>`).join('')}</div>` },
+ { t:'8. Review — Perbandingan STT vs Ringkasan AI', room:6, note:'Metrik ini bahan evaluasi tugas akhir (kata, waktu proses, rasio ringkas).', speak:'',
+   scr:`${head}${seg(2)}<div class="card"><table><tr><th></th><th>STT mentah</th><th>Ringkasan AI</th></tr><tr><td>Jumlah kata</td><td><b>212</b></td><td><b>96</b></td></tr><tr><td>Waktu proses</td><td><b>11.4 dtk</b></td><td><b>4.3 dtk</b></td></tr><tr><td>Rasio ringkas</td><td><b>100%</b></td><td><b>45%</b></td></tr><tr><td>Durasi audio</td><td><b>96.0 dtk</b></td><td></td></tr><tr><td>Pembicara (STT)</td><td><b>2</b></td><td></td></tr></table></div>` },
+ { t:'9. Perawat membagikan ke dokter', room:6, note:'Draf dikirim lewat kanal yang sudah dipakai sehari-hari. Sesi ditandai “Sudah Dikirim”.', speak:'',
+   scr:`${head}${seg(1)}<div class="card"><div class="lab">Ringkasan</div><div class="val">${SUM[0][1]}</div></div>${btns}<div class="dialog"><div><b>Bagikan ke…</b><div class="btn">WhatsApp</div><div class="btn">Email</div><div class="btn">Simpan ke Drive</div></div></div>`,
+   doctor:'👨‍⚕️ dr. Budi Hartono menerima PDF/teks: <b>Dokumentasi percakapan — Joko Santoso</b>. Dokter memverifikasi, melengkapi pemeriksaan fisik, lalu mengambil keputusan klinis.' },
+];
+const q = new URLSearchParams(location.search); let i = +(q.get('step')||0);
+function show(k){
+  const s = STEPS[k];
+  document.getElementById('stepLabel').textContent = `Langkah ${k+1} dari ${STEPS.length}  ·  SIMULASI (data fiktif)`;
+  const n = typeof s.room === 'number' ? s.room : 0;
+  document.getElementById('bubbles').innerHTML = bubbles(n) + (s.doctor ? `<div class="doctor">${s.doctor}</div>` : '');
+  document.getElementById('roomNote').className = 'note' + (s.warn ? ' warn' : '');
+  document.getElementById('roomNote').innerHTML = `<b>${s.t}</b><br>${s.note}`;
+  document.getElementById('pNurse').classList.toggle('speaking', s.speak==='n');
+  document.getElementById('pPatient').classList.toggle('speaking', s.speak==='p');
+  document.getElementById('screen').innerHTML = s.scr;
+}
+window.show = show; window.TOTAL = STEPS.length; show(i);
+</script>
+</body>
+</html>

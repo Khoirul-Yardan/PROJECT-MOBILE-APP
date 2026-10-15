@@ -127,7 +127,7 @@ button.card.module-card { display:flex; flex-direction:column; padding:12px; }
 .activity-row .feature-icon { width:36px; height:36px; border-radius:10px; }
 .activity-row strong { display:block; font-size:13px; font-weight:600; } .activity-row time { color:var(--ink-muted); font-size:11px; }
 .chat-page { display:flex; flex-direction:column; height:calc(100dvh - 52px - var(--nav-space) - env(safe-area-inset-bottom,0px)); min-height:340px; }
-.chat-page > .topbar,.chat-page > .tabs,.chat-toolbar,.chat-input-row,.chat-model,.model-notice { flex-shrink:0; }
+.chat-page > .topbar,.chat-page > .tabs,.chat-toolbar,.chat-input-row,.chat-model,.model-notice,.direct-session-link { flex-shrink:0; }
 .chat-toolbar { padding:4px 10px; margin-bottom:12px; background:var(--surface-sunken); border:1px solid var(--line); border-radius:var(--radius); }
 .chat-toolbar select { flex:1; border-color:transparent; background:transparent; font-size:14px; font-weight:600; } #ai-toggle-wrap { margin:0; }
 .chat-scroll { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:18px 12px 24px; border:1px solid var(--line); border-radius:16px; background:#fffefaab; scrollbar-width:thin; }
@@ -137,6 +137,18 @@ button.card.module-card { display:flex; flex-direction:column; padding:12px; }
 .bubble.them { align-self:flex-start; background:var(--surface); border-bottom-left-radius:4px; box-shadow:var(--shadow); }
 .bubble.error { background:var(--bad-tint); color:var(--bad); }
 .bubble .tag { display:block; font-size:11px; font-weight:600; margin-bottom:6px; }
+.chat-image { display:block; max-width:100%; height:auto; border-radius:10px; margin-top:6px; border:1px solid var(--line-strong); cursor:zoom-in; }
+
+/* Full-screen image viewer — appended to document.body (see chat.js's
+   openImageLightbox), not scoped under .page, so it sits above the bottom
+   nav/any page chrome regardless of which page opened it. Pinch/double-tap
+   zoom on the <img> itself comes for free from the page's own viewport meta
+   (no user-scalable=no set anywhere), so no custom gesture code is needed. */
+.image-lightbox { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; background:#000000ee; padding:24px; overflow:auto; touch-action:pinch-zoom; }
+.image-lightbox img { max-width:100%; max-height:100%; border-radius:6px; }
+.image-lightbox-close, .image-lightbox-download { position:fixed; display:flex; align-items:center; gap:6px; padding:10px 14px; border-radius:999px; background:#ffffffe6; color:var(--ink); font-size:13px; font-weight:600; box-shadow:0 2px 8px #0000004d; }
+.image-lightbox-close { top:calc(16px + env(safe-area-inset-top)); right:16px; padding:10px; }
+.image-lightbox-download { bottom:calc(16px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); }
 .chat-input-row { display:flex; align-items:flex-end; gap:8px; padding:10px; margin-top:12px; background:var(--surface); border:1.5px solid var(--line-strong); border-radius:15px; box-shadow:var(--shadow); }
 .chat-input-row textarea { flex:1; resize:none; max-height:120px; border:0; background:transparent; padding:10px 4px; font-size:16px; }
 .send-btn { width:48px; height:48px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--accent); color:white; font-size:20px; flex-shrink:0; box-shadow:0 2px 0 var(--line-strong); }
@@ -147,6 +159,7 @@ button.card.module-card { display:flex; flex-direction:column; padding:12px; }
 .skill-item:hover { background:var(--surface-sunken); }
 .skill-item .skill-cmd { font-weight:700; color:var(--accent-ink); font-family:monospace; flex-shrink:0; }
 .skill-item .skill-label { color:var(--ink-muted); }
+.skill-menu-heading { padding:8px 10px 2px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-muted); }
 .pill { display:inline-block; padding:4px 9px; border-radius:999px; font-weight:600; font-size:10px; letter-spacing:.5px; text-transform:uppercase; background:var(--lilac); border:1px solid transparent; }
 .pill--warn { background:var(--warn-tint); color:var(--warn); } .pill--ok { background:var(--ok-tint); color:var(--ok); } .pill--bad { background:var(--bad-tint); color:var(--bad); }
 .empty-state { text-align:center; color:var(--ink-muted); font-size:14px; padding:28px 20px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); }
@@ -254,6 +267,8 @@ body.has-web-nav::after { content:''; position:fixed; z-index:20; pointer-events
 .current-model { min-width:0; flex:1; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .chat-model { margin:0 0 10px; background:var(--accent-tint); }
 .model-notice { margin:0 0 10px; padding:8px 10px; border-radius:8px; background:var(--butter); font-size:12px; max-height:64px; overflow:auto; }
+.direct-session-link { display:block; margin:0 0 10px; padding:8px 10px; border-radius:8px; background:var(--accent-tint); color:var(--accent-ink); font-size:12px; font-weight:600; text-decoration:none; }
+.direct-session-link[hidden] { display:none; }
 .model-sheet { width:calc(100% - 32px); max-width:440px; max-height:calc(var(--viewport-height,100dvh) - 32px); padding:24px; color:var(--ink); background:var(--surface); border:1px solid var(--line-strong); border-radius:20px; overflow:auto; box-shadow:0 8px 40px #282d2b33; overscroll-behavior:contain; }
 .model-sheet::backdrop { background:#18291e66; }
 .sheet-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
@@ -376,3 +391,46 @@ button:disabled { cursor:default; }
   *,*::before,*::after { transition:none !important; scroll-behavior:auto !important; }
   .spinner { animation:none; border-style:dotted; }
 }
+
+/* "Cetak" on the Bot BPJS detail page (views/bpjs-review.js): the OS print
+   dialog itself is the "export to PDF" path on every platform, so this is
+   the one export format that needs no native bridge or extra library —
+   just hiding chrome that shouldn't end up on paper/in the PDF. */
+@media print {
+  .web-nav, .no-print { display:none !important; }
+  #app { max-width:none; padding:0; }
+  body { background:#fff; }
+}
+
+/* Papan Komunikasi — big touch targets for patients with limited motor control. */
+.pk-tabs { display:flex; gap:8px; margin:0 0 16px; }
+.pk-tab { flex:1; min-height:44px; padding:8px 12px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--surface); font-weight:600; font-size:13px; }
+.pk-tab.on { background:var(--accent); color:#fff; box-shadow:0 2px 0 var(--line-strong); }
+.pk-ref { display:block; margin:0 0 14px; }
+.pk-ref input { width:100%; min-height:44px; margin-top:4px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--surface); }
+.pk-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.pk-btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; min-height:104px; padding:12px; border:1px solid var(--line-strong); border-radius:var(--radius); background:var(--surface); box-shadow:0 3px 0 var(--line-strong); font-size:17px; font-weight:700; text-align:center; }
+.pk-btn:active { transform:translateY(2px); box-shadow:0 1px 0 var(--line-strong); background:var(--surface-sunken); }
+.pk-btn.urgent { background:var(--bad-tint); color:var(--bad); }
+.pk-btn.wide { grid-column:1 / -1; min-height:96px; background:var(--bad); color:#fff; font-size:20px; }
+.pk-emoji { font-size:34px; line-height:1; }
+.pk-body .pk-btn { min-height:72px; }
+.pk-flow h3 { margin:0 0 12px; font-size:17px; }
+.pk-flow .btn { margin-top:14px; }
+.pk-scale { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.pk-num { min-height:64px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); font-size:24px; font-weight:700; box-shadow:0 2px 0 var(--line-strong); background:var(--ok-tint); }
+.pk-n4,.pk-n5,.pk-n6 { background:var(--butter); } .pk-n7,.pk-n8 { background:#f6d2b0; } .pk-n9,.pk-n10 { background:var(--bad-tint); color:var(--bad); }
+.pk-sent { margin:0 0 14px; padding:12px 14px; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--ok-tint); color:var(--ok); }
+.pk-log { display:flex; flex-direction:column; gap:8px; }
+.pk-log-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); }
+.pk-log-row.urgent { border-color:var(--bad); background:var(--bad-tint); }
+.pk-time { font:600 12px var(--mono); color:var(--ink-muted); flex-shrink:0; }
+
+/* Dokumentasi — searchable history across Bot BPJS, Anamnesis, Papan. */
+.doc-filters { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 4px; }
+.doc-filters .pk-tab { flex:1 1 auto; min-width:0; padding:8px 10px; }
+.doc-count { display:inline-block; min-width:18px; margin-left:4px; padding:0 6px; border-radius:999px; background:rgba(0,0,0,.08); font-size:11px; }
+.pk-tab.on .doc-count { background:rgba(255,255,255,.25); }
+.doc-kind { display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:600; background:var(--sky); color:var(--info); }
+.doc-kind--anamnesis { background:var(--butter); color:#6b5a00; } .doc-kind--papan { background:var(--lilac); color:var(--warn); } .doc-kind--bpjs { background:var(--mint); color:var(--accent-ink); }
+.doc-audit { padding:8px 0; border-top:1px solid var(--line); } .doc-audit:first-of-type { border-top:0; }

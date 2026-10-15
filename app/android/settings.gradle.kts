@@ -24,3 +24,9 @@ plugins {
 }
 
 include(":app")
+
+// Vendored dependency of the vendored openvpn_flutter plugin (see
+// ../third_party/openvpn_flutter and openvpn_library/build.gradle for why)
+// — included here, not via JitPack, so its Java source can be patched.
+include(":openvpn_library")
+project(":openvpn_library").projectDir = file("openvpn_library")

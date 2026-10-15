@@ -10,16 +10,21 @@ export function modelLabel(entry) {
 export function openModelPicker(entry) {
   return new Promise((resolve) => {
     const gemini = entry.format === 'gemini';
+    // Any 'openai'-wire-format provider (ChatGPT, OpenRouter, Hermes, ...)
+    // exposes GET /v1/models, so it gets the same pick-don't-type dropdown
+    // as Gemini — only the "Otomatis" auto-fallback option is Gemini-only
+    // (there's no server-side model-swap-on-failure for the others).
+    const hasList = gemini || entry.format === 'openai';
     const dialog = h(`<dialog class="model-sheet" aria-labelledby="model-title">
       <form class="model-form">
         <div class="sheet-heading"><div><span class="eyebrow">ASISTEN AI</span><h2 id="model-title">Pilih model</h2></div>
           <button type="button" class="icon-button" data-close aria-label="Tutup pilihan model">${icon('close')}</button></div>
         <p class="model-provider muted small"></p>
-        <div class="field" ${gemini ? '' : 'hidden'}><label for="model-select">Model Gemini</label><select id="model-select"></select></div>
+        <div class="field" ${hasList ? '' : 'hidden'}><label for="model-select">Model</label><select id="model-select"></select></div>
         <div class="field" id="custom-model-field"><label for="model-id">ID model</label><input id="model-id" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Masukkan ID model dari provider" /></div>
-        <p class="field-hint">${gemini ? 'Model pilihanmu dipakai lebih dulu. Jika sudah tidak tersedia, sistem mencoba model chat lain dari daftar Gemini.' : 'Gunakan ID model yang tersedia pada provider ini. Pilihan disimpan untuk percakapan berikutnya.'}</p>
+        <p class="field-hint">${gemini ? 'Model pilihanmu dipakai lebih dulu. Jika sudah tidak tersedia, sistem mencoba model chat lain dari daftar Gemini.' : hasList ? 'Pilih dari daftar model yang tersedia pada provider ini — tidak perlu mengetik ID manual.' : 'Gunakan ID model yang tersedia pada provider ini. Pilihan disimpan untuk percakapan berikutnya.'}</p>
         <p class="model-load-status muted small" role="status" aria-live="polite"></p>
-        <button type="button" class="btn btn-outline" id="refresh-models" ${gemini ? '' : 'hidden'}>Perbarui daftar model</button>
+        <button type="button" class="btn btn-outline" id="refresh-models" ${hasList ? '' : 'hidden'}>Perbarui daftar model</button>
         <p class="error-text" role="alert" id="model-error" hidden></p>
         <button class="btn btn-primary" id="save-model" type="submit">Simpan model</button>
       </form>
@@ -40,26 +45,27 @@ export function openModelPicker(entry) {
     let requestId = 0;
     let models = [];
 
-    function renderOptions(value = entry.model || 'auto') {
-      select.replaceChildren(new Option('Otomatis (disarankan)', 'auto'));
+    function renderOptions(value = entry.model || (gemini ? 'auto' : '')) {
+      select.replaceChildren();
+      if (gemini) select.add(new Option('Otomatis (disarankan)', 'auto'));
       for (const model of models) select.add(new Option(model.label === model.id ? model.id : `${model.label} · ${model.id}`, model.id));
       if (value && value !== 'auto' && value !== '__custom' && !models.some((m) => m.id === value)) {
         select.add(new Option(`${value} (tersimpan)`, value));
       }
       select.add(new Option('Ketik ID model sendiri…', '__custom'));
       select.value = value;
-      customField.hidden = gemini && select.value !== '__custom';
+      customField.hidden = hasList && select.value !== '__custom';
     }
     async function refreshModels() {
       const id = ++requestId;
       refresh.disabled = true;
-      status.textContent = 'Memuat model dari Gemini…';
+      status.textContent = 'Memuat daftar model…';
       try {
         const found = await availableModels(entry);
         if (closed || id !== requestId) return;
         models = found;
         renderOptions(select.value);
-        status.textContent = found.length ? `${found.length} model chat ditemukan. Ketersediaan dikonfirmasi saat pesan dikirim.` : 'Belum ada model chat terdaftar. Kamu tetap bisa memasukkan ID model.';
+        status.textContent = found.length ? `${found.length} model ditemukan. Ketersediaan dikonfirmasi saat pesan dikirim.` : 'Belum ada model terdaftar. Kamu tetap bisa memasukkan ID model.';
       } catch (error) {
         if (!closed && id === requestId) status.textContent = `Daftar belum bisa dimuat. ${error.message}`;
       } finally {
@@ -81,7 +87,7 @@ export function openModelPicker(entry) {
     dialog.querySelector('form').onsubmit = async (event) => {
       event.preventDefault();
       if (saving) return;
-      const model = gemini && select.value !== '__custom' ? select.value : input.value;
+      const model = hasList && select.value !== '__custom' ? select.value : input.value;
       saving = true;
       ++requestId; // Ignore any model-list request completing during save.
       save.disabled = close.disabled = select.disabled = input.disabled = refresh.disabled = true;
@@ -100,9 +106,9 @@ export function openModelPicker(entry) {
         save.textContent = 'Simpan model';
       }
     };
-    if (gemini) renderOptions();
+    if (hasList) renderOptions();
     document.body.appendChild(dialog);
     dialog.showModal();
-    if (gemini) refreshModels();
+    if (hasList) refreshModels();
   });
 }

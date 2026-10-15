@@ -1,0 +1,58 @@
+group 'id.laskarmedia.openvpn_flutter'
+version '1.0'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.4.2'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+
+allprojects {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url "https://jitpack.io" }
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace = 'id.laskarmedia.openvpn_flutter'
+    // Bumped from 34 to match openvpn_library's compileSdk (36) — AGP
+    // requires every library a project depends on to compile against an
+    // equal-or-newer Android API level than its own.
+    compileSdkVersion 36
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        minSdkVersion 16
+    }
+}
+
+dependencies {
+    // Was 'com.github.nizwar:openvpn_library:b3941ef040' via JitPack —
+    // switched to the vendored, patched copy at ../../openvpn_library (see
+    // that module's build.gradle for why: upstream never wires an OpenVPN
+    // profile's private-key decryption password through).
+    implementation project(':openvpn_library')
+}

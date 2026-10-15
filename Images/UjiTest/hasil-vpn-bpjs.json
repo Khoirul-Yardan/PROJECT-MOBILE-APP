@@ -1,0 +1,57 @@
+[
+ [
+  "VPN: kondisi kosong menyuruh tambah server",
+  true,
+  ""
+ ],
+ [
+  "VPN: tiga profil Docker (WireGuard, OpenVPN, SSH) terdaftar",
+  true,
+  ""
+ ],
+ [
+  "VPN: browser mengaku simulasi (bukan tunnel asli)",
+  true,
+  ""
+ ],
+ [
+  "VPN: pindah profil saat terhubung ditolak",
+  true,
+  ""
+ ],
+ [
+  "VPN: profil SSH menjadi aktif",
+  true,
+  ""
+ ],
+ [
+  "VPN: tidak ada JS error",
+  true,
+  "[]"
+ ],
+ [
+  "Terminal: browser memberi pesan jujur (hanya di app Android)",
+  true,
+  ""
+ ],
+ [
+  "BPJS riwayat: 3 sesi dengan status Sudah Dikirim/Siap Dikirim/Diproses",
+  true,
+  ""
+ ],
+ [
+  "BPJS detail: ringkasan AI + STT per pembicara + perbandingan tampil",
+  true,
+  ""
+ ],
+ [
+  "BPJS: ekspor file di browser ditolak jujur",
+  true,
+  ""
+ ],
+ [
+  "BPJS: tidak ada JS error",
+  true,
+  "[]"
+ ]
+]

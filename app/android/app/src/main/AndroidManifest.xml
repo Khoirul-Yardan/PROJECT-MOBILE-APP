@@ -1,13 +1,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Bot BPJS: on-device wake word check + live transcription of the
-         nurse-patient conversation. Requested at runtime (not just
-         declared) right before the first recording session starts. -->
+    <!-- Bot BPJS: records the nurse-patient conversation as a raw audio
+         file (sent to AssemblyAI afterward for transcription + speaker
+         diarization — see assemblyai_service.dart). Requested at runtime
+         (not just declared) right before the first recording session starts. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- OpenVPN's native engine (ics-openvpn, wrapped by openvpn_flutter) ships
+         prebuilt .so libraries that Play's native-library compression can
+         silently strip symbols from, making real tunnels fail with a mute
+         "disconnected" and no error — see openvpn_flutter's own README. This
+         plus build.gradle.kts' useLegacyPackaging keep the libraries intact
+         (the README's older gradle.properties fix,
+         android.bundle.enableUncompressedNativeLibs, was removed in AGP 8.1+
+         and would just fail the build on this project's AGP version). -->
     <application
         android:label="ai_hub"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:extractNativeLibs="true"
         android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
@@ -46,6 +56,10 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- flutter_tts: Android 11+ needs package visibility to find the TTS engine. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE"/>
         </intent>
     </queries>
 </manifest>

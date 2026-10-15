@@ -36,6 +36,15 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // openvpn_flutter README: legacy packaging keeps the bundled OpenVPN
+    // engine's native libraries uncompressed/unstripped in the APK/bundle —
+    // same reasoning as the two gradle.properties/AndroidManifest flags.
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 kotlin {

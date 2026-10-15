@@ -5,9 +5,10 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   flutter_secure_storage_windows
+  flutter_tts
   printing
+  record_windows
   share_plus
-  speech_to_text_windows
   url_launcher_windows
   wireguard_flutter
 )

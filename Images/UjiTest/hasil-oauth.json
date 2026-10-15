@@ -1,0 +1,72 @@
+[
+ [
+  "OAuth: tombol \"Login dengan akun OpenRouter\" tampil",
+  true,
+  ""
+ ],
+ [
+  "OAuth: opsi API key manual tetap ada",
+  true,
+  ""
+ ],
+ [
+  "OAuth: hanya provider ber-OAuth yang punya tombol login",
+  true,
+  ""
+ ],
+ [
+  "OAuth: callback_url = origin aplikasi",
+  true,
+  "['http://localhost:8091/']"
+ ],
+ [
+  "OAuth: code_challenge_method = S256",
+  true,
+  ""
+ ],
+ [
+  "OAuth: OpenRouter tersimpan lewat login akun",
+  true,
+  "[{'id': 'openrouter', 'label': 'OpenRouter', 'vendor': 'OpenRouter', 'type': 'chat', 'format': 'openai', 'endpoint': 'ht"
+ ],
+ [
+  "OAuth: kunci hasil tukar tersimpan",
+  true,
+  ""
+ ],
+ [
+  "OAuth: kode dikirim ke endpoint tukar",
+  true,
+  "{'code': 'KODE-UJI-123', 'code_verifier': 'gS7ENInFyLEh0CYjdEHa0vZtwBdXFG2BA3IkUn4sa1E', 'code_chall"
+ ],
+ [
+  "OAuth: code_verifier cocok dengan code_challenge (PKCE)",
+  true,
+  ""
+ ],
+ [
+  "OAuth: ?code= dibersihkan dari URL",
+  true,
+  "http://localhost:8091/#/settings/add-api-key"
+ ],
+ [
+  "OAuth: tidak ada JS error",
+  true,
+  "[]"
+ ],
+ [
+  "OAuth gagal: pesan error ditampilkan",
+  true,
+  "Login akun gagal: Kode tidak valid atau kedaluwarsa"
+ ],
+ [
+  "OAuth gagal: tidak ada kunci tersimpan",
+  true,
+  ""
+ ],
+ [
+  "OAuth: ?code= asing diabaikan (tak ada tukar kode)",
+  true,
+  ""
+ ]
+]

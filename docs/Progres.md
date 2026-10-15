@@ -495,7 +495,7 @@ Layar native memakai enum `_Stage` dengan lima nilai:
 
 Waveform terdiri atas 16 batang dengan tinggi berdasarkan fungsi sinus dan animation controller. Nilainya bukan amplitudo audio.
 
-Dokter yang ditampilkan berasal dari array statis: `dr. Amma Haz`, `dr. Sritrusta`, dan `dr. Wibowo`. Daftar tidak mengambil data `friendships` ataupun `profiles`. Klaim UI bahwa hanya dokter yang berteman yang muncul belum ditegakkan oleh alur preview ini.
+Dokter yang ditampilkan berasal dari array statis: `dr. Budi Hartono`, `dr. Surya Pratama`, dan `dr. Wibowo`. Daftar tidak mengambil data `friendships` ataupun `profiles`. Klaim UI bahwa hanya dokter yang berteman yang muncul belum ditegakkan oleh alur preview ini.
 
 ### 13.3 Draf dan review preview
 
@@ -1206,6 +1206,26 @@ Penambahan provider saat ini tidak cukup dengan update array web karena native h
 | Provider/bot/fitur baru selalu cukup update web | Perubahan yang membutuhkan dukungan native tetap memerlukan build native |
 | Emulator otomatis memakai `10.0.2.2` | Getter URL default tetap localhost |
 | Menjalankan ulang schema memperbarui semua bentuk tabel lama | Hanya sebagian perubahan lama dimigrasikan secara eksplisit |
+
+### 27.2a Login dengan akun (OAuth OpenRouter) — 2026-10-15
+
+Layar **Hubungkan Provider AI** kini punya dua jalur: *Login dengan akun* dan *Pakai API key*. Login akun memakai OAuth PKCE OpenRouter (`web/public/oauth.js`): pengguna masuk di openrouter.ai, aplikasi menukar `code` menjadi API key lalu menyimpannya seperti key biasa (terenkripsi, ikut rotasi slot). Provider lain (OpenAI, Claude, Gemini, Hermes) tetap lewat API key karena tidak menyediakan login akun untuk akses API.
+
+- Syarat: alamat aplikasi harus `https` atau `localhost` (aturan OpenRouter untuk callback). Di alamat lain tombol tetap tampil dengan catatan dan menolak dengan pesan jelas.
+- Pengujian: `web/tests/e2e_oauth.py` — 14/14 lulus. openrouter.ai **disimulasikan** (halaman login dan endpoint tukar kode ditiru), jadi login akun sungguhan belum diuji. Yang terverifikasi: tombol, parameter PKCE (S256, verifier cocok challenge), penyimpanan key, jalur gagal, dan `?code=` asing diabaikan.
+- Bukti: `Images/UjiTest/40-…43-oauth-*.png`, `hasil-oauth.json`.
+- Belum ada: login Google untuk Gemini (butuh OAuth client ID dari Google Cloud milikmu) dan penanganan callback di WebView Flutter pada URL non-https.
+
+### 27.2b Skill "/" di Chat mengikuti provider — 2026-10-15
+
+Palet "/" kini bergantung pada provider yang dipilih (`web/public/skills.js`): perintah umum (`/system`, `/clear`, `/help`) selalu ada; skill khusus hanya muncul untuk provider yang benar-benar mendukungnya.
+
+- **Gemini**: `/search` (Google Search grounding) dan `/code` (eksekusi kode) — toggle per percakapan, dikirim sebagai `tools` ke API Gemini.
+- **Hermes Agent (A2A)**: daftar skill diambil langsung dari kartu agent instance itu sendiri (bukan hardcode).
+- **ChatGPT, Claude, OpenRouter, Hermes (Nous), Hermes API Server, OpenClaw**: hanya perintah umum — belum ada skill khusus karena belum ada fitur API/discovery yang dipakai untuk itu.
+- Pengujian: `web/tests/e2e_skills.py` — 12/12 lulus; Gemini API dan relay A2A **disimulasikan**, jadi `google_search` belum dicoba terhadap API Gemini sungguhan. `/code` (code_execution) belum diuji di request nyata; dukungannya bisa berbeda per model Gemini.
+- `web/tests/gemini.test.mjs`: 12 lulus, 2 gagal (503 dan batas retry) — sudah gagal sebelum perubahan ini.
+- Bukti: `Images/UjiTest/50-…54-skills-*.png`, `hasil-skills.json`.
 
 ### 27.3 Catatan pemeliharaan progres
 

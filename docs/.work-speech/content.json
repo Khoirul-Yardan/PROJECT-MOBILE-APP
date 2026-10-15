@@ -1,0 +1,190 @@
+{
+  "items": [
+    {
+      "title": "Komunikasi terapeutik dan wawancara",
+      "tag": "KOMUNIKASI LISAN",
+      "summary": "Menggali keluhan dan membangun hubungan saling percaya.",
+      "explanation": "Percakapan yang direncanakan, berpusat pada pasien, dan dilakukan dengan empati. Perawat mendengarkan keluhan, memberi kesempatan bercerita, lalu meminta penjelasan tambahan. Wawancara dapat dipandu topik agar informasi lebih terarah. [1]",
+      "nurse": "Mengajukan pertanyaan yang mudah dipahami, mendengarkan, dan mengonfirmasi maksud pasien.",
+      "patient": "Menceritakan keluhan, perasaan, atau kebutuhan dengan kata-katanya sendiri.",
+      "example": "Perawat: “Apa yang paling mengganggu Ibu saat ini?”\nPasien: “Saya mual sejak kemarin sore.”\nPerawat: “Sejak kemarin sore, ya. Apa lagi yang Ibu rasakan?”",
+      "note": "Gunakan kalimat pendek dan beri waktu untuk menjawab. Pertanyaan dalam contoh ini merupakan ilustrasi percakapan, bukan daftar pengkajian baku. [2]",
+      "refs": [
+        1,
+        2
+      ]
+    },
+    {
+      "title": "Ucapan menjadi teks untuk dokumentasi",
+      "tag": "SPEECH-TO-TEXT / STT",
+      "summary": "Membantu mengubah percakapan menjadi catatan tertulis.",
+      "explanation": "Speech-to-text mengubah ucapan menjadi transkrip. Pada ambient scribing, percakapan dapat diolah lebih lanjut menjadi draf catatan. Transkrip dan ringkasan merupakan keluaran yang berbeda; keduanya perlu diperiksa oleh tenaga kesehatan. [3]",
+      "nurse": "Melakukan wawancara dan memeriksa apakah hasil tulisan sesuai dengan ucapan.",
+      "patient": "Menyampaikan keluhan atau riwayat secara lisan dan membantu mengklarifikasi informasi yang kurang jelas.",
+      "example": "Perawat: “Apakah ada muntah?”\nPasien: “Mual, tetapi tidak muntah.”\nTeks yang diperiksa: pasien mengeluh mual dan menyatakan tidak muntah.",
+      "note": "Dapat digunakan untuk membantu dokumentasi percakapan ketika perekaman diizinkan. Kesalahan kata, angka, atau negasi dapat mengubah makna; hasil otomatis tetap perlu dikoreksi. [3]",
+      "refs": [
+        3
+      ]
+    },
+    {
+      "title": "Ucapan menjadi teks untuk dibaca pasien",
+      "tag": "CAPTION / TRANSKRIP LANGSUNG",
+      "summary": "Membantu pasien membaca pesan yang diucapkan perawat.",
+      "explanation": "Ucapan perawat ditampilkan sebagai tulisan saat percakapan berlangsung. Contoh alat yang mendokumentasikan fungsi ini adalah Google Live Transcribe. Ukuran teks dapat disesuaikan dan balasan dapat diketik. [4]",
+      "nurse": "Berbicara dengan jelas serta memastikan tulisan yang muncul sesuai dengan pesan.",
+      "patient": "Membaca pesan, meminta pengulangan, lalu menjawab dengan suara atau tulisan sesuai pilihannya.",
+      "example": "Perawat: “Saya akan memeriksa tekanan darah.”\nPasien membaca teks tersebut.\nPasien: “Sebentar, saya ingin duduk lebih nyaman.”",
+      "note": "Berguna saat pasien memilih komunikasi tertulis. Kesesuaian bergantung pada keterbacaan, bahasa, dan ketepatan transkripsi. Dokumentasi produk menjelaskan fungsi alat, bukan jaminan ketepatan istilah klinis. [4]",
+      "refs": [
+        4
+      ]
+    },
+    {
+      "title": "Papan gambar atau simbol komunikasi",
+      "tag": "KOMUNIKASI ALTERNATIF / AAC",
+      "summary": "Menyampaikan kebutuhan dengan menunjuk gambar atau kata.",
+      "explanation": "Pasien memilih simbol yang mewakili pesan, misalnya merasa panas, sakit kepala, atau pusing. Papan dapat berupa lembar cetak atau alat elektronik; pada perangkat bersuara, pilihan dapat dibacakan. [2][5]",
+      "nurse": "Menawarkan pilihan yang relevan dan memastikan makna gambar yang dipilih.",
+      "patient": "Menunjuk gambar atau kata untuk menyampaikan kebutuhan tanpa harus mengucapkan kalimat.",
+      "example": "Pasien menunjuk simbol “Headache”.\nPerawat: “Apakah maksudnya kepala terasa sakit?”\nPasien mengonfirmasi dengan cara komunikasi yang disepakati.",
+      "note": "Sesuai ketika pasien dapat menggunakan gambar atau kata sebagai bantuan komunikasi. Pemahaman terhadap simbol perlu dipastikan; tidak semua orang memaknai gambar dengan cara yang sama. [2]",
+      "refs": [
+        2,
+        5
+      ],
+      "image": "rujukan-nhs-simbol.png",
+      "caption": "Cuplikan simbol gejala dari The Hospital Communication Book, hlm. 14. Sumber: [2]; simbol dikreditkan buku kepada Widgit. Label asli berbahasa Inggris dipertahankan."
+    },
+    {
+      "title": "Mengetik atau memilih huruf menjadi suara",
+      "tag": "TEXT-TO-SPEECH / TTS",
+      "summary": "Menyampaikan pesan bebas melalui tulisan yang dibacakan.",
+      "explanation": "Pasien menyusun pesan tertulis, kemudian alat elektronik membacakannya. Cara ini termasuk AAC dengan keluaran suara. Papan huruf dan alat komunikasi elektronik merupakan contoh sarana AAC yang dijelaskan layanan terapi wicara. [5][6]",
+      "nurse": "Memberi waktu untuk menyusun pesan, mendengarkan hasilnya, dan mengonfirmasi maksudnya.",
+      "patient": "Mengetik atau memilih huruf untuk menyampaikan kalimat yang diinginkan.",
+      "example": "Pasien mengetik: “Tolong bantu ubah posisi saya.”\nAlat membacakan kalimat tersebut.\nPerawat: “Bapak ingin dibantu mengubah posisi, benar?”",
+      "note": "Bisa dibahas untuk pasien yang memahami tulisan tetapi sulit menghasilkan ucapan. Papan huruf cetak dapat membantu mengeja dengan pendamping; papan cetak sendiri tidak menghasilkan suara elektronik. [5][6]",
+      "refs": [
+        5,
+        6
+      ]
+    },
+    {
+      "title": "Jawaban Ya, Tidak, dan Tidak Tahu",
+      "tag": "RESPONS SEDERHANA DENGAN PENDAMPING",
+      "summary": "Membantu pasien memberikan jawaban singkat yang jelas.",
+      "explanation": "Kartu pilihan memungkinkan pasien menjawab tanpa berbicara. Bila menunjuk sulit, pendamping dapat menyebutkan pilihan satu per satu dan menunggu sinyal yang telah disepakati. ASHA menjelaskan penggunaan sistem Ya/Tidak serta menyediakan kartu tiga respons. [6][7]",
+      "nurse": "Mengajukan satu pertanyaan setiap kali dan memastikan cara pasien menunjukkan pilihan.",
+      "patient": "Memilih Ya, Tidak, atau Tidak Tahu melalui penunjukan atau sinyal yang dapat digunakan.",
+      "example": "Perawat: “Apakah Ibu merasa mual?”\nPasien menunjuk “Ya”.\nPerawat mengonfirmasi jawaban sebelum melanjutkan pertanyaan.",
+      "note": "“Tidak tahu” berbeda dari “tidak”. Tidak adanya respons juga tidak dapat dianggap sebagai jawaban tidak. Kemampuan melihat, mendengar, dan memberi sinyal perlu diperhatikan. [6]",
+      "refs": [
+        6,
+        7
+      ],
+      "image": "rujukan-asha-kartu.png",
+      "caption": "Kartu ASHA: Yes / No / I Don’t Know, hlm. 1. Sumber gambar: [7]. Arti dalam bahasa Indonesia: Ya / Tidak / Tidak Tahu."
+    },
+    {
+      "title": "Komunikasi lokasi dan intensitas nyeri",
+      "tag": "PELAPORAN NYERI OLEH PASIEN",
+      "summary": "Membantu menjelaskan bagian yang nyeri dan tingkat nyerinya.",
+      "explanation": "Pasien menjelaskan lokasi nyeri dan seberapa berat nyeri yang dirasakan. Salah satu cara ialah skala angka 0–10: 0 berarti tidak nyeri, sedangkan 10 berarti nyeri terburuk yang dapat dibayangkan. Gambar tubuh dapat membantu menunjukkan lokasi. [2][8]",
+      "nurse": "Menanyakan lokasi dan intensitas, lalu memastikan jawaban mencerminkan laporan pasien.",
+      "patient": "Menyebutkan atau menunjuk lokasi tubuh serta memilih angka yang mewakili nyerinya.",
+      "example": "Perawat: “Di bagian mana terasa nyeri? Jika 0 tidak nyeri dan 10 nyeri terburuk yang dapat dibayangkan, berapa nilainya?”\nPasien: “Di perut bagian bawah, nilainya 4.”",
+      "note": "Angka adalah laporan pasien, bukan diagnosis atau penentuan obat otomatis. Skala angka tidak sesuai untuk semua orang; cara lain dibahas bersama tenaga kesehatan bila pasien sulit memilih angka. [8]",
+      "refs": [
+        2,
+        8
+      ]
+    },
+    {
+      "title": "Edukasi dengan metode teach-back",
+      "tag": "MEMERIKSA PEMAHAMAN PASIEN",
+      "summary": "Memastikan penjelasan perawat dipahami dengan benar.",
+      "explanation": "Setelah menerima penjelasan, pasien diminta menyampaikan kembali informasi menggunakan kata-katanya sendiri. Perawat mendengarkan, memperjelas bagian yang belum dipahami, lalu mengecek kembali. Fokusnya ialah kejelasan penjelasan yang diberikan. [9]",
+      "nurse": "Menjelaskan dengan bahasa sederhana dan meminta pasien menceritakan kembali inti informasi.",
+      "patient": "Menjelaskan apa yang dipahami serta menyampaikan bagian yang masih membingungkan.",
+      "example": "Perawat: “Supaya saya tahu penjelasan saya sudah jelas, boleh ceritakan kembali apa yang perlu dilakukan setelah pulang sesuai petunjuk tadi?”\nPasien menjelaskan dengan kata-katanya sendiri; perawat memperjelas bagian yang belum sesuai.",
+      "note": "Dapat digunakan saat edukasi perawatan atau penjelasan tindak lanjut. Pertanyaan “Sudah paham?” saja tidak menunjukkan apa yang benar-benar dipahami pasien. [9]",
+      "refs": [
+        9
+      ]
+    },
+    {
+      "title": "Komunikasi dengan pelacakan mata",
+      "tag": "AAC DENGAN AKSES TATAPAN",
+      "summary": "Memilih pesan dengan tatapan ketika akses tangan sulit.",
+      "explanation": "Pelacakan mata memungkinkan pengguna memilih huruf atau simbol melalui arah tatapan pada perangkat yang mendukungnya. Pesan yang disusun dapat dibacakan. TD Pilot dari Tobii Dynavox merupakan salah satu contoh perangkat komunikasi dengan akses tersebut. [10][11]",
+      "nurse": "Membantu menempatkan alat, memberi waktu untuk memilih pesan, dan mengonfirmasi hasil komunikasi.",
+      "patient": "Memilih pesan melalui tatapan sesuai kemampuan dan pengaturan aksesnya.",
+      "example": "Pasien memilih pesan “Saya ingin istirahat” melalui tatapan.\nPerangkat membacakan pesan.\nPerawat memastikan bahwa pesan tersebut sesuai dengan maksud pasien.",
+      "note": "Merupakan cara mengakses alat komunikasi, bukan pengenalan ucapan. Kesesuaian perangkat dan pengaturan perlu dinilai secara individual. Dokumentasi produsen menjelaskan produk, bukan bukti bahwa alat sesuai untuk setiap pasien. [10][11]",
+      "refs": [
+        10,
+        11
+      ],
+      "image": "rujukan-td-pilot.png",
+      "caption": "Contoh bentuk perangkat TD Pilot. Foto dari TD Pilot Product Information Sheet, hlm. 1. Sumber: [11], © Tobii Dynavox; ditampilkan sebagai contoh alat komunikasi."
+    }
+  ],
+  "sources": [
+    [
+      "Siti Fatimah / Kementerian Kesehatan RI (2022). Komunikasi Terapeutik.",
+      "https://keslan.kemkes.go.id/view_artikel/1344/komunikasi-terapeutik",
+      "Artikel edukasi profesi; dasar komunikasi yang berpusat pada pasien. Digunakan pada nomor 1."
+    ],
+    [
+      "The Learning Disability Partnership Board in Surrey. The Hospital Communication Book. Salinan pada situs UHS NHS.",
+      "https://www.uhs.nhs.uk/Media/UHS-website-2019/Docs/For-patients/The-Hospital-Communication-book.pdf",
+      "Buku alat bantu komunikasi. Bahasa sederhana: hlm. 3; simbol: hlm. 8–14; bagian tubuh: hlm. 19–21. Digunakan pada nomor 1, 4, dan 7."
+    ],
+    [
+      "NHS England (2025; diperbarui 2026). Guidance on the use of AI-enabled ambient scribing products in health and care settings.",
+      "https://www.england.nhs.uk/long-read/guidance-on-the-use-of-ai-enabled-ambient-scribing-products-in-health-and-care-settings/",
+      "Panduan layanan kesehatan Inggris; penjelasan transkripsi, draf catatan, dan pemeriksaan hasil. Digunakan pada nomor 2."
+    ],
+    [
+      "Google. Use Live Transcribe. Android Accessibility Help.",
+      "https://support.google.com/accessibility/android/answer/9158064?hl=en",
+      "Dokumentasi produk untuk ucapan menjadi teks. Digunakan pada nomor 3."
+    ],
+    [
+      "Norfolk and Norwich University Hospitals NHS Foundation Trust. Alternative and Augmentative Communication.",
+      "https://www.nnuh.nhs.uk/departments/speech-and-language-therapy/communication/alternative-and-augmentative-communication/",
+      "Penjelasan alat AAC sederhana dan elektronik. Digunakan pada nomor 4 dan 5."
+    ],
+    [
+      "American Speech-Language-Hearing Association (ASHA). Communication Access Resources: Communication Aids.",
+      "https://www.asha.org/practice/communication-access/communication-aids/",
+      "Sumber organisasi profesi tentang alat komunikasi dan respons Ya/Tidak dengan bantuan pendamping. Digunakan pada nomor 5 dan 6."
+    ],
+    [
+      "ASHA. Yes/No/I Don’t Know Badge Cards.",
+      "https://www.asha.org/siteassets/practice-management/yes-no-dont-know-sheet.pdf",
+      "Kartu komunikasi; cuplikan pada gambar 6 berasal dari halaman 1."
+    ],
+    [
+      "Cambridge University Hospitals NHS Foundation Trust. Understanding how to manage your pain.",
+      "https://www.cuh.nhs.uk/our-services/fit-4-surgery/your-stay-in-hospital/understanding-how-to-manage-your-pain/",
+      "Informasi pasien tentang pelaporan nyeri 0–10 dan kesesuaian cara penilaian. Digunakan pada nomor 7."
+    ],
+    [
+      "Agency for Healthcare Research and Quality (AHRQ, 2023). TeamSTEPPS: Tool—Teach-Back.",
+      "https://www.ahrq.gov/teamstepps-program/curriculum/communication/tools/teachback.html",
+      "Materi pendidikan komunikasi untuk memeriksa pemahaman pasien. Digunakan pada nomor 8."
+    ],
+    [
+      "Tobii Dynavox. TD Pilot.",
+      "https://us.tobiidynavox.com/pages/td-pilot",
+      "Dokumentasi produsen tentang perangkat komunikasi dengan akses tatapan. Digunakan pada nomor 9."
+    ],
+    [
+      "Tobii Dynavox. TD Pilot Product Information Sheet.",
+      "https://downloads.tobiidynavox.com/Devices/TD_Pilot/TD_PI-Sheet_TD-Pilot_US.pdf",
+      "Lembar informasi produk; foto pada gambar 9 berasal dari halaman 1."
+    ]
+  ]
+}

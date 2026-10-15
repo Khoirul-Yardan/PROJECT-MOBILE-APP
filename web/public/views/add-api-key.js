@@ -3,6 +3,7 @@ import { KNOWN_PROVIDERS, SELF_HOSTED_PROVIDERS, detectProvider, slugify } from 
 import { saveProvider } from '../ai.js';
 import { countCredentialSlots } from '../credentials.js';
 import { logActivity } from '../db.js';
+import { OAUTH_PROVIDER_IDS, oauthSupported, startOpenRouterLogin } from '../oauth.js';
 
 // Two entry points into the same underlying flow: "Hubungkan Provider AI"
 // (ChatGPT/Claude/Gemini/OpenRouter — reply comes straight from the model)
@@ -27,10 +28,38 @@ export default async function render(root) {
   el.appendChild(header(isAgent ? 'Hubungkan Agent' : 'Hubungkan Provider AI', { back: true }));
   el.appendChild(pageIntro(isAgent ? 'Undang asisten barumu.' : 'Bawa AI favoritmu.', isAgent ? 'Hubungkan agent untuk membantu tugas sehari-hari.' : 'Siapkan API key dari provider pilihanmu untuk mulai mengobrol.', { art: isAgent ? 'bot' : 'providers', label: 'KONEKSI BARU', tone: isAgent ? 'intro-mint' : '' }));
 
+  // Option 1 of 2: log in with the provider account instead of pasting a key.
+  // Only providers that officially support OAuth appear here (see oauth.js).
+  const oauthProviders = providersForMode.filter((p) => OAUTH_PROVIDER_IDS.includes(p.id));
+  if (oauthProviders.length > 0) {
+    const loginCard = h(`
+      <div class="card form-panel" id="oauth-card">
+        <div class="item-title" style="margin-bottom:4px;">Login dengan akun</div>
+        <p class="muted small" style="margin:0 0 12px;">Tanpa tempel key — masuk ke akun provider, key dibuat otomatis.</p>
+      </div>
+    `);
+    oauthProviders.forEach((p) => {
+      const btn = h(`<button class="btn btn-outline" data-oauth="${p.id}" style="margin-bottom:8px;">${icon(p.icon)}<span> Login dengan akun ${p.label}</span></button>`);
+      btn.onclick = async () => {
+        try {
+          await startOpenRouterLogin();
+        } catch (e) {
+          toast(e.message);
+        }
+      };
+      loginCard.appendChild(btn);
+    });
+    if (!oauthSupported()) {
+      loginCard.appendChild(h('<p class="field-hint" id="oauth-note">Login akun butuh alamat https atau localhost; di alamat ini pakai API key di bawah.</p>'));
+    }
+    el.appendChild(loginCard);
+    el.appendChild(h('<p class="section-title" style="text-align:center;">atau</p>'));
+  }
+
   const pasteCard = h(`
     <div class="card form-panel">
       <div class="field" style="margin-bottom:0;">
-        <label for="key-input">Tempel API key</label>
+        <label for="key-input">Pakai API key</label>
         <textarea id="key-input" rows="2" placeholder="Tempel kunci API di sini" autocomplete="off" spellcheck="false"></textarea>
         <p class="field-hint">${isAgent ? 'Gunakan key agent atau pilih gateway di bawah.' : 'Jenis provider dikenali otomatis dari kunci API.'}</p>
       </div>
@@ -272,17 +301,27 @@ export default async function render(root) {
             <input id="${p.id}-token" type="password" placeholder="token" />
             <div class="muted small">${p.tokenHelp}</div>
           </div>
+          <div class="field">
+            <label for="${p.id}-direct">${p.directSessionLabel || 'Link sesi langsung (opsional)'}</label>
+            <input id="${p.id}-direct" placeholder="${p.directSessionPlaceholder || ''}" />
+            <div class="muted small">${p.directSessionHelp || ''}</div>
+          </div>
           <button id="${p.id}-save" class="btn btn-primary">Simpan &amp; Hubungkan</button>
         </div>
       `);
       card.querySelector(`#${p.id}-save`).onclick = async () => {
         const url = card.querySelector(`#${p.id}-url`).value.trim().replace(/\/$/, '');
         const token = card.querySelector(`#${p.id}-token`).value.trim();
+        const directSessionUrl = card.querySelector(`#${p.id}-direct`).value.trim();
         if (!url || !token) {
           toast('Isi URL gateway dan token dulu.');
           return;
         }
-        const entry = { id: p.id, label: p.label, type: p.type, format: p.format, endpoint: url };
+        // The 'model' column is meaningless for self-hosted agent formats
+        // (a2a/openclaw have no model-selection concept) — repurposed here
+        // to hold the optional direct-session link instead of adding a
+        // dedicated column just for this.
+        const entry = { id: p.id, label: p.label, type: p.type, format: p.format, endpoint: url, model: directSessionUrl || undefined };
         await saveDetected(entry, token, card.querySelector(`#${p.id}-save`));
       };
       el.appendChild(card);

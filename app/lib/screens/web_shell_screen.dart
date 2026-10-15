@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../theme.dart';
@@ -8,7 +10,10 @@ import '../services/supabase_service.dart';
 import '../services/vpn_config_service.dart';
 import '../services/vpn_tunnel_service.dart';
 import '../services/web_hub_config.dart';
+import '../services/bpjs_service.dart';
+import 'anamnesis_terpandu_screen.dart';
 import 'bot_bpjs_screen.dart';
+import 'terminal_screen.dart';
 
 /// The entire native shell of the hybrid app — literally just a WebView and
 /// a bridge. Every screen, **including navigation itself** (login, home,
@@ -108,7 +113,7 @@ class _WebShellScreenState extends State<WebShellScreen> {
               await _reply(id, {
                 'connected': false,
                 'message':
-                    'Tunnel nyata baru tersedia untuk WireGuard. OpenVPN/SSH masih tersimpan sebagai konfigurasi saja.',
+                    'Tunnel nyata baru tersedia untuk WireGuard/OpenVPN. SSH masih tersimpan sebagai konfigurasi saja — pakai Terminal untuk akses SSH langsung.',
               });
             }
             return;
@@ -120,6 +125,16 @@ class _WebShellScreenState extends State<WebShellScreen> {
         }
         return;
 
+      case 'vpn_state':
+        // Real tunnel state, so the web page doesn't have to assume
+        // "disconnected" every time it (re)loads.
+        var connectedNow = false;
+        try {
+          connectedNow = await VpnTunnelService.isConnected();
+        } catch (_) {}
+        if (id != null) await _reply(id, {'connected': connectedNow});
+        return;
+
       case 'vpn_disconnect':
         try {
           await VpnTunnelService.disconnect();
@@ -129,12 +144,148 @@ class _WebShellScreenState extends State<WebShellScreen> {
         if (id != null) await _reply(id, {'connected': false});
         return;
 
+      case 'http_relay':
+        try {
+          final url = Uri.parse(payload['url'] as String);
+          final method = (payload['method'] as String?)?.toUpperCase() ?? 'POST';
+          final rawHeaders = (payload['headers'] as Map?) ?? {};
+          final headers = rawHeaders.map((k, v) => MapEntry(k.toString(), v.toString()));
+          final body = payload['body'] as String?;
+          final http.Response resp = method == 'GET'
+              ? await http.get(url, headers: headers)
+              : await http.post(url, headers: headers, body: body);
+          if (id != null) {
+            await _reply(id, {'status': resp.statusCode, 'body': resp.body});
+          }
+        } catch (e) {
+          // 'message' on purpose, not 'error' — bridge.js's __nativeReply
+          // treats a result.error as a hard rejection (resolves to null,
+          // losing the detail); ai.js needs the actual failure reason to
+          // show the user, same pattern as vpn_connect's failure reply.
+          if (id != null) {
+            await _reply(id, {'status': 0, 'body': '', 'message': e.toString()});
+          }
+        }
+        return;
+
+      case 'export_bpjs':
+        // Lets the web Riwayat page (bpjs-review.js) produce the same
+        // PDF/DOCX file the native Bot BPJS screen already builds right
+        // after recording — one export implementation (BpjsExport),
+        // reused from both call sites instead of a second one in JS.
+        try {
+          final format = payload['format'] as String? ?? 'pdf';
+          final dokterNama = payload['dokterNama'] as String? ?? 'Dokter';
+          final dokterInstansi = payload['dokterInstansi'] as String?;
+          final pasienNama = payload['pasienNama'] as String? ?? 'Pasien';
+          final createdAt = DateTime.tryParse(payload['createdAt'] as String? ?? '') ?? DateTime.now();
+          final structured = Map<String, dynamic>.from(payload['structured'] as Map? ?? {});
+          final transcript = ((payload['transcript'] as List?) ?? [])
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .map((e) => {'speaker': '${e['speaker']}', 'text': '${e['text']}'})
+              .toList();
+          final comparison = payload['comparison'] is Map
+              ? Map<String, dynamic>.from(payload['comparison'] as Map)
+              : null;
+          final bytes = format == 'docx'
+              ? await BpjsExport.buildDocx(
+                  dokterNama: dokterNama,
+                  dokterInstansi: dokterInstansi,
+                  pasienNama: pasienNama,
+                  createdAt: createdAt,
+                  structured: structured,
+                  transcript: transcript,
+                  comparison: comparison,
+                )
+              : await BpjsExport.buildPdf(
+                  dokterNama: dokterNama,
+                  dokterInstansi: dokterInstansi,
+                  pasienNama: pasienNama,
+                  createdAt: createdAt,
+                  structured: structured,
+                  transcript: transcript,
+                  comparison: comparison,
+                );
+          final safeName = pasienNama.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_');
+          await BpjsExport.shareFile(
+            bytes: bytes,
+            filename: 'dokumentasi_bpjs_$safeName.$format',
+            mimeSubject: 'Dokumentasi BPJS — $pasienNama',
+          );
+          if (id != null) await _reply(id, {'ok': true});
+        } catch (e) {
+          if (id != null) await _reply(id, {'ok': false, 'message': e.toString()});
+        }
+        return;
+
+      case 'save_image':
+        // Chat's lightbox "Download" button — a WebView has no built-in
+        // "Save As" for a data: URI or a cross-origin image (unlike a
+        // desktop browser), so this hands the bytes to the OS share sheet
+        // instead, same mechanism BpjsExport.shareFile already uses for
+        // PDFs/DOCX — "Save to Downloads"/Photos/Drive are just other
+        // targets in that same sheet.
+        try {
+          final filename = payload['filename'] as String? ?? 'image.png';
+          final dataUrl = payload['dataUrl'] as String?;
+          Uint8List bytes;
+          if (dataUrl != null && dataUrl.startsWith('data:')) {
+            final base64Part = dataUrl.substring(dataUrl.indexOf(',') + 1);
+            bytes = base64Decode(base64Part);
+          } else {
+            final url = payload['url'] as String?;
+            if (url == null) throw Exception('Tidak ada data gambar.');
+            final resp = await http.get(Uri.parse(url));
+            if (resp.statusCode != 200) throw Exception('Gagal mengambil gambar (${resp.statusCode}).');
+            bytes = resp.bodyBytes;
+          }
+          await BpjsExport.shareFile(bytes: bytes, filename: filename, mimeSubject: 'Gambar dari chat');
+          if (id != null) await _reply(id, {'ok': true});
+        } catch (e) {
+          if (id != null) await _reply(id, {'ok': false, 'message': e.toString()});
+        }
+        return;
+
+      case 'pick_text_file':
+        // <input type="file"> does nothing in webview_flutter on Android, so file
+        // import (e.g. .ovpn in the VPN screen) goes through MainActivity's
+        // native picker (see its aihub/file_picker channel) and hands the
+        // text back.
+        try {
+          const channel = MethodChannel('aihub/file_picker');
+          final r = await channel.invokeMapMethod<String, dynamic>('pickTextFile');
+          if (id != null) await _reply(id, Map<String, dynamic>.from(r ?? {'ok': false, 'cancelled': true}));
+        } catch (e) {
+          if (id != null) await _reply(id, {'ok': false, 'message': e.toString()});
+        }
+        return;
+
       case 'open_bot_bpjs':
         if (id != null) await _reply(id, {});
         if (mounted) {
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const BotBpjsScreen()),
+          );
+        }
+        return;
+
+      case 'open_anamnesis_terpandu':
+        if (id != null) await _reply(id, {});
+        if (mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AnamnesisTerpanduScreen()),
+          );
+        }
+        return;
+
+      case 'open_terminal':
+        if (id != null) await _reply(id, {});
+        if (mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const TerminalScreen()),
           );
         }
         return;

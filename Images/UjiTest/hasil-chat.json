@@ -1,0 +1,37 @@
+[
+ [
+  "Chat: tab ChatGPT tampil",
+  true,
+  ""
+ ],
+ [
+  "Chat NYATA: error kredit OpenAI ditampilkan jelas (bukan crash)",
+  true,
+  "alas singkat. ChatGPT error: You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/."
+ ],
+ [
+  "Chat NYATA: tidak ada JS error",
+  true,
+  "[]"
+ ],
+ [
+  "Chat SIMULASI: balasan tampil di gelembung",
+  true,
+  ""
+ ],
+ [
+  "Chat SIMULASI: riwayat 2 giliran",
+  true,
+  ""
+ ],
+ [
+  "Chat: tidak ada JS error",
+  true,
+  "[]"
+ ],
+ [
+  "API key: pola sk-proj- dikenali sebagai ChatGPT",
+  true,
+  ""
+ ]
+]

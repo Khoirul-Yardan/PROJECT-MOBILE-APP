@@ -1,0 +1,62 @@
+[
+ [
+  "Skills Gemini: /search & /code tampil",
+  true,
+  "KHUSUS GEMINI | /search | Cari di Google (jawaban berbasis web) — mati | /code | Jalankan kode Python untuk menghitung — mati | UMUM | /system | Atur instruksi sistem | /clear | Bersihkan percakapan ini | /help | Lihat semua perintah"
+ ],
+ [
+  "Skills Gemini: perintah umum tetap ada",
+  true,
+  ""
+ ],
+ [
+  "Skills ChatGPT: tanpa /search & /code",
+  true,
+  ""
+ ],
+ [
+  "Skills ChatGPT: perintah umum ada",
+  true,
+  ""
+ ],
+ [
+  "Skills Hermes: skill dari kartu agent tampil",
+  true,
+  "KEMAMPUAN HERMES AGENT (A2A) | /terminal | Jalankan perintah shell | /kanban | Kelola papan tugas | UMUM | /system | Atur instruksi sistem | /clear | Bersihkan percakapan ini | /help | Lihat semua perintah"
+ ],
+ [
+  "Skills Hermes: tanpa /search & /code milik Gemini",
+  true,
+  ""
+ ],
+ [
+  "Toggle /search: konfirmasi AKTIF tampil",
+  true,
+  ""
+ ],
+ [
+  "Toggle /search: palet menandai AKTIF",
+  true,
+  ""
+ ],
+ [
+  "Gemini + /search: request memuat tools google_search",
+  true,
+  "[{'google_search': {}}]"
+ ],
+ [
+  "Gemini + /search: balasan tampil",
+  true,
+  ""
+ ],
+ [
+  "Gemini: /search dimatikan -> request tanpa tools",
+  true,
+  ""
+ ],
+ [
+  "Skills: tidak ada JS error",
+  true,
+  "[]"
+ ]
+]

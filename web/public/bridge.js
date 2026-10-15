@@ -62,7 +62,7 @@ function devFallback(type, payload) {
   }
 }
 
-function call(type, payload) {
+function call(type, payload, timeoutMs = CALL_TIMEOUT_MS) {
   return new Promise((resolve) => {
     if (!hasBridge()) {
       const fallback = devFallback(type, payload || {});
@@ -84,7 +84,7 @@ function call(type, payload) {
       pending.delete(id);
       console.warn('[bridge] native shell did not reply in time — treating as unavailable', type, payload);
       resolve(null);
-    }, CALL_TIMEOUT_MS);
+    }, timeoutMs);
     pending.set(id, {
       resolve: (value) => {
         clearTimeout(timer);
@@ -136,10 +136,69 @@ export const Native = {
   saveVpnConfig: (config) => call('save_vpn_config', config),
 
   // --- Native-only actions ----------------------------------------------
-  vpnConnect: () => call('vpn_connect'),
-  vpnDisconnect: () => call('vpn_disconnect'),
+  // VpnTunnelService's OpenVPN path deliberately polls for up to 25s before
+  // giving a definite yes/no (see its own _openvpnConnectTimeout) — the
+  // generic 8s CALL_TIMEOUT_MS used to fire first, so the bridge gave up and
+  // resolved null well before native's real answer arrived. The UI then had
+  // nothing to show (no toast, no error — vpn.js treats a null result as a
+  // silent "not connected"), which looked exactly like a dead button even
+  // though every tap really was reaching native and starting a connection
+  // attempt in the background.
+  vpnConnect: () => call('vpn_connect', {}, 60000),
+  vpnDisconnect: () => call('vpn_disconnect', {}, 60000),
+  vpnState: () => call('vpn_state', {}, 8000),
   openBotBpjs: () => call('open_bot_bpjs'),
+  /** Opens the native guided-anamnesis screen (mic + STT + TTS, same reasons as Bot BPJS). */
+  openAnamnesisTerpandu: () => call('open_anamnesis_terpandu'),
+  /**
+   * Opens the native SSH Terminal screen — an interactive shell needs a real
+   * TCP socket (dartssh2), which a WebView page can't open itself, so this
+   * stays 100% native like Bot BPJS's microphone.
+   */
+  openTerminal: () => call('open_terminal'),
+  /** Pemilih file native (input[type=file] tidak jalan di WebView Android). */
+  pickTextFile: () => call('pick_text_file', {}, 120000),
   signOut: () => call('sign_out'),
+
+  /**
+   * Relays an HTTP request through native's own network stack instead of
+   * this page's fetch() — self-hosted agent gateways (OpenClaw, Hermes
+   * Agent's A2A) almost never send CORS headers, so a browser/WebView
+   * fetch() to them is blocked outright by the preflight check. Native HTTP
+   * isn't subject to CORS at all, so this sidesteps it. Long timeout: these
+   * are AI replies, which can legitimately take tens of seconds.
+   */
+  httpRelay: (url, { method = 'POST', headers = {}, body } = {}) =>
+    call('http_relay', { url, method, headers, body }, 90000),
+
+  /**
+   * Saves an image (chat lightbox's Download button) via the OS share
+   * sheet — a WebView has no built-in "Save As" for a data: URI or a
+   * cross-origin image the way a desktop browser does, so this hands the
+   * bytes to native instead, same mechanism exportBpjs below already uses.
+   * Pass either `dataUrl` (a data:image/... URI) or `url` (an https image
+   * link native will fetch itself). Returns null with no native shell —
+   * the caller falls back to a plain <a download> in that case.
+   */
+  saveImage: ({ dataUrl, url, filename }) => call('save_image', { dataUrl, url, filename }, 30000),
+
+  /**
+   * Builds a Bot BPJS session as a PDF or DOCX file and opens the native
+   * share sheet — reuses the exact same export code the native Bot BPJS
+   * screen already uses right after recording (see BpjsExport in
+   * bpjs_service.dart), instead of duplicating a second PDF/DOCX generator
+   * in JS. Web-only surfaces (the Riwayat history page) don't have a
+   * file-generation or OS share story of their own, so this hands the
+   * whole job to native. Returns null (same as any other unavailable-bridge
+   * call) when there's no native shell — the view falls back to "Salin
+   * Teks" / browser print in that case.
+   */
+  exportBpjs: ({ format, dokterNama, dokterInstansi, pasienNama, createdAt, structured, transcript, comparison }) =>
+    call(
+      'export_bpjs',
+      { format, dokterNama, dokterInstansi, pasienNama, createdAt, structured, transcript, comparison },
+      30000
+    ),
 
   /**
    * Mirrors the web session's refresh token into native's own Supabase

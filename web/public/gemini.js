@@ -112,7 +112,10 @@ export async function listGeminiModels(entry, apiKey) {
   return [...models.values()].sort((a, b) => rank(a.id) - rank(b.id) || b.id.localeCompare(a.id, 'en', { numeric: true }));
 }
 
-function payloadFor(history) {
+// UI toggle name -> Gemini tool object (see skills.js).
+const GEMINI_TOOLS = { search: { google_search: {} }, code: { code_execution: {} } };
+
+function payloadFor(history, tools = []) {
   const system = history.filter((m) => m.role === 'system').map((m) => m.text).join('\n\n');
   // Local greetings/command feedback must not become an initial model turn.
   const messages = history.filter((m) => m.role !== 'system');
@@ -124,11 +127,16 @@ function payloadFor(history) {
     if (previous?.role === role) previous.parts.push({ text: message.text });
     else contents.push({ role, parts: [{ text: message.text }] });
   }
-  return { ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}), contents };
+  const toolDefs = tools.map((t) => GEMINI_TOOLS[t]).filter(Boolean);
+  return {
+    ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+    contents,
+    ...(toolDefs.length ? { tools: toolDefs } : {}),
+  };
 }
 
-export async function generateGemini(entry, apiKey, history) {
-  const payload = payloadFor(history);
+export async function generateGemini(entry, apiKey, history, { tools = [] } = {}) {
+  const payload = payloadFor(history, tools);
   const preferred = normalizeGeminiModel(entry.model);
   const first = preferred && preferred !== 'auto' ? preferred : entry._resolvedModel;
   const attempted = new Set();
