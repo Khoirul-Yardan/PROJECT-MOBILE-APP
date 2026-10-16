@@ -30,6 +30,13 @@ class VpnTunnelService {
 
   static OpenVPN? _openvpn;
   static VPNStage _ovpnStage = VPNStage.disconnected;
+  // Every stage this attempt went through (with the engine's raw text), so a
+  // failure can say *where* it stopped instead of a generic message.
+  static final List<String> _stageTrail = [];
+
+  static String get _trail => _stageTrail.isEmpty
+      ? 'Tahapan: (tidak ada event dari mesin OpenVPN)'
+      : 'Tahapan: ${_stageTrail.join(' > ')}';
   // Which tunnel is actually live right now — not just "has OpenVPN ever
   // been touched this process", since once _openvpn is lazily created it
   // stays non-null even after switching back to WireGuard.
@@ -46,6 +53,8 @@ class VpnTunnelService {
       // server vs. something else) from `adb logcat | grep flutter`.
       onVpnStageChanged: (stage, raw) {
         _ovpnStage = stage;
+        final label = raw.isEmpty || raw == stage.name ? stage.name : '${stage.name}($raw)';
+        if (_stageTrail.isEmpty || _stageTrail.last != label) _stageTrail.add(label);
         debugPrint('[VpnTunnelService] OpenVPN stage: $stage ($raw)');
       },
     );
@@ -165,6 +174,7 @@ class VpnTunnelService {
       }
     }
     _ovpnStage = VPNStage.disconnected;
+    _stageTrail.clear();
     // NOT awaited on purpose: this plugin's Android "connect" handler never
     // calls result.success (it just starts the service), so the returned
     // Future never completes — awaiting it hung this whole method forever
@@ -209,7 +219,7 @@ class VpnTunnelService {
       }
       final stage = _ovpnStage;
       if (connectError != null) {
-        throw Exception('OpenVPN gagal dimulai: $connectError');
+        throw Exception('OpenVPN gagal dimulai: $connectError. $_trail');
       }
       if (stage == VPNStage.authenticating) reachedAuthenticating = true;
       switch (stage) {
@@ -218,13 +228,13 @@ class VpnTunnelService {
         case VPNStage.denied:
           throw Exception('Izin VPN ditolak.');
         case VPNStage.error:
-          throw Exception('OpenVPN gagal terhubung ke server.');
+          throw Exception('OpenVPN gagal terhubung ke server. $_trail');
         case VPNStage.tcp_connect:
         case VPNStage.wait_connection:
           if (reachedAuthenticating) {
             openvpn.disconnect();
             throw Exception(
-              'Server menolak login (username/password) dan mencoba ulang otomatis — dihentikan agar tidak memicu pemblokiran. Cek lagi kredensial, atau tunggu sebentar sebelum coba lagi kalau sempat berkali-kali gagal.',
+              'Server menolak login (username/password) dan mencoba ulang otomatis — dihentikan agar tidak memicu pemblokiran. Cek lagi kredensial, atau tunggu sebentar sebelum coba lagi kalau sempat berkali-kali gagal. $_trail',
             );
           }
           await Future.delayed(const Duration(milliseconds: 400));
@@ -232,7 +242,7 @@ class VpnTunnelService {
           await Future.delayed(const Duration(milliseconds: 400));
       }
     }
-    throw Exception('OpenVPN tidak merespons (timeout) — cek server/jaringan.');
+    throw Exception('OpenVPN tidak merespons (timeout 50 dtk) — cek server/jaringan. $_trail');
   }
 
   static Future<void> disconnect() async {
