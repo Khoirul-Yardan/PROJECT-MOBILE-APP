@@ -31,6 +31,12 @@ const PORT = process.env.PORT || 8091;
 const UPSTREAM_TIMEOUT_MS = 100000;
 const ASSEMBLYAI_BASE = 'https://api.assemblyai.com/v2';
 const ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY || '';
+// Set on any internet-facing deployment (e.g. Railway). The generic relay
+// fetches whatever URL the caller gives it; locally that's the point (LAN
+// agents), but on a public host it would let anyone reach the platform's
+// private network. With this on, loopback/private/link-local/.internal
+// targets are refused.
+const BLOCK_PRIVATE_TARGETS = process.env.RELAY_BLOCK_PRIVATE === '1';
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -62,6 +68,19 @@ async function withTimeout(fn) {
   }
 }
 
+function isBlockedTarget(hostname) {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.internal') || h.endsWith('.local')) return true;
+  if (h === '::1' || h === '::' || /^f[cd]/.test(h) || /^fe80/.test(h) || h.startsWith('::ffff:')) return true;
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const a = Number(m[1]), b = Number(m[2]);
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
+  }
+  // Bare/odd numeric forms (e.g. 2130706433, 0x7f.1) — nothing legitimate.
+  return /^[0-9x.]+$/.test(h);
+}
+
 function sendJson(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
@@ -91,10 +110,15 @@ async function handleGenericRelay(req, res) {
     const { url, method, headers, body } = JSON.parse(raw || '{}');
     if (!url) throw new Error('Missing url');
     target = new URL(url);
+    if (!/^https?:$/.test(target.protocol)) throw new Error('Only http(s) URLs are allowed');
+    if (BLOCK_PRIVATE_TARGETS && isBlockedTarget(target.hostname)) throw new Error('Target host not allowed on this deployment');
     const fetchOpts = {
       method: method || 'POST',
       headers: headers || {},
       body: (method || 'POST') === 'GET' ? undefined : body,
+      // A redirect could bounce a public URL to a private one after the
+      // check above, so don't follow them when blocking is on.
+      redirect: BLOCK_PRIVATE_TARGETS ? 'manual' : 'follow',
     };
     let upstream;
     try {
@@ -109,7 +133,7 @@ async function handleGenericRelay(req, res) {
       // docs/HERMES-API-SETUP.md), so a bare LAN-IP connection failure is
       // worth one retry through that name before giving up — transparent
       // to the client either way (same {status, body} shape).
-      if (!isPrivateLanIPv4(target.hostname)) throw e;
+      if (BLOCK_PRIVATE_TARGETS || !isPrivateLanIPv4(target.hostname)) throw e;
       const fallback = new URL(target.toString());
       fallback.hostname = 'host.docker.internal';
       upstream = await withTimeout((signal) => fetch(fallback, { ...fetchOpts, signal }));

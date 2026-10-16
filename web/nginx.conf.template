@@ -1,5 +1,5 @@
 server {
-    listen 80;
+    listen ${PORT};
     server_name _;
     root /usr/share/nginx/html;
     index index.html;
@@ -19,7 +19,14 @@ server {
     # never crosses origins (and so never triggers a CORS preflight) even
     # though the relay itself is a separate container.
     location /relay/ {
-        proxy_pass http://relay:8091/;
+        # Resolved per-request (variable + resolver) instead of at startup,
+        # so nginx still boots if the relay isn't up yet — needed on
+        # Railway, where the two services start independently and the
+        # private hostname (RELAY_URL) only resolves once relay is running.
+        resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+        set $relay_upstream "${RELAY_URL}";
+        rewrite ^/relay/(.*)$ /$1 break;
+        proxy_pass $relay_upstream;
         proxy_set_header Host $host;
         proxy_http_version 1.1;
         # nginx's default is 1MB — fine for the small JSON-RPC/agent-chat
@@ -29,6 +36,9 @@ server {
         # ~70s AAC recording is already ~1.6MB and got rejected with a 413
         # before this was added. 50m comfortably covers a long BPJS session.
         client_max_body_size 50m;
+        # Relay allows AI replies up to 100s upstream; nginx's 60s default
+        # would cut them off first.
+        proxy_read_timeout 120s;
     }
 
     # The whole point of this container is "rebuild it, everyone gets the

@@ -1,0 +1,14 @@
+# Private-only relay: no [http_service], so no public address. The web app
+# reaches it over Fly's private network at ai-hub-relay.internal:8091.
+app = "ai-hub-relay"
+primary_region = "sin"
+
+[build]
+
+[env]
+  PORT = "8091"
+  RELAY_BLOCK_PRIVATE = "1"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -65,6 +66,8 @@ class _WebShellScreenState extends State<WebShellScreen> {
       )
       ..loadRequest(Uri.parse(WebHubConfig.baseUrl));
   }
+
+  FlutterTts? _tts;
 
   Future<void> _reply(String id, Object? result) async {
     final json = jsonEncode(result ?? {});
@@ -255,6 +258,22 @@ class _WebShellScreenState extends State<WebShellScreen> {
           const channel = MethodChannel('aihub/file_picker');
           final r = await channel.invokeMapMethod<String, dynamic>('pickTextFile');
           if (id != null) await _reply(id, Map<String, dynamic>.from(r ?? {'ok': false, 'cancelled': true}));
+        } catch (e) {
+          if (id != null) await _reply(id, {'ok': false, 'message': e.toString()});
+        }
+        return;
+
+      case 'speak':
+        // WebView speechSynthesis is silent on many Android devices (no
+        // voice bound to the WebView), so the web page asks the native TTS
+        // engine instead — same engine the guided anamnesis already uses.
+        try {
+          final tts = _tts ??= FlutterTts();
+          await tts.setLanguage('id-ID');
+          await tts.setSpeechRate(0.45);
+          await tts.stop();
+          await tts.speak((payload['text'] as String?) ?? '');
+          if (id != null) await _reply(id, {'ok': true});
         } catch (e) {
           if (id != null) await _reply(id, {'ok': false, 'message': e.toString()});
         }

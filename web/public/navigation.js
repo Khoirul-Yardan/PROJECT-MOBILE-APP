@@ -21,7 +21,7 @@ export function mountNavigation() {
   document.body.appendChild(nav);
   function sync() {
     const path = (location.hash || '#/home').slice(1).split('?')[0];
-    nav.hidden = path === '/login';
+    nav.hidden = path === '/login' || path === '/p';
     document.body.classList.toggle('has-web-nav', !nav.hidden);
     document.body.classList.toggle('is-chat', path === '/chat');
     const selected = path.startsWith('/settings') ? '/settings' : path.startsWith('/vpn') ? '/vpn' : path === '/bpjs' ? '/bots' : path;

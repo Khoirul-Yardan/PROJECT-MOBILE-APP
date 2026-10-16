@@ -1,6 +1,7 @@
 import { h, icon, header, toast, escapeHtml } from '../ui.js';
-import { sb, currentUser } from '../db.js';
+import { sb, currentUser, watchKomunikasi } from '../db.js';
 import { navigate } from '../router.js';
+import { Native } from '../bridge.js';
 
 // Papan Komunikasi — a touch-to-speech board for patients who cannot talk
 // (ICU, stroke, post-op). Pure web on purpose: big buttons + the browser's
@@ -32,14 +33,35 @@ const LS_PATIENT = 'papan_komunikasi_pasien';
 
 const nowHm = (iso) => new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
+// Native TTS first (the WebView's own speechSynthesis is frequently mute on
+// Android); browser speechSynthesis otherwise, with an explicit id-ID voice
+// because mobile Chrome stays silent when no voice is bound to the utterance.
 function speak(text) {
+  if (Native.attached) {
+    Native.speak(text).then((r) => { if (!r?.ok) browserSpeak(text); });
+    return true;
+  }
+  return browserSpeak(text);
+}
+
+function browserSpeak(text) {
   try {
     if (!('speechSynthesis' in window)) return false;
-    window.speechSynthesis.cancel();
+    const synth = window.speechSynthesis;
+    synth.resume();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'id-ID';
     u.rate = 0.95;
-    window.speechSynthesis.speak(u);
+    const voices = synth.getVoices();
+    const voice = voices.find((v) => /^id[-_]ID$/i.test(v.lang)) || voices.find((v) => /^id/i.test(v.lang));
+    if (voice) u.voice = voice;
+    // cancel() immediately followed by speak() drops the utterance on Android.
+    if (synth.speaking || synth.pending) {
+      synth.cancel();
+      setTimeout(() => synth.speak(u), 120);
+    } else {
+      synth.speak(u);
+    }
     return true;
   } catch {
     return false;
@@ -106,7 +128,36 @@ function describe(ev) {
   return parts.join(', ');
 }
 
-export default async function render(root) {
+const roomLink = (token) => `${location.origin}${location.pathname}#/p?t=${token}`;
+
+async function sendViaToken(token, ev) {
+  try {
+    const { data, error } = await sb.rpc('komunikasi_kirim', {
+      p_token: token, p_jenis: ev.jenis, p_detail: ev.detail || {}, p_mendesak: !!ev.mendesak,
+    });
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+}
+
+// Halaman pasien/keluarga: dibuka dari tautan ruangan, tanpa login.
+export async function patientView(root) {
+  const token = (location.hash.split('?t=')[1] || '').split('&')[0];
+  let nama = null;
+  try {
+    const { data } = await sb.rpc('komunikasi_room_info', { p_token: token });
+    nama = data?.[0]?.nama ?? null;
+  } catch { /* handled below */ }
+  if (!nama) {
+    const el = h('<div class="page"><div class="empty-state">Tautan ini tidak berlaku atau sudah dinonaktifkan.<br/>Mohon minta tautan baru kepada perawat.</div></div>');
+    root.appendChild(el);
+    return {};
+  }
+  return render(root, { token, nama });
+}
+
+export default async function render(root, guest = null) {
   let patient = '';
   try {
     patient = localStorage.getItem(LS_PATIENT) || '';
@@ -118,7 +169,7 @@ export default async function render(root) {
   let sentNote = '';
 
   const el = h(`<div class="page pk-page"></div>`);
-  el.appendChild(header('Papan Komunikasi', { back: true }));
+  el.appendChild(header(guest ? `Ruang ${escapeHtml(guest.nama)}` : 'Papan Komunikasi', { back: !guest }));
   const body = h('<div></div>');
   el.appendChild(body);
   root.appendChild(el);
@@ -133,8 +184,10 @@ export default async function render(root) {
       created_at: new Date().toISOString(),
     };
     const spoken = speak(sentenceFor(item, detail));
-    const saved = await saveEvent(ev);
-    sentNote = `${describe(ev)}${saved ? '' : ' (tersimpan di perangkat ini saja)'}`;
+    const saved = guest ? await sendViaToken(guest.token, ev) : await saveEvent(ev);
+    sentNote = guest
+      ? `${describe(ev)}${saved ? '' : ' - GAGAL terkirim, coba lagi atau panggil perawat langsung'}`
+      : `${describe(ev)}${saved ? '' : ' (tersimpan di perangkat ini saja)'}`;
     if (!spoken) toast('Suara tidak tersedia di perangkat ini — pesan tetap tercatat.');
     flow = null;
     draw();
@@ -149,9 +202,11 @@ export default async function render(root) {
   }
 
   function drawTabs() {
+    if (guest) return h('<div></div>');
     const t = h(`<div class="pk-tabs" role="tablist">
-      <button type="button" role="tab" class="pk-tab ${tab === 'papan' ? 'on' : ''}" data-t="papan">Papan pasien</button>
-      <button type="button" role="tab" class="pk-tab ${tab === 'catatan' ? 'on' : ''}" data-t="catatan">Catatan perawat</button>
+      <button type="button" role="tab" class="pk-tab ${tab === 'papan' ? 'on' : ''}" data-t="papan">Papan</button>
+      <button type="button" role="tab" class="pk-tab ${tab === 'ruangan' ? 'on' : ''}" data-t="ruangan">Ruangan</button>
+      <button type="button" role="tab" class="pk-tab ${tab === 'catatan' ? 'on' : ''}" data-t="catatan">Catatan</button>
     </div>`);
     t.querySelectorAll('.pk-tab').forEach((b) => {
       b.onclick = () => { tab = b.dataset.t; flow = null; draw(); };
@@ -161,9 +216,9 @@ export default async function render(root) {
 
   function drawBoard() {
     const wrap = h('<div></div>');
-    wrap.appendChild(h(`<label class="pk-ref"><span class="small muted">Kode / inisial pasien (opsional, jangan tulis nama lengkap)</span>
+    if (!guest) wrap.appendChild(h(`<label class="pk-ref"><span class="small muted">Kode / inisial pasien (opsional, jangan tulis nama lengkap)</span>
       <input id="pk-ref" maxlength="20" value="${escapeHtml(patient)}" placeholder="mis. Bed 3 / AB" autocomplete="off"/></label>`));
-    wrap.querySelector('#pk-ref').oninput = (e) => {
+    if (!guest) wrap.querySelector('#pk-ref').oninput = (e) => {
       patient = e.target.value;
       try { localStorage.setItem(LS_PATIENT, patient); } catch { /* ignore */ }
     };
@@ -246,11 +301,83 @@ export default async function render(root) {
     wrap.appendChild(list);
   }
 
+  async function drawRooms() {
+    const wrap = h('<div></div>');
+    wrap.appendChild(h('<p class="small muted">Memuat ruangan...</p>'));
+    body.replaceChildren(drawTabs(), wrap);
+    const user = await currentUser();
+    const { data: rooms, error } = user
+      ? await sb.from('komunikasi_rooms').select('id,nama,token,aktif,created_at').eq('owner_id', user.id).order('created_at', { ascending: false })
+      : { data: [], error: null };
+    if (tab !== 'ruangan') return;
+    wrap.replaceChildren();
+    if (error) {
+      wrap.appendChild(h(`<div class="empty-state">Fitur tautan ruangan belum aktif di database (jalankan migrasi komunikasi_rooms di Supabase).<br/><span class="small muted">${escapeHtml(error.message)}</span></div>`));
+      return;
+    }
+    const { data: evs } = await sb.from('komunikasi_events').select('room_id,detail,jenis,mendesak,created_at').not('room_id', 'is', null).order('created_at', { ascending: false }).limit(200);
+    const last = new Map();
+    (evs || []).forEach((e) => { if (!last.has(e.room_id)) last.set(e.room_id, e); });
+
+    const form = h(`<div class="pk-flow"><label class="pk-ref"><span class="small muted">Nama ruangan / bed (jangan tulis nama lengkap pasien)</span>
+      <input id="pk-room-name" maxlength="40" placeholder="mis. Melati - Bed 3" autocomplete="off"/></label>
+      <button type="button" class="btn btn-primary" id="pk-room-add">Buat tautan ruangan</button></div>`);
+    form.querySelector('#pk-room-add').onclick = async () => {
+      const nama = form.querySelector('#pk-room-name').value.trim();
+      if (!nama) { toast('Isi nama ruangan dulu.'); return; }
+      const { error: e } = await sb.from('komunikasi_rooms').insert({ owner_id: user.id, nama });
+      if (e) { toast(`Gagal membuat ruangan: ${e.message}`); return; }
+      drawRooms();
+    };
+    wrap.appendChild(form);
+    if (!rooms.length) wrap.appendChild(h('<div class="empty-state">Belum ada ruangan. Buat satu, lalu kirim tautannya ke pasien atau keluarga.</div>'));
+    rooms.forEach((r) => {
+      const ev = last.get(r.id);
+      const card = h(`<div class="pk-log-row ${ev?.mendesak ? 'urgent' : ''}" style="flex-wrap:wrap;gap:8px;">
+        <div style="flex:1;min-width:180px;"><strong>${escapeHtml(r.nama)}</strong>${r.aktif ? '' : ' <span class="pill pill--warn">nonaktif</span>'}<br/>
+        <span class="small muted">${ev ? `${nowHm(ev.created_at)} - ${escapeHtml(describe(ev))}` : 'Belum ada pesan'}</span></div>
+        <button type="button" class="btn btn-outline" data-a="copy">Salin tautan</button>
+        <button type="button" class="btn btn-outline" data-a="share">Bagikan</button>
+        <button type="button" class="btn btn-outline" data-a="toggle">${r.aktif ? 'Nonaktifkan' : 'Aktifkan'}</button>
+        <button type="button" class="btn btn-outline" data-a="del">Hapus</button></div>`);
+      const link = roomLink(r.token);
+      const copyLink = async () => {
+        try { await navigator.clipboard.writeText(link); toast('Tautan disalin'); } catch { toast(link); }
+      };
+      card.querySelector('[data-a=copy]').onclick = copyLink;
+      card.querySelector('[data-a=share]').onclick = async () => {
+        try { await navigator.share({ title: `Papan Komunikasi ${r.nama}`, text: 'Tautan papan komunikasi pasien:', url: link }); }
+        catch { await copyLink(); }
+      };
+      card.querySelector('[data-a=toggle]').onclick = async () => {
+        await sb.from('komunikasi_rooms').update({ aktif: !r.aktif }).eq('id', r.id); drawRooms();
+      };
+      card.querySelector('[data-a=del]').onclick = async () => {
+        if (!confirm(`Hapus ruangan ${r.nama}? Tautannya berhenti berlaku.`)) return;
+        await sb.from('komunikasi_rooms').delete().eq('id', r.id); drawRooms();
+      };
+      wrap.appendChild(card);
+    });
+  }
+
   function draw() {
+    if (tab === 'ruangan') { drawRooms(); return; }
     if (tab === 'catatan') { drawNotes(); return; }
     body.replaceChildren(drawTabs(), drawBoard());
   }
   draw();
 
-  return { dispose: () => { try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } } };
+  // Perawat: pesan baru dari tautan ruangan muncul langsung (realtime).
+  let stopWatch = null;
+  if (!guest) {
+    stopWatch = watchKomunikasi((payload) => {
+      const ev = payload.new;
+      if (payload.eventType !== 'INSERT' || !ev?.room_id) return;
+      toast(`${ev.mendesak ? 'MENDESAK - ' : ''}${ev.pasien_ref || 'Ruangan'}: ${describe({ ...ev, label: ev.detail?.label })}`);
+      if (tab === 'ruangan') drawRooms();
+      else if (tab === 'catatan') drawNotes();
+    });
+  }
+
+  return { dispose: () => { stopWatch?.(); try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } } };
 }

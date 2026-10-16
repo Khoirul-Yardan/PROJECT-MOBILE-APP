@@ -321,13 +321,21 @@ class BpjsAiService {
 class BpjsSessionRepo {
   BpjsSessionRepo._();
 
+  /// Why the last [createSession] returned null (shown to the nurse instead
+  /// of a generic "failed"): not signed in natively vs. a real DB error.
+  static String? lastError;
+
   static Future<String?> createSession({
     required String dokterNama,
     String? dokterInstansi,
     required String pasienNama,
   }) async {
     final uid = SupabaseService.userId;
-    if (uid == null) return null;
+    if (uid == null) {
+      lastError = 'Sesi login belum tersinkron ke aplikasi. Keluar lalu masuk lagi, kemudian ulangi.';
+      return null;
+    }
+    lastError = null;
     try {
       final row = await SupabaseService.client
           .from('bpjs_sessions')
@@ -341,7 +349,8 @@ class BpjsSessionRepo {
           .select('id')
           .single();
       return row['id'] as String;
-    } catch (_) {
+    } catch (e) {
+      lastError = e.toString();
       return null;
     }
   }
@@ -368,13 +377,13 @@ class BpjsSessionRepo {
   /// (each {speaker, text, offset}) - used both for the first save and when
   /// the nurse flips the speaker roles afterward, so history always matches
   /// what the review screen shows.
-  static Future<void> replaceTranscript(
+  static Future<String?> replaceTranscript(
     String sessionId,
     List<Map<String, String>> segments,
   ) async {
     try {
       await SupabaseService.client.from('bpjs_transcripts').delete().eq('session_id', sessionId);
-      if (segments.isEmpty) return;
+      if (segments.isEmpty) return null;
       await SupabaseService.client.from('bpjs_transcripts').insert([
         for (final seg in segments)
           {
@@ -384,12 +393,15 @@ class BpjsSessionRepo {
             'timestamp_offset_ms': int.tryParse(seg['offset'] ?? '') ?? 0,
           },
       ]);
-    } catch (_) {
-      // Best-effort, same contract as the rest of this repo.
+      return null;
+    } catch (e) {
+      return 'transkrip: $e';
     }
   }
 
-  static Future<void> saveDocumentation({
+  /// Returns null on success, otherwise a short reason (callers that don't
+  /// care may ignore it - Bot BPJS keeps its best-effort behaviour).
+  static Future<String?> saveDocumentation({
     required String sessionId,
     required Map<String, dynamic> structured,
     required List<Map<String, String>> alurPercakapan,
@@ -408,19 +420,21 @@ class BpjsSessionRepo {
         ...row,
         'perbandingan': ?perbandingan,
       });
+      return null;
     } catch (_) {
       // Kolom `perbandingan` baru (lihat schema.sql) - kalau migrasinya
       // belum dijalankan, simpan tanpa kolom itu daripada kehilangan
       // seluruh dokumentasi.
       try {
         await SupabaseService.client.from('bpjs_documents').insert(row);
-      } catch (_) {
-        // Best-effort, same contract as the rest of this repo.
+        return null;
+      } catch (e) {
+        return 'dokumentasi: $e';
       }
     }
   }
 
-  static Future<void> markStatus(String sessionId, String status) async {
+  static Future<String?> markStatus(String sessionId, String status) async {
     try {
       await SupabaseService.client
           .from('bpjs_sessions')
@@ -429,8 +443,9 @@ class BpjsSessionRepo {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', sessionId);
-    } catch (_) {
-      // Best-effort.
+      return null;
+    } catch (e) {
+      return 'status: $e';
     }
   }
 }

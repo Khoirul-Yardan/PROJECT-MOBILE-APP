@@ -22,6 +22,19 @@ class _Question {
   final String text;
 }
 
+const _fieldLabels = <String, String>{
+  'ringkasan': 'RINGKASAN',
+  'keluhan_utama': 'KELUHAN UTAMA',
+  'durasi_gejala': 'DURASI GEJALA',
+  'lokasi_dan_berat': 'LOKASI & SKALA',
+  'riwayat_kesehatan': 'RIWAYAT KESEHATAN',
+  'riwayat_penyakit': 'RIWAYAT PENYAKIT',
+  'alergi': 'ALERGI',
+  'obat_rutin': 'OBAT RUTIN',
+  'keluhan_lain': 'KELUHAN LAIN',
+  'hasil_anamnesis': 'HASIL ANAMNESIS',
+};
+
 /// Standard anamnesis questions, read aloud one by one. The wording follows
 /// the fields Bot BPJS already produces (keluhan utama, durasi gejala,
 /// riwayat kesehatan), plus allergy/medication which a nurse always asks.
@@ -74,6 +87,15 @@ class _AnamnesisTerpanduScreenState extends State<AnamnesisTerpanduScreen> {
   bool _pendingVoice = false;
 
   Map<String, dynamic> _draft = {};
+  List<Map<String, String>> _segments = [];
+  Map<String, dynamic> _metrics = {};
+  String? _providerId;
+  // Non-null while the last save to Dokumentasi failed; the review screen
+  // shows it with a retry button instead of silently pretending it saved.
+  String? _saveError;
+  bool _saving = false;
+  bool _docSaved = false;
+  bool _transcriptFailed = false;
   String _draftNote = '';
   String? _sessionId;
 
@@ -294,13 +316,14 @@ class _AnamnesisTerpanduScreenState extends State<AnamnesisTerpanduScreen> {
     if (!mounted) return;
     if (sessionId == null) {
       setState(() {
-        _errorMessage = 'Gagal membuat sesi — periksa koneksi internet dan coba lagi.';
+        _errorMessage = BpjsSessionRepo.lastError ?? 'Gagal membuat sesi — periksa koneksi internet dan coba lagi.';
         _stage = _Stage.intro;
       });
       return;
     }
     _sessionId = sessionId;
-    await BpjsSessionRepo.replaceTranscript(sessionId, segments);
+    _segments = segments;
+    final transcriptErr = await BpjsSessionRepo.replaceTranscript(sessionId, segments);
 
     final credential = await BpjsAiService.firstAvailableCredential();
     Map<String, dynamic>? generated;
@@ -322,14 +345,11 @@ class _AnamnesisTerpanduScreenState extends State<AnamnesisTerpanduScreen> {
           : 'AI tidak merespons — ini jawaban mentah per pertanyaan.';
     }
 
-    await BpjsSessionRepo.saveDocumentation(
-      sessionId: sessionId,
-      structured: _draft,
-      alurPercakapan: segments,
-      providerId: generated != null ? credential?.id : null,
-      perbandingan: _buildMetrics(credential?.label, generated != null),
-    );
-    await BpjsSessionRepo.markStatus(sessionId, 'siap_dikirim');
+    _metrics = _buildMetrics(credential?.label, generated != null);
+    _providerId = generated != null ? credential?.id : null;
+    _transcriptFailed = transcriptErr != null;
+    _saveError = transcriptErr;
+    await _persist();
     await SupabaseService.logActivity(
       category: 'Bots',
       title: 'Anamnesis Terpandu — draf siap ditinjau',
@@ -338,6 +358,41 @@ class _AnamnesisTerpanduScreenState extends State<AnamnesisTerpanduScreen> {
     );
     if (!mounted) return;
     setState(() => _stage = _Stage.review);
+  }
+
+  Future<void> _persist() async {
+    final sessionId = _sessionId;
+    if (sessionId == null) return;
+    if (mounted) setState(() => _saving = true);
+    final errors = <String>[];
+    if (_transcriptFailed) {
+      final e = await BpjsSessionRepo.replaceTranscript(sessionId, _segments);
+      if (e == null) {
+        _transcriptFailed = false;
+      } else {
+        errors.add(e);
+      }
+    }
+    if (!_docSaved) {
+      final e = await BpjsSessionRepo.saveDocumentation(
+        sessionId: sessionId,
+        structured: _draft,
+        alurPercakapan: _segments,
+        providerId: _providerId,
+        perbandingan: _metrics,
+      );
+      if (e == null) {
+        _docSaved = true;
+      } else {
+        errors.add(e);
+      }
+    }
+    if (errors.isEmpty) {
+      final e = await BpjsSessionRepo.markStatus(sessionId, 'siap_dikirim');
+      if (e != null) errors.add(e);
+    }
+    _saveError = errors.isEmpty ? null : errors.join('\n');
+    if (mounted) setState(() => _saving = false);
   }
 
   /// Stored in bpjs_documents.perbandingan. `sumber` is what the web history
@@ -404,6 +459,9 @@ class _AnamnesisTerpanduScreenState extends State<AnamnesisTerpanduScreen> {
       _index = 0;
       _draft = {};
       _sessionId = null;
+      _saveError = null;
+      _docSaved = false;
+      _transcriptFailed = false;
       _errorMessage = null;
       _stage = _Stage.intro;
     });
@@ -638,20 +696,53 @@ class _AnamnesisTerpanduScreenState extends State<AnamnesisTerpanduScreen> {
       Text(_draftNote, style: const TextStyle(fontSize: 12, color: AppColors.danger)),
     ],
     const SizedBox(height: 12),
-    for (final e in _draft.entries) ...[
-      Text(e.key.replaceAll('_', ' ').toUpperCase(), style: const TextStyle(fontSize: 11, letterSpacing: 1, color: AppColors.textMuted)),
-      const SizedBox(height: 4),
-      SelectableText('${e.value}', style: const TextStyle(fontSize: 15, height: 1.4)),
-      const SizedBox(height: 14),
+    if (_saveError != null)
+      HubCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Belum tersimpan ke Dokumentasi', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.danger)),
+            const SizedBox(height: 4),
+            Text(_saveError!, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: _saving ? null : _persist,
+              icon: _saving
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.refresh),
+              label: const Text('Simpan ulang'),
+            ),
+          ],
+        ),
+      )
+    else
+      const HubCard(
+        fill: AppColors.mint,
+        child: Row(children: [
+          Icon(Icons.check_circle_outline, size: 20),
+          SizedBox(width: 8),
+          Expanded(child: Text('Tersimpan di Dokumentasi (menu Dokumentasi, filter Anamnesis).', style: TextStyle(fontSize: 13))),
+        ]),
+      ),
+    const SizedBox(height: 14),
+    for (final e in _draft.entries.where((e) => '${e.value}'.trim().isNotEmpty)) ...[
+      HubCard(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _fieldLabels[e.key] ?? e.key.replaceAll('_', ' ').toUpperCase(),
+              style: const TextStyle(fontSize: 11, letterSpacing: 1, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 6),
+            SelectableText('${e.value}', style: const TextStyle(fontSize: 15, height: 1.4)),
+          ],
+        ),
+      ),
+      const SizedBox(height: 10),
     ],
     FilledButton.icon(onPressed: _copy, icon: const Icon(Icons.copy), label: const Text('Salin draf')),
-    const SizedBox(height: 10),
-    Text(
-      _sessionId == null
-          ? ''
-          : 'Sesi ini tersimpan di Bot Hub → Dokumentasi BPJS, tempat ekspor PDF/DOCX.',
-      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-    ),
     const SizedBox(height: 10),
     OutlinedButton(onPressed: _reset, child: const Text('Anamnesis baru')),
   ];

@@ -1,0 +1,23 @@
+app = "ai-hub-web"
+primary_region = "sin"
+
+[build]
+
+[env]
+  PORT = "8080"
+  # Relay runs inside this container (the separate relay machine was being
+  # stopped by the Fly trial limit, leaving /relay/ at 502).
+  RUN_RELAY = "1"
+  RELAY_BLOCK_PRIVATE = "1"
+  RELAY_URL = "http://127.0.0.1:8091"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

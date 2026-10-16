@@ -148,6 +148,8 @@ export const Native = {
   vpnDisconnect: () => call('vpn_disconnect', {}, 60000),
   vpnState: () => call('vpn_state', {}, 8000),
   openBotBpjs: () => call('open_bot_bpjs'),
+  /** Native text-to-speech (WebView speechSynthesis is often silent on Android). */
+  speak: (text) => call('speak', { text }, 5000),
   /** Opens the native guided-anamnesis screen (mic + STT + TTS, same reasons as Bot BPJS). */
   openAnamnesisTerpandu: () => call('open_anamnesis_terpandu'),
   /**

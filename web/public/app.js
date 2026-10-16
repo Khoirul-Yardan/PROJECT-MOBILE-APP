@@ -20,7 +20,7 @@ import apikeys from './views/apikeys.js';
 import addApiKey from './views/add-api-key.js';
 import activity from './views/activity.js';
 import bpjsReview from './views/bpjs-review.js';
-import papanKomunikasi from './views/papan-komunikasi.js';
+import papanKomunikasi, { patientView } from './views/papan-komunikasi.js';
 
 const PUBLIC_ROUTES = new Set(['/login']);
 
@@ -56,6 +56,8 @@ route('/settings/add-api-key', guard(addApiKey));
 route('/settings/activity', guard(activity));
 route('/bpjs', guard(bpjsReview));
 route('/papan-komunikasi', guard(papanKomunikasi));
+// Tautan pasien/keluarga: sengaja tanpa guard (tanpa login).
+route('/p', patientView);
 
 const root = document.getElementById('app');
 mountNavigation();

@@ -66,6 +66,22 @@ export const KNOWN_PROVIDERS = [
     icon: 'layers',
   },
   {
+    // Small, fast Llama on Groq's free tier - the lightweight hosted option
+    // for the demo (nothing runs on the user's laptop or the Fly machine).
+    // Groq has no medical-tuned Llama, so the clinical behaviour comes from
+    // MEDICAL_SYSTEM_PROMPT below, applied by chat.js when no /system is set.
+    id: 'groq',
+    label: 'Llama Medis (Groq)',
+    vendor: 'Groq',
+    type: 'chat',
+    format: 'openai',
+    endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+    model: 'llama-3.1-8b-instant',
+    keyPattern: /^gsk_[A-Za-z0-9]{20,}$/,
+    icon: 'spark',
+    defaultSystem: 'medical',
+  },
+  {
     // Hermes is real and reachable by API: Nous Research runs an
     // OpenAI-compatible inference endpoint (Nous Portal) that serves the
     // Hermes model family behind a `sk-nous-...` key from
@@ -180,3 +196,12 @@ export function slugify(label) {
       .replace(/^-+|-+$/g, '') || `custom-${Date.now()}`
   );
 }
+
+/** Default instruction for catalog entries flagged `defaultSystem: 'medical'`.
+ * A prompt, not a medical model: it keeps a small general Llama cautious. */
+export const MEDICAL_SYSTEM_PROMPT =
+  'Kamu asisten informasi kesehatan untuk perawat di Indonesia. Jawab dalam Bahasa Indonesia, '
+  + 'ringkas dan terstruktur (poin-poin). Bantu dengan anamnesis, istilah medis, dokumentasi keperawatan, '
+  + 'dan edukasi pasien. Jangan menetapkan diagnosis pasti atau dosis obat spesifik; sebut tanda bahaya '
+  + '(red flag) yang perlu segera dirujuk ke dokter. Bila tidak yakin, katakan tidak yakin. '
+  + 'Ingatkan bahwa jawabanmu bukan pengganti penilaian dokter.';

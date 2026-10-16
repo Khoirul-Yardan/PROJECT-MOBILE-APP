@@ -5,6 +5,7 @@ import { logActivity } from '../db.js';
 import { navigate } from '../router.js';
 import { openModelPicker, modelLabel } from '../model-picker.js';
 import { Native } from '../bridge.js';
+import { MEDICAL_SYSTEM_PROMPT } from '../providers.js';
 import { skillsFor, providerSkills } from '../skills.js';
 
 // Telegram-style skill commands: type "/" as the first character, or tap
@@ -525,7 +526,8 @@ export default async function render(root) {
     logActivity({ category: 'AI', title: `Pesan dikirim · ${entry.label}` });
     saveMessage(requestEntry.id, requestEntry.label, sessionId, 'user', text);
     try {
-      const systemPrompt = systemPromptByEntry.get(entry.id);
+      const systemPrompt = systemPromptByEntry.get(entry.id)
+        || (entry.id === 'groq' || /api\.groq\.com/.test(entry.endpoint || '') ? MEDICAL_SYSTEM_PROMPT : undefined);
       const history = list.filter((m) => !m.isError && !m.local).map((m) => ({ role: m.fromMe ? 'user' : 'assistant', text: m.text }));
       const reply = await sendChat(
         requestEntry,
