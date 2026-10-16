@@ -325,6 +325,14 @@ button:disabled { cursor:default; }
 }
 @media(max-width:1023px) {
   body.keyboard-open { --nav-space:0px; }
+  /* Login: margin was vh-based (clamp(…,3vh,…)) and the page is taller than the
+     screen, so every keyboard-animation resize re-laid it out and made the
+     form jump. Fixed margin, and the decorative hero is dropped while typing
+     so the fields sit at the top and nothing needs to scroll. */
+  .page.login-page { margin:12px auto; }
+  body.keyboard-open #app { min-height:0; }
+  body.keyboard-open .login-showcase,
+  body.keyboard-open .login-page .login-intro { display:none; }
   body.keyboard-open .web-nav,body.keyboard-open::after { display:none; }
   body.is-chat.keyboard-open { overflow:hidden; }
   body.is-chat.keyboard-open #app { position:fixed; top:var(--viewport-top,0px); left:0; right:0; height:var(--viewport-height); min-height:0; padding:8px 12px 12px; overflow:hidden; }

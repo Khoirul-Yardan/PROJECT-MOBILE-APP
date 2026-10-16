@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
+
 /// Where the hybrid "Web Layer" container (see `web/`) is reachable from
 /// this device. Defaults to the Docker Compose port on localhost.
 ///
@@ -16,5 +18,9 @@ class WebHubConfig {
   static const _override = String.fromEnvironment('WEB_HUB_URL');
 
   static String get baseUrl =>
-      _override.isNotEmpty ? _override : 'http://localhost:8090';
+      _override.isNotEmpty
+          ? _override
+          // Release APKs have no `adb reverse` to lean on, so they default to
+          // the deployed Fly.io web layer; debug runs keep using localhost.
+          : (kReleaseMode ? 'https://ai-hub-web.fly.dev' : 'http://localhost:8090');
 }
