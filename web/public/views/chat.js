@@ -16,18 +16,30 @@ import { skillsFor, providerSkills } from '../skills.js';
 // agent (Hermes, OpenClaw, ...) the user has connected sits in the same
 // chip row — pick whichever, there's no separate "agent menu" to dig
 // through first.
+// Chat state lives at module level, not inside render(): the router disposes
+// this view whenever the user switches menu, which used to throw away the
+// open conversation and orphan any reply still on its way. The request itself
+// keeps running (nothing aborts it), so its result lands in this shared list
+// and is simply shown the next time Chat is opened.
+const shared = {
+  messages: new Map(), // entry.id -> bubbles of the open session
+  session: new Map(), // entry.id -> open session id
+  inflight: new Map(), // entry.id -> Promise of the reply being fetched
+  lastEntryId: null,
+};
+
 export default async function render(root) {
   let entry = null;
   let sending = false;
   let providers = [];
   let disposed = false;
 
-  const messagesByEntry = new Map();
+  const messagesByEntry = shared.messages;
   const systemPromptByEntry = new Map();
   // Which session (conversation thread) is currently open per provider —
   // "Sesi Baru" swaps this to a fresh id without touching the old thread,
   // which stays reachable from the History screen.
-  const sessionIdByEntry = new Map();
+  const sessionIdByEntry = shared.session;
   // Agent-reported toolsets from the A2A discovery card (GET
   // .well-known/agent.json) — shown in the "/" palette so the user knows
   // what the agent can actually do, since it uses these tools on its own
@@ -221,10 +233,16 @@ export default async function render(root) {
   async function loadPicker(preferredId, preferredSessionId) {
     providers = await listRegisteredProviders();
     if (preferredId) entry = providers.find((p) => p.id === preferredId) || null;
+    if (!entry && shared.lastEntryId) entry = providers.find((p) => p.id === shared.lastEntryId) || null;
     if (!entry && providers.length > 0) entry = providers[0];
     renderPicker();
     if (entry) {
-      if (preferredSessionId && entry.id === preferredId) sessionIdByEntry.set(entry.id, preferredSessionId);
+      if (preferredSessionId && entry.id === preferredId && sessionIdByEntry.get(entry.id) !== preferredSessionId) {
+        // Opened a specific past session from History: drop the cached thread.
+        sessionIdByEntry.set(entry.id, preferredSessionId);
+        messagesByEntry.delete(entry.id);
+      }
+      shared.lastEntryId = entry.id;
       await hydrateMessages(entry);
     }
   }
@@ -267,10 +285,13 @@ export default async function render(root) {
   async function selectEntry(next) {
     if (sending) return;
     entry = next;
+    shared.lastEntryId = next.id;
     noticeEl.hidden = true;
     renderPicker();
     await hydrateMessages(next);
     if (disposed || entry !== next) return;
+    watchInflight(next);
+    updateModel();
     renderMessages();
   }
 
@@ -525,6 +546,7 @@ export default async function render(root) {
     renderMessages();
     logActivity({ category: 'AI', title: `Pesan dikirim · ${entry.label}` });
     saveMessage(requestEntry.id, requestEntry.label, sessionId, 'user', text);
+    const task = (async () => {
     try {
       const systemPrompt = systemPromptByEntry.get(entry.id)
         || (entry.id === 'groq' || /api\.groq\.com/.test(entry.endpoint || '') ? MEDICAL_SYSTEM_PROMPT : undefined);
@@ -553,9 +575,26 @@ export default async function render(root) {
     } catch (e) {
       list.push({ text: e.message, fromMe: false, isError: true });
     } finally {
-      sending = false;
-      if (!disposed) { updateModel(); renderMessages(); }
+      shared.inflight.delete(requestEntry.id);
     }
+    })();
+    shared.inflight.set(requestEntry.id, task);
+    watchInflight(requestEntry);
+  }
+
+  /** Re-renders once the reply for `target` arrives, but only if this view
+   * instance is still alive and still showing that provider. A view opened
+   * mid-request attaches here too, so the answer appears without retyping. */
+  function watchInflight(target) {
+    const task = shared.inflight.get(target.id);
+    if (!task) return;
+    sending = true;
+    task.finally(() => {
+      if (disposed || entry?.id !== target.id) return;
+      sending = false;
+      updateModel();
+      renderMessages();
+    });
   }
 
   sendEl.onclick = send;
@@ -570,6 +609,7 @@ export default async function render(root) {
   await loadPicker(params.get('provider'), params.get('session'));
   if (disposed) return { dispose() { disposed = true; } };
   titleEl.textContent = 'Chat';
+  if (entry) watchInflight(entry);
   updateModel();
   renderMessages();
   return { dispose() { disposed = true; } };

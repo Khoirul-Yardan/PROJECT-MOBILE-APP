@@ -160,11 +160,20 @@ function httpError(status, message) {
 //    cross-origin request is made and no preflight happens; the relay
 //    container does the actual outbound call server-side, where CORS
 //    doesn't apply.
+// "Connection refused" from a phone almost always means it is not on the same
+// network as the self-hosted server (Wi-Fi off / mobile data), not a bug.
+function unreachableHint(url, message) {
+  if (!/refused|unreachable|timed out|timeout|host lookup|no route/i.test(message)) return message;
+  let host = url;
+  try { host = new URL(url).host; } catch { /* keep raw */ }
+  return `Tidak bisa menjangkau ${host} dari HP ini. Pastikan HP terhubung ke Wi-Fi/jaringan yang sama dengan server (atau VPN aktif) dan server sedang menyala.`;
+}
+
 async function selfHostedFetch(url, { method = 'POST', headers = {}, body } = {}) {
   if (Native.attached) {
     const result = await Native.httpRelay(url, { method, headers, body });
     if (!result) throw new Error('Gagal menghubungi jembatan native.');
-    if (result.message) throw new Error(result.message);
+    if (result.message) throw new Error(unreachableHint(url, result.message));
     return wrapRelayResult(result);
   }
   const res = await fetch('/relay/', {

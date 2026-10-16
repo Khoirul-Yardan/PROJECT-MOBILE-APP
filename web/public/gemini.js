@@ -32,7 +32,7 @@ const RETRY_503_DELAYS_MS = [700, 1800];
 async function request(url, apiKey, payload) {
   for (let attempt = 0; ; attempt++) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60000);
+    const timer = setTimeout(() => controller.abort(), 120000);
     try {
       const response = await fetch(url, {
         method: payload ? 'POST' : 'GET',
