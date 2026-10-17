@@ -24,6 +24,7 @@ Judul PA resmi (disetujui pembimbing 17 September 2026): *Pengembangan Aplikasi 
 4. **Peran pembicara ditentukan dari konteks sesi**, bukan voice-print/biometrik.
 5. **Privasi:** data pasien hanya terbaca pemilik sesi (RLS per `user_id`/`perawat_id`). Jangan melonggarkan RLS, jangan log isi transkrip ke console/analytics, jangan commit data pasien nyata. Semua contoh/skenario fiktif.
 6. **Evaluasi PA** = eksperimen komparatif baseline (STT saja) vs proposed (STT + LLM): WER, kelengkapan, kesesuaian isi, factual consistency, waktu proses. Perubahan pada pipeline Bot BPJS (prompt, model STT, relabel) harus tetap bisa diukur dengan metrik ini; catat perubahan di `docs/PENGUJIAN-SPEECH-REALISTIS.md`.
+6b. **Verifikasi dokter di luar aplikasi** (K-003): jangan membangun antarmuka/akun dokter atau status verifikasi in-app tanpa keputusan baru dari pengguna.
 7. **Fitur dihapus sengaja, jangan dihidupkan lagi tanpa diminta:** Friend System, wake word "Halo Jarvis", balasan suara di Bot BPJS, review-dokter-berbasis-akun.
 8. Catatan jujur di laporan: "perawat" di Anamnesis Terpandu adalah pertanyaan terstandar via TTS, bukan rekaman perawat (lihat `docs/SPEECH-PERAWAT-DOKTER-DAN-KESELARASAN-JUDUL.md` §4).
 

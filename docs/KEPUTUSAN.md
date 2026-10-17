@@ -11,6 +11,12 @@ Format:
 - Posisi di laporan: inti | pendukung | pengembangan lanjutan
 ```
 
+## K-003 — Verifikasi dokter dilakukan di luar aplikasi (17 Okt 2026, keputusan pengguna)
+- Apa: tidak ada antarmuka verifikasi dokter (FR-08–FR-10 PRD PA) di aplikasi. Perawat mengedit draf, lalu mengirim PDF/DOCX/teks ke dokter lewat kanal yang sudah dipakai; dokter memverifikasi di luar aplikasi.
+- Dasar: review-dokter-berbasis-akun dihapus karena mewajibkan dokter punya akun dan menghambat pemakaian (PRD-INTI §9). Dokumen ekspor sudah memuat catatan bahwa draf perlu diverifikasi dokter (`bpjs_service.dart`).
+- Dampak ke PA: FR-08–FR-10 tidak diimplementasikan; harus dinyatakan sebagai batasan/keputusan desain di laporan (teks usulan di `docs/PEMETAAN-SPEECH-KE-SISTEM.md` §B). Auditabilitas tetap lewat transkrip asli + draf yang bisa diedit.
+- Posisi di laporan: batasan sistem.
+
 ## K-001 — Preflight jangkauan server OpenVPN (17 Okt 2026, Claude)
 - Apa: sebelum mesin OpenVPN dijalankan, aplikasi mencoba koneksi TCP ke tiap `remote` (`app/lib/services/ovpn_remote.dart`, `vpn_tunnel_service.dart`). Gagal → pesan jelas "server tidak terjangkau dari jaringan ini, bukan masalah login".
 - Dasar: tes asli hanya berhasil di laptop pengguna (OpenVPN + Termius); dugaan server hanya menerima dari jaringan tertentu. Belum terbukti, preflight ini membuat dugaan itu terlihat.

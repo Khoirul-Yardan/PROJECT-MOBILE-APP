@@ -48,3 +48,11 @@ Bentuk di sistem: **panduan wawancara di layar Bot BPJS** (daftar kalimat yang b
 
 ### B. Sisi dokter (hanya yang tidak merekam ucapan dokter)
 Selaras judul dan PRD §5.2: dokter adalah **peninjau**. Yang boleh: kalimat/status verifikasi bertulis (Disetujui, Perlu Perbaikan + catatan teks), dan dokter *mendengarkan* draf lewat TTS. Yang tidak: dikte atau rekaman suara dokter, transkrip ucapan dokter. Catatan: FR-08–FR-10 PRD PA (antarmuka verifikasi dokter, status disetujui/perlu perbaikan) saat ini **tidak ada** di sistem karena review-dokter-berbasis-akun dihapus; sidang bisa mempertanyakannya. Keputusan yang perlu dari pengguna: (1) mengembalikan status verifikasi sederhana tanpa akun dokter (mis. tautan/PDF dengan kolom status), atau (2) menjelaskan di laporan bahwa verifikasi dilakukan di luar aplikasi.
+
+**Keputusan pengguna (17 Okt 2026): opsi 2** — verifikasi dokter dilakukan di luar aplikasi (K-003). Tidak ada fitur baru di aplikasi untuk sisi dokter.
+
+Teks usulan untuk Bab batasan/ruang lingkup laporan PA:
+
+> Pada prototipe ini, tahap verifikasi diagnosis oleh dokter dilakukan di luar aplikasi. Sistem menghasilkan dokumentasi terstruktur yang dapat disunting perawat, disertai catatan bahwa dokumentasi tersebut merupakan draf yang wajib diverifikasi tenaga medis, lalu perawat membagikannya kepada dokter melalui kanal yang telah digunakan (cetak, berkas PDF/DOCX, atau pesan). Keputusan ini diambil karena mewajibkan akun dan persetujuan dokter di dalam aplikasi terbukti menghambat penggunaan di lapangan. Antarmuka verifikasi dokter di dalam aplikasi dan integrasi dengan sistem rekam medis rumah sakit dicatat sebagai pengembangan lanjutan. Sistem tidak menetapkan diagnosis dan tidak merekam ucapan dokter.
+
+Transkrip asli tetap tersimpan dan ditampilkan berdampingan dengan hasil LLM, sehingga dokter yang menerima ekspor dapat menelusuri sumber setiap isi dokumentasi.
