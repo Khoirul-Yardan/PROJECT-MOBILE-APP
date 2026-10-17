@@ -51,7 +51,11 @@ function browserSpeak(text) {
     synth.resume();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'id-ID';
-    u.rate = 0.95;
+    // Near-normal pace — a button tap (e.g. "Nyeri") should speak out
+    // immediately and briskly, not a slow stretched-out read. 1.0 is the
+    // Web Speech API's normal speaking rate; keep it there instead of
+    // dragging it down like the old 0.95.
+    u.rate = 1.05;
     const voices = synth.getVoices();
     const voice = voices.find((v) => /^id[-_]ID$/i.test(v.lang)) || voices.find((v) => /^id/i.test(v.lang));
     if (voice) u.voice = voice;

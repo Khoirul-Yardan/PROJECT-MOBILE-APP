@@ -267,10 +267,13 @@ class _WebShellScreenState extends State<WebShellScreen> {
         // WebView speechSynthesis is silent on many Android devices (no
         // voice bound to the WebView), so the web page asks the native TTS
         // engine instead — same engine the guided anamnesis already uses.
+        // Rate 0.95 (near-normal pace): Papan Komunikasi needs a quick,
+        // punchy "Saya nyeri" the instant a button is tapped, not a slow
+        // drawn-out read — 0.45 made every word sound stretched/robotic.
         try {
           final tts = _tts ??= FlutterTts();
           await tts.setLanguage('id-ID');
-          await tts.setSpeechRate(0.45);
+          await tts.setSpeechRate(0.95);
           await tts.stop();
           await tts.speak((payload['text'] as String?) ?? '');
           if (id != null) await _reply(id, {'ok': true});
