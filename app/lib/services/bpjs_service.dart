@@ -141,7 +141,13 @@ class BpjsAiService {
         'perawat dan pasien (diurutkan waktu, pembicara tidak diketahui). '
         'Tentukan siapa yang mengucapkan tiap kalimat: perawat biasanya '
         'bertanya, menjelaskan prosedur, atau mengarahkan; pasien '
-        'menjawab dan menceritakan keluhan. Balas HANYA berupa JSON array '
+        'menjawab dan menceritakan keluhan. Aturan tambahan: (1) perawat yang '
+        'mengulang atau mengonfirmasi jawaban pasien ("jadi nyeri sejak 3 hari '
+        'ya?") tetap perawat, jangan dilabeli pasien hanya karena isinya '
+        'keluhan; (2) pasien yang bertanya balik ("ini bahaya nggak, Sus?") '
+        'tetap pasien; (3) jawaban sangat pendek ("iya", "tidak", "sedikit", '
+        'angka) yang langsung mengikuti pertanyaan perawat adalah pasien. '
+        'Balas HANYA berupa JSON array '
         'string berisi "perawat" atau "pasien", panjangnya sama persis '
         'dengan jumlah kalimat, tanpa teks lain.';
     final numbered = [

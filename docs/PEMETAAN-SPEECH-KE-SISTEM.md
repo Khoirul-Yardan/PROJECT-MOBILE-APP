@@ -26,3 +26,25 @@ Kriteria "cocok": (a) pihak yang bicara tetap perawat dan pasien, (b) berkaitan 
 
 - `PRD/PRD-INTI.md` (5 Oktober) belum memuat Papan Komunikasi, Anamnesis Terpandu, `komunikasi_events/rooms`, maupun AssemblyAI. Kode lebih baru. Perbarui PRD-INTI bila ingin dijadikan acuan sidang (tugas Claude, tunggu persetujuan pengguna).
 - Dokumen Drive menyebut sumber diperiksa 16 Oktober 2026; kutip rujukan [1]–[11] apa adanya bila dimasukkan ke Bab 2 (tinjauan pustaka). Lihat juga `docs/REFERENSI-SUMBER-ILMIAH.md`.
+
+## Penambahan "speech umum" perawat dan dokter (usulan, 17 Okt 2026)
+
+Dokumen Drive hanya memuat komunikasi **perawat–pasien**; tidak ada rujukan untuk speech dokter. Maka penambahan dibagi dua:
+
+### A. Pustaka speech umum perawat (cocok, selaras judul)
+Kalimat baku per tahap wawancara, diambil dari 9 jenis di dokumen Drive (sumber [1]–[9]) dan contoh interaksinya:
+
+| Tahap | Contoh kalimat | Dari jenis |
+|---|---|---|
+| Membuka & membangun rapport | "Apa yang paling mengganggu Ibu saat ini?" | 1 |
+| Menggali keluhan (satu pertanyaan sekali) | "Sejak kapan? Apa lagi yang dirasakan?" | 1, 6 |
+| Konfirmasi jawaban (hindari asumsi) | "Jadi mual sejak kemarin sore, benar?" | 1, 2 |
+| Nyeri: lokasi dan skala | "Di bagian mana? Jika 0 tidak nyeri dan 10 terburuk, berapa?" | 7 |
+| Pertanyaan Ya/Tidak/Tidak tahu | "Apakah ada muntah?" (tunggu pilihan) | 6 |
+| Edukasi & teach-back | "Boleh ceritakan kembali apa yang perlu dilakukan setelah pulang?" | 8 |
+| Penutup | "Ada yang ingin ditanyakan atau belum jelas?" | 1, 8 |
+
+Bentuk di sistem: **panduan wawancara di layar Bot BPJS** (daftar kalimat yang bisa diketuk untuk disalin/dibacakan perawat, tanpa TTS balasan sehingga tidak melanggar keputusan PRD-INTI), dan sebagai data uji skenario untuk evaluasi. Tidak mengubah objek rekaman (tetap perawat–pasien). Pemilik: Claude (data + layar Dart); status: usulan, belum dikerjakan.
+
+### B. Sisi dokter (hanya yang tidak merekam ucapan dokter)
+Selaras judul dan PRD §5.2: dokter adalah **peninjau**. Yang boleh: kalimat/status verifikasi bertulis (Disetujui, Perlu Perbaikan + catatan teks), dan dokter *mendengarkan* draf lewat TTS. Yang tidak: dikte atau rekaman suara dokter, transkrip ucapan dokter. Catatan: FR-08–FR-10 PRD PA (antarmuka verifikasi dokter, status disetujui/perlu perbaikan) saat ini **tidak ada** di sistem karena review-dokter-berbasis-akun dihapus; sidang bisa mempertanyakannya. Keputusan yang perlu dari pengguna: (1) mengembalikan status verifikasi sederhana tanpa akun dokter (mis. tautan/PDF dengan kolom status), atau (2) menjelaskan di laporan bahwa verifikasi dilakukan di luar aplikasi.

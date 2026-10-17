@@ -48,20 +48,22 @@ Kontrak lintas-area yang harus dijaga bersama (ubah satu sisi = beri tahu pemili
 - **NativeBridge** (`app/lib/screens/web_shell_screen.dart` ↔ `web/public/bridge.js`): nama pesan & bentuk payload.
 - **Tabel Supabase** yang dipakai web (`komunikasi_events`, `komunikasi_rooms`, `chat_messages`, `api_credentials`) ↔ `schema.sql`.
 
-### Protokol buntu (eskalasi)
+### Mode kerja: BERGANTIAN di satu terminal, satu folder (tanpa worktree)
 
-1. **Claude buntu** (tidak paham masalah, 2 percobaan gagal, atau butuh keahlian area web/deploy/tes UI) → tulis tiket di `docs/HANDOFF.md` dengan status `dilempar ke Codex`: gejala, yang sudah dicoba, file terkait, perintah repro. Lalu lanjut tugas lain; jangan menebak-nebak.
-2. **Codex buntu** → sama, ke `docs/HANDOFF.md` dengan status `dilempar ke Claude` (area Dart/native/skema/prompt/akademik).
-3. **Keduanya buntu** (tiket dilempar balik, atau akar masalah lintas-area) → buka diskusi di `docs/DISKUSI.md`: satu bagian per masalah, format *Masalah → Fakta/bukti → Hipotesis Claude → Hipotesis Codex → Percobaan yang disepakati → Hasil*. Gantian menambah jawaban (append-only), tiap giliran harus menyertakan bukti baru (log, repro, diff), bukan opini. Setelah 3 giliran tanpa kemajuan → status `butuh pengguna`, ringkas pilihan + rekomendasi dalam 5 baris supaya pengguna bisa memutuskan cepat.
-4. Setelah selesai, tandai tiket `selesai` dan catat akar masalah (satu baris) supaya tidak terulang.
+Pengguna menjalankan satu sesi terminal. **Claude Code memimpin**; Codex dipanggil dari terminal yang sama saat dibutuhkan (`powershell -File tool\codex-bantu.ps1 -Tiket "..."`, default read-only; `-Tulis` bila Codex boleh mengedit). Hanya satu agen yang aktif pada satu waktu, jadi tidak ada konflik file; area kepemilikan di atas tetap menentukan siapa yang *mengerjakan* suatu area.
 
-Pemilik area boleh **ditukar sementara** untuk satu tugas bila lebih efisien; tulis di HANDOFF `pinjam area <path> untuk <tugas>`, kembalikan setelah commit.
+Protokol buntu, berurutan:
+1. **Claude mencoba dulu** (baca kode, jalankan, 2 percobaan berbeda dengan bukti).
+2. **Claude tidak paham / tetap gagal** → lempar ke Codex lewat `tool\codex-bantu.ps1` dengan tiket: gejala, yang sudah dicoba, file terkait, perintah repro. Catat tiket + jawaban di `docs/HANDOFF.md` (status `dilempar ke Codex` → `selesai`).
+3. **Codex juga belum bisa** → diskusi bersama di `docs/DISKUSI.md`: Claude menulis fakta + hipotesis, Codex dipanggil lagi dengan isi DISKUSI.md dan diminta hipotesis tandingan + percobaan; Claude menjalankan percobaan, hasilnya dicatat. Setiap giliran wajib membawa bukti baru (log, repro, diff). Setelah 3 giliran tanpa kemajuan → status `butuh pengguna`, ringkas pilihan + rekomendasi dalam 5 baris.
+4. Setelah selesai, catat akar masalah satu baris supaya tidak terulang.
 
-### Pola kerja bersamaan
-- Jangan jalankan dua agen di working tree yang sama pada saat yang sama kalau area berbeda tidak dijamin terpisah. Aman: worktree terpisah, `git worktree add ../mobile-app-codex -b codex/<topik>`; gabung lewat merge.
-- Commit kecil per tugas sebelum ganti agen. Prefix commit: `feat(web):`, `fix(app):`, `docs:` dst. (ikuti `git log`).
-- Jangan jalankan `flutter build`/`docker compose build`/`npm install` dari dua agen bersamaan.
-- Pola paling aman: satu agen menulis, agen lain **mereview `git diff`** (read-only).
+Aturan tambahan:
+- Commit kecil setelah tiap perbaikan, prefix `feat(web):`/`fix(app):`/`docs:`; agen yang bekerja hanya `git add` folder miliknya.
+- Jangan jalankan `flutter build`/`docker compose build`/`npm install` bersamaan.
+- Satu agen menulis, agen lain mereview `git diff` (read-only) sebelum merge.
+- Pemilik area boleh ditukar sementara untuk satu tugas; tulis di HANDOFF.
+- Hal yang hanya bisa diuji pengguna (mis. VPN asli, perangkat fisik): agen menyiapkan skrip diagnosa dan checklist, pengguna menjalankan dan menempel hasilnya; agen tidak membaca rahasia (isi `.ovpn`, key).
 
 ## 4. Perintah penting
 
@@ -89,4 +91,4 @@ Release APK default ke web layer di Fly (lihat commit `cc97e54`); perubahan `web
 
 ## 6. Rencana sampai produksi
 
-Jalur lengkap, fase, penugasan per agen, dan kriteria selesai: **`docs/RENCANA-PRODUKSI-DAN-PENUGASAN.md`**. Cara menjalankan kedua CLI bersamaan: **`docs/PANDUAN-DUA-CLI.md`**. Backlog fitur selaras PA (kartu Ya/Tidak, teach-back, kata kunci darurat, perbaikan relabel) ada di Fase 4 rencana tersebut. Jenis komunikasi di luar scope (suara dokter, eye-tracking, dikte satu arah sebelum disetujui pembimbing) tetap tidak dikerjakan.
+Jalur lengkap, fase, penugasan per agen, dan kriteria selesai: **`docs/RENCANA-PRODUKSI-DAN-PENUGASAN.md`**. Cara menjalankan kedua CLI bergantian: **`docs/PANDUAN-DUA-CLI.md`**. Backlog fitur selaras PA (kartu Ya/Tidak, teach-back, kata kunci darurat, perbaikan relabel) ada di Fase 4 rencana tersebut. Jenis komunikasi di luar scope (suara dokter, eye-tracking, dikte satu arah sebelum disetujui pembimbing) tetap tidak dikerjakan.

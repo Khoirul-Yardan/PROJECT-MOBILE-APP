@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:openvpn_flutter/openvpn_flutter.dart';
 import 'package:wireguard_flutter/wireguard_flutter.dart';
+
+import 'ovpn_remote.dart';
 
 /// Opens a real tunnel (Android's VpnService under the hood) — this is what
 /// actually reroutes the device's traffic through the user's server, as
@@ -141,11 +144,37 @@ class VpnTunnelService {
   // native shell) comfortably above this.
   static const _openvpnConnectTimeout = Duration(seconds: 50);
 
+  /// Before handing off to the OpenVPN engine, check that at least one TCP
+  /// `remote` accepts a connection from *this device's current network*.
+  /// A server that only answers from certain networks (campus/LAN, IP
+  /// allow-list) otherwise looks like a stuck handshake or a bad login.
+  /// UDP remotes can't be probed this way and are left to the engine.
+  static Future<void> _preflightReachable(String ovpn) async {
+    final tcp = OvpnRemote.parse(ovpn).where((r) => r.proto == 'tcp').toList();
+    if (tcp.isEmpty) return;
+    for (final r in tcp) {
+      try {
+        final s = await Socket.connect(r.host, r.port, timeout: const Duration(seconds: 6));
+        s.destroy();
+        return;
+      } catch (_) {
+        // try the next remote
+      }
+    }
+    throw Exception(
+      'Server VPN tidak terjangkau dari jaringan perangkat ini (${tcp.join(', ')}). '
+      'Ini bukan masalah username/password: server mungkin hanya bisa diakses dari '
+      'jaringan tertentu (mis. kampus/LAN) atau port diblokir. Coba dari jaringan yang '
+      'sama dengan laptop yang berhasil memakai OpenVPN.',
+    );
+  }
+
   static Future<void> _connectOpenVpn(Map<String, dynamic> config) async {
     final content = (config['ovpnFileContent'] as String?)?.trim();
     if (content == null || content.isEmpty) {
       throw Exception('Isi file .ovpn belum diisi.');
     }
+    await _preflightReachable(content);
     final username = (config['username'] as String?)?.trim();
     final password = config['password'] as String?;
     // Some servers hand out an encrypted private key (a *second*, separate
