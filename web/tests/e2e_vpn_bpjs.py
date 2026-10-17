@@ -127,8 +127,12 @@ def main():
         page.context.close()
 
         # ---- Riwayat Bot BPJS ----
+        # bpjs-review.js now loads every document/transcript at once (fetchAll*) and groups by session_id.
         ov = dict(fetchNurseBpjsSessions=SESSIONS, fetchBpjsDocument=DOC,
-                  fetchBpjsTranscript=[dict(speaker=s, text_segment=t) for s, t in TRANSCRIPT])
+                  fetchBpjsTranscript=[dict(speaker=s, text_segment=t) for s, t in TRANSCRIPT],
+                  fetchAllBpjsDocuments=[dict(DOC, session_id=x['id']) for x in SESSIONS],
+                  fetchAllBpjsTranscripts=[dict(session_id=x['id'], speaker=s, text_segment=t, timestamp_offset_ms=i * 1000)
+                                           for x in SESSIONS for i, (s, t) in enumerate(TRANSCRIPT)])
         page, errs = open_page(browser, ov, seed_vpn=False)
         page.goto(f'{ORIGIN}/#/bpjs'); page.locator('.bpjs-review-page').wait_for(); page.wait_for_timeout(800)
         page.screenshot(path=str(SHOTS / '30-bpjs-riwayat-3-sesi-status-berbeda.png'))

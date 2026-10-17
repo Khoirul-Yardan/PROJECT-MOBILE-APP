@@ -15,7 +15,14 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1] / 'public'
 OUT = Path(tempfile.gettempdir()) / 'ai-hub-ui-preview'
 DB = """
-export const sb = { auth: {
+const __empty = { data: [], error: null, count: 0 };
+const __chain = () => { const h = {};
+  for (const m of ['select','eq','order','limit','insert','delete','update','upsert','in','neq','gte','lte','range']) h[m] = () => h;
+  h.maybeSingle = async () => ({ data: null, error: null });
+  h.single = async () => ({ data: null, error: null });
+  h.then = (ok, bad) => Promise.resolve(__empty).then(ok, bad);
+  return h; };
+export const sb = { from: () => __chain(), auth: {
   getSession: async () => ({ data: {session: location.hash === '#/login' ? null : {user: {id:'test'}}} }),
   onAuthStateChange: () => ({data:{subscription:{unsubscribe(){}}}})
 }};
@@ -45,6 +52,12 @@ export const fetchBpjsDocument = async () => null;
 export const fetchBpjsTranscript = async () => [];
 export const markBpjsSessionSent = async () => {};
 export const watchBpjsSessions = () => () => {};
+export const fetchKomunikasiEvents = async () => [];
+export const watchKomunikasi = () => () => {};
+export const deleteKomunikasiEvents = async () => {};
+export const fetchAllBpjsDocuments = async () => [];
+export const fetchAllBpjsTranscripts = async () => [];
+export const deleteBpjsSession = async () => {};
 """
 CREDENTIALS = """
 export const listCredentials = async () => JSON.parse(sessionStorage.getItem('__fixtureProviders') || 'null') || window.__fixtureProviders || [];
@@ -52,6 +65,10 @@ export const hasCredential = async () => false;
 export const getCredentialKey = async () => 'fixture-key';
 export const saveCredential = async () => {};
 export const removeCredential = async () => {};
+export const countCredentialSlots = async () => 0;
+export const getCredentialKeySlots = async () => [{ id: 's1', label: 'Kunci 1', apiKey: 'fixture-key' }];
+export const listCredentialSlots = async () => [];
+export const removeCredentialSlot = async () => {};
 export const updateCredentialModel = async (id, model) => {
   if (window.__failModelSave) throw new Error('Penyimpanan sedang offline.');
   const providers = await listCredentials();
@@ -99,6 +116,7 @@ def main():
                 '/settings/profile':'.profile-page', '/settings/apikeys':'.apikeys-page',
                 '/settings/activity':'.activity-page',
                 '/settings/add-api-key':'.add-api-page', '/bpjs':'.bpjs-review-page',
+                '/papan-komunikasi':'.pk-page',
             }
             for width in [320, 390, 768, 1280]:
                 page.set_viewport_size({'width':width, 'height':844})
@@ -125,8 +143,9 @@ def main():
             page.get_by_role('button', name='Bot', exact=True).click()
             page.locator('.bots-page').wait_for()
             assert page.locator('.agent-card').count() == 3
-            page.get_by_role('button', name='Segera Bot FAQ', exact=False).click()
-            assert page.locator('#detail').inner_text() == 'Bot FAQ belum tersedia.'
+            # Bot FAQ/Penerjemah placeholders were replaced by Papan Komunikasi and
+            # Anamnesis Terpandu: all three bots are now available.
+            assert page.locator('.agent-card .pill--ok').count() == 3
             page.locator('#bpjs-review-link').click()
             page.locator('.bpjs-review-page').wait_for()
             for target in ['/settings/apikeys', '/chat', '/bots', '/vpn']:
@@ -181,7 +200,7 @@ def main():
             assert page.evaluate("window.__bridgeCalls.includes('open_bot_bpjs')")
             assert not errors, errors
             browser.close()
-            print('PASS: 12 routes x 4 widths, card navigation, chat prompts, activity filters, bot availability, login validation, embedded navigation and BPJS bridge.')
+            print('PASS: 13 routes x 4 widths, card navigation, chat prompts, activity filters, bot availability, login validation, embedded navigation and BPJS bridge.')
             print(f'Fixture screenshots: {OUT}')
     finally:
         server.shutdown()

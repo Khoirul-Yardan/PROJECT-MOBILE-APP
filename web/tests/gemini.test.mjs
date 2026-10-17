@@ -68,7 +68,7 @@ test('auto discovers rather than requesting a hardcoded retired model; cached su
   assert.equal(calls, 3);
 });
 
-for (const status of [401, 403, 429, 500, 503]) {
+for (const status of [401, 403, 429, 500]) {
   test(`HTTP ${status} stops without model hopping`, async (t) => {
     let calls = 0;
     t.mock.method(globalThis, 'fetch', async () => { calls++; return response({ error: { message: 'Request denied' } }, status); });
@@ -76,6 +76,19 @@ for (const status of [401, 403, 429, 500, 503]) {
     assert.equal(calls, 1);
   });
 }
+
+// FR-GEMINI-02: a 503 ("high demand") is retried on the same model (700ms, then
+// 1800ms) before anything else; here the third attempt succeeds.
+test('HTTP 503 is retried on the same model and succeeds on the third attempt', async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls++;
+    return calls < 3 ? response({ error: { message: 'high demand' } }, 503) : response(reply);
+  });
+  const result = await generateGemini(entry, 'key', history);
+  assert.equal(calls, 3);
+  assert.ok(result);
+});
 
 test('invalid request and safety refusals do not trigger fallback', async (t) => {
   let calls = 0;
@@ -94,7 +107,8 @@ test('unsupported model 400 retries, but retries are bounded when all candidates
     return response({ error: { message: 'This model is not supported for generateContent' } }, 400);
   });
   await assert.rejects(generateGemini(entry, 'key', history), /Pilih model/);
-  assert.equal(posts, 4);
+  // first model + up to 5 extra candidates (FR-GEMINI-01; was 3 before 503 counted as unavailable)
+  assert.equal(posts, 6);
 });
 
 test('network errors stop; empty catalog returns actionable message', async (t) => {

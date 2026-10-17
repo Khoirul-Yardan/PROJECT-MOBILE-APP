@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// One `remote` target found in a .ovpn file.
 class OvpnRemote {
   const OvpnRemote(this.host, this.port, this.proto);
@@ -6,6 +8,20 @@ class OvpnRemote {
 
   /// 'tcp' or 'udp' (normalised; `tcp-client` etc. become 'tcp').
   final String proto;
+
+  /// True if a TCP connection to this remote succeeds within [timeout].
+  /// UDP remotes cannot be probed this way: they report true (unknown, so the
+  /// engine decides).
+  Future<bool> probe({Duration timeout = const Duration(seconds: 6)}) async {
+    if (proto != 'tcp') return true;
+    try {
+      final s = await Socket.connect(host, port, timeout: timeout);
+      s.destroy();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
   String toString() => '$host:$port/$proto';

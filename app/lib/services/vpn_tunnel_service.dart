@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:openvpn_flutter/openvpn_flutter.dart';
@@ -153,13 +152,7 @@ class VpnTunnelService {
     final tcp = OvpnRemote.parse(ovpn).where((r) => r.proto == 'tcp').toList();
     if (tcp.isEmpty) return;
     for (final r in tcp) {
-      try {
-        final s = await Socket.connect(r.host, r.port, timeout: const Duration(seconds: 6));
-        s.destroy();
-        return;
-      } catch (_) {
-        // try the next remote
-      }
+      if (await r.probe()) return;
     }
     throw Exception(
       'Server VPN tidak terjangkau dari jaringan perangkat ini (${tcp.join(', ')}). '

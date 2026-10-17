@@ -19,4 +19,11 @@ Prioritas: P0 data pasien bocor/hilang tanpa jejak, P1 fungsi inti rusak/data hi
 
 ## Web
 
-Belum diaudit (audit web dihentikan sebelum selesai). Lihat `docs/RENCANA-PRODUKSI-DAN-PENUGASAN.md` Fase 1.
+Audit kode web belum dilakukan (dihentikan sebelum selesai); yang ada hanya hasil pengujian Docker minggu ini (`docs/pengujian-minggu-ini/`).
+
+| ID | Pri | Area | Temuan | Status |
+|---|---|---|---|---|
+| W-001 | P2 | Tes | Fixture dan asersi tes web tertinggal dari kode (gemini, ui_smoke, model_smoke, e2e_vpn_bpjs); 4 dari 7 tes gagal tanpa ada bug aplikasi | **Diperbaiki** (semua lulus). Akar masalah: tidak ada CI; lihat Fase 2 |
+| W-002 | P3 | Tes | Belum ada uji ketuk/TTS/realtime untuk Papan Komunikasi; `e2e_docker.py` butuh kunci OpenAI asli | Terbuka |
+| W-003 | P2 | Privasi data | Kebijakan RLS `profiles` mengizinkan semua pengguna login membaca profil semua orang (sisa Friend System) | Terbuka; perlu persetujuan sebelum diubah |
+| W-004 | P3 | Operasional | `web/.env` berisi kunci AssemblyAI; request apa pun ke `/relay/assemblyai/*` di Docker lokal memakai kunci itu | Dicatat |

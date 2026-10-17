@@ -71,7 +71,7 @@ def main():
 
             # Manual Gemini choice persists and constructs a NEW generation URL.
             page.locator('#chat-model').click()
-            expect(page.locator('.model-load-status')).to_contain_text('2 model chat')
+            expect(page.locator('.model-load-status')).to_contain_text('2 model ditemukan')
             page.locator('#model-select').select_option('gemini-test-pro')
             page.screenshot(path=str(OUT / 'model-picker-phone.png'))
             page.locator('#save-model').click()
@@ -125,7 +125,8 @@ def main():
             page.evaluate('window.__failModelSave = false')
 
             # Manual model editing also works for other API formats.
-            custom = dict(id='custom', label='Asisten Tim', type='chat', format='openai',
+            # openai-format providers now get a model list (model-picker.js hasList); anthropic has none, so manual ID entry applies
+            custom = dict(id='custom', label='Asisten Tim', type='chat', format='anthropic',
                           endpoint='https://example.test/v1/chat/completions', model='old-model')
             page.evaluate('(p) => sessionStorage.setItem("__fixtureProviders", JSON.stringify([p]))', custom)
             page.goto(f'{origin}/#/settings/apikeys')
