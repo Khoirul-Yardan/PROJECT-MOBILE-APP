@@ -440,6 +440,16 @@ public class VpnStatus {
                 mLogFileHandler.sendMessage(mLogFileHandler.obtainMessage(LogFileHandler.TRIM_LOG_FILE));
         }
 
+        // Diagnosa: mesin hanya menyimpan log di buffer internal, jadi alasan
+        // kegagalan (AUTH_FAILED, TLS error, cipher) tidak pernah terlihat di
+        // logcat. Hanya teks log mesin, bukan isi profil/kredensial.
+        if (!cachedLine) {
+            try {
+                android.util.Log.i("OvpnEngine", String.valueOf(logItem));
+            } catch (RuntimeException ignored) {
+            }
+        }
+
         for (LogListener ll : logListener) {
             ll.newLog(logItem);
         }

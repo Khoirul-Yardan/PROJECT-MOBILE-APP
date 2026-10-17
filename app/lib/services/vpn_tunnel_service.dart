@@ -162,11 +162,34 @@ class VpnTunnelService {
     );
   }
 
+  /// Server lama dengan `cipher AES-128-CBC` (tanpa data-ciphers) hanya cocok
+  /// dengan klien yang tidak ikut negosiasi NCP. Mesin ics-openvpn 2.5 di
+  /// aplikasi mengiklankan NCP hanya AES-GCM, sedangkan OpenVPN Connect di
+  /// laptop mengiklankan juga CBC (lihat IV_CIPHERS di lognya) — server
+  /// memutus koneksi (connection-reset) tepat setelah verifikasi sertifikat.
+  /// Mesin ini menolak `ncp-disable` (Options error), jadi cipher CBC dari
+  /// profil dimasukkan ke `data-ciphers` agar ikut diiklankan ke server.
+  @visibleForTesting
+  static String withLegacyCipherCompat(String ovpn) {
+    final cbc = RegExp(
+      r'^\s*cipher\s+(\S+-CBC)\b',
+      multiLine: true,
+      caseSensitive: false,
+    ).firstMatch(ovpn);
+    final hasList = RegExp(
+      r'^\s*(data-ciphers|ncp-ciphers)\b',
+      multiLine: true,
+    ).hasMatch(ovpn);
+    if (cbc == null || hasList) return ovpn;
+    return '$ovpn\ndata-ciphers ${cbc.group(1)}:AES-256-GCM:AES-128-GCM\n';
+  }
+
   static Future<void> _connectOpenVpn(Map<String, dynamic> config) async {
-    final content = (config['ovpnFileContent'] as String?)?.trim();
-    if (content == null || content.isEmpty) {
+    final rawContent = (config['ovpnFileContent'] as String?)?.trim();
+    if (rawContent == null || rawContent.isEmpty) {
       throw Exception('Isi file .ovpn belum diisi.');
     }
+    final content = withLegacyCipherCompat(rawContent);
     await _preflightReachable(content);
     final username = (config['username'] as String?)?.trim();
     final password = config['password'] as String?;
