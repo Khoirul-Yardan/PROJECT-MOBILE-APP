@@ -201,6 +201,22 @@ export default async function render(root) {
           <div class="field"><label for="ssh-remote">Remote port tujuan</label>
             <input id="ssh-remote" type="number" placeholder="80" value="${esc(ex('SSH', 'remotePort'))}" /></div>`;
       }
+      addRevealToggles(panel);
+    }
+
+    // Kolom password hanya titik-titik, jadi salah ketik di HP tidak kelihatan
+    // (login VPN ditolak tanpa petunjuk). Tombol ini membiarkan pengguna
+    // memeriksa isinya sebelum menyimpan.
+    function addRevealToggles(panel) {
+      panel.querySelectorAll('input[type="password"]').forEach((input) => {
+        const toggle = h('<button type="button" class="btn btn-outline" style="margin-top:6px;">Tampilkan</button>');
+        toggle.onclick = () => {
+          const show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          toggle.textContent = show ? 'Sembunyikan' : 'Tampilkan';
+        };
+        input.insertAdjacentElement('afterend', toggle);
+      });
     }
 
     // Semua yang bergantung pada isi file .ovpn: pratinjau, daftar host,
