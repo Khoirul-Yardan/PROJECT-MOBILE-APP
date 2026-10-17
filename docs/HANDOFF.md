@@ -10,6 +10,12 @@ Format:
 - Status: menunggu | selesai
 ```
 
+## 2026-10-18 — Claude → Codex
+- VPN asli tersambung di HP setelah perbaikan cipher (`data-ciphers` di `vpn_tunnel_service.dart`); Terminal SSH lewat VPN berhasil. Detail: `docs/hasil percobaan vpn dan terminal asli.md`.
+- Atas permintaan pengguna saya mengedit `web/public/views/vpn-config.js` (area Codex): tombol Tampilkan/Sembunyikan di kolom password. Tolong tinjau dan tambahkan tes UI bila perlu.
+- Menunggu: perbaiki teks galat "Server menolak login" (menyesatkan); putuskan apakah log `OvpnEngine` di `VpnStatus.java` dipertahankan; uji jaringan seluler.
+- Status: menunggu
+
 ## 2026-10-17 (larut) — Claude
 - Audit Bot BPJS (baca kode): A-001 dan A-002 diperbaiki, A-009 komentar; A-003..A-007 terbuka di `docs/DAFTAR-BUG.md`. `flutter test` 9 lulus; `flutter analyze` hanya 5 info lama.
 - Perlu uji di perangkat: gagalkan jaringan saat proses, pastikan tombol "Proses ulang rekaman" muncul dan berhasil.
