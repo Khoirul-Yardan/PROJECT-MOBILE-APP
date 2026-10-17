@@ -322,8 +322,8 @@ class BpjsAiService {
 /// doesn't hand-roll Supabase calls inline. Mirrors schema.sql's
 /// bpjs_sessions/bpjs_transcripts/bpjs_documents tables and their RLS:
 /// every insert here only succeeds because the signed-in user is the
-/// nurse and the target doctor is an accepted friend (enforced server-side,
-/// not just assumed client-side).
+/// session's own nurse (`perawat_id`) - enforced server-side, not just
+/// assumed client-side. The doctor is only a typed name on the session.
 class BpjsSessionRepo {
   BpjsSessionRepo._();
 

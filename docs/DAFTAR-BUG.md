@@ -1,0 +1,22 @@
+# Daftar Bug dan Temuan
+
+Prioritas: P0 data pasien bocor/hilang tanpa jejak, P1 fungsi inti rusak/data hilang, P2 degradasi nyata, P3 kosmetik. Semua temuan di bawah berasal dari **pembacaan kode** (17 Okt 2026); belum ada yang direproduksi di perangkat fisik kecuali dinyatakan.
+
+## App / Backend
+
+| ID | Pri | Area | Gejala / risiko | Status |
+|---|---|---|---|---|
+| A-001 | P1 | Bot BPJS | Rekaman audio dihapus walau STT gagal (jaringan putus) sehingga seluruh wawancara hilang | **Diperbaiki** (audio disimpan sementara sampai STT sukses, tombol "Proses ulang rekaman", dibersihkan saat reset/sesi baru/>24 jam). Belum diuji di perangkat |
+| A-002 | P2 | AssemblyAI | Respons 401/403/404 saat polling diulang sampai 5 menit; pengguna menunggu tanpa pesan | **Diperbaiki** (`isFatalPollStatus`, ada tes) |
+| A-003 | P1 | Bot BPJS | `createSession` dipanggil setelah STT; bila gagal (Supabase/jaringan), hasil STT yang sudah ada dibuang dan pengguna harus merekam ulang | Terbuka. Usul: lanjutkan ke review dengan sesi lokal, simpan ke DB belakangan |
+| A-004 | P2 | Bot BPJS | Hasil `replaceTranscript`/`saveDocumentation`/`markStatus` diabaikan; status `siap_dikirim`/`terkirim` bisa tercatat salah, data tidak tersimpan tanpa peringatan | Terbuka. Usul: tampilkan peringatan "belum tersimpan" |
+| A-005 | P1 | Privasi | Audio pasien dikirim ke AssemblyAI lewat relay Fly (kunci bersama); belum ada persetujuan (consent) sebelum merekam | Terbuka (Fase 3) |
+| A-006 | P2 | Bot BPJS | Nilai non-teks dari LLM (list/objek) tampil sebagai teks Dart mentah di field draf | Terbuka |
+| A-007 | P2 | Bot BPJS | Ekspor PDF memakai font bawaan paket `pdf`; karakter non-Latin/tanda baca khusus mungkin tidak tampil | Belum diuji |
+| A-008 | P2 | VPN | Tes asli hanya berhasil di laptop (OpenVPN + Termius); penyebab di perangkat belum diketahui | Alat diagnosa siap (`TEST VPN/diagnosa-laptop.ps1`, preflight TCP di app); menunggu hasil pengguna |
+| A-009 | P3 | Dokumentasi | Komentar `BpjsSessionRepo` masih menyebut "friend" | **Diperbaiki** |
+| A-010 | P1 | Keamanan rilis | APK rilis ditandatangani debug key, versi 1.0.0+1 | Terbuka (Fase 5) |
+
+## Web
+
+Belum diaudit (audit web dihentikan sebelum selesai). Lihat `docs/RENCANA-PRODUKSI-DAN-PENUGASAN.md` Fase 1.

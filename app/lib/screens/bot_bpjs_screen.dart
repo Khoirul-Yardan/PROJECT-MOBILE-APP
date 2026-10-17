@@ -31,6 +31,10 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
   _Stage _stage = _Stage.idle;
   final AudioRecorder _recorder = AudioRecorder();
   String? _recordingPath;
+  // Audio kept on-device (temp dir) only while STT has not succeeded yet, so a
+  // dropped connection doesn't cost the nurse a whole recorded interview.
+  // Deleted as soon as STT succeeds, on reset, or when a new session starts.
+  String? _pendingAudioPath;
   Timer? _elapsedTimer;
   Duration _elapsed = Duration.zero;
 
@@ -103,6 +107,8 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
     _doctorInstansi = doctorInfo['instansi']?.trim();
 
     final dir = await getTemporaryDirectory();
+    await _discardPendingAudio();
+    await _cleanupStaleAudio(dir);
     final path = '${dir.path}/bpjs_session_${DateTime.now().millisecondsSinceEpoch}.m4a';
     try {
       // AAC/m4a: good enough quality for speech, far smaller upload than
@@ -265,18 +271,57 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
     }
   }
 
+  Future<void> _deleteAudioFile(String? path) async {
+    if (path == null) return;
+    try {
+      await File(path).delete();
+    } catch (_) {
+      // Best-effort cleanup — a leftover temp file isn't worth failing over.
+    }
+  }
+
+  Future<void> _discardPendingAudio() async {
+    final p = _pendingAudioPath;
+    _pendingAudioPath = null;
+    await _deleteAudioFile(p);
+  }
+
+  /// Recordings abandoned by a crash/kill (never reached success or reset)
+  /// must not linger in the temp dir: remove old session audio.
+  Future<void> _cleanupStaleAudio(Directory dir) async {
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+      await for (final f in dir.list()) {
+        if (f is! File) continue;
+        final name = f.uri.pathSegments.last;
+        if (!name.startsWith('bpjs_session_') || !name.endsWith('.m4a')) continue;
+        if ((await f.lastModified()).isBefore(cutoff)) await f.delete();
+      }
+    } catch (_) {
+      // Housekeeping only.
+    }
+  }
+
   Future<void> _stopAndProcess() async {
     _elapsedTimer?.cancel();
     final path = await _recorder.stop();
+    await _processAudio(path ?? _recordingPath);
+  }
+
+  /// Re-run STT + documentation for a recording kept after a failed attempt.
+  Future<void> _retryPending() => _processAudio(_pendingAudioPath);
+
+  Future<void> _processAudio(String? audioPath) async {
+    if (!mounted) return;
     setState(() {
       _stage = _Stage.processing;
       _errorMessage = null;
       _processingNote = 'Memisahkan suara perawat dan pasien...';
     });
 
-    final audioPath = path ?? _recordingPath;
     if (audioPath == null || !await File(audioPath).exists()) {
       if (!mounted) return;
+      _pendingAudioPath = null;
       setState(() {
         _errorMessage = 'Rekaman tidak ditemukan. Coba lagi.';
         _stage = _Stage.idle;
@@ -284,30 +329,31 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
       return;
     }
 
+    const keptNote =
+        ' Rekaman disimpan sementara di perangkat; tekan "Proses ulang rekaman" setelah koneksi pulih.';
     SttResult stt;
     try {
       stt = await _transcribeWithFallback(File(audioPath));
     } on _CancelledException {
+      _pendingAudioPath = audioPath;
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Butuh kunci API AssemblyAI untuk memproses rekaman. Coba lagi.';
+        _errorMessage = 'Butuh kunci API AssemblyAI untuk memproses rekaman.$keptNote';
         _stage = _Stage.idle;
       });
       return;
     } catch (e) {
+      _pendingAudioPath = audioPath;
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Diarization gagal: $e';
+        _errorMessage = 'Diarization gagal: $e.$keptNote';
         _stage = _Stage.idle;
       });
       return;
-    } finally {
-      try {
-        await File(audioPath).delete();
-      } catch (_) {
-        // Best-effort cleanup — a leftover temp file isn't worth failing over.
-      }
     }
+    // STT succeeded: the transcript now exists, the raw audio is no longer needed.
+    _pendingAudioPath = null;
+    await _deleteAudioFile(audioPath);
     _relabeledByLlm = false;
     _segments
       ..clear()
@@ -531,7 +577,12 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _reset() => setState(() {
+  void _reset() {
+    _discardPendingAudio();
+    _resetState();
+  }
+
+  void _resetState() => setState(() {
     _stage = _Stage.idle;
     _doctorName = null;
     _doctorInstansi = null;
@@ -623,6 +674,16 @@ class _BotBpjsScreenState extends State<BotBpjsScreen> {
                     style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ),
+                if (_pendingAudioPath != null) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: OutlinedButton.icon(
+                      onPressed: _retryPending,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Proses ulang rekaman'),
+                    ),
+                  ),
+                ],
               ],
               const SizedBox(height: 30),
             ],

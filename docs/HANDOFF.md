@@ -10,6 +10,11 @@ Format:
 - Status: menunggu | selesai
 ```
 
+## 2026-10-17 (larut) — Claude
+- Audit Bot BPJS (baca kode): A-001 dan A-002 diperbaiki, A-009 komentar; A-003..A-007 terbuka di `docs/DAFTAR-BUG.md`. `flutter test` 9 lulus; `flutter analyze` hanya 5 info lama.
+- Perlu uji di perangkat: gagalkan jaringan saat proses, pastikan tombol "Proses ulang rekaman" muncul dan berhasil.
+- Status: menunggu
+
 ## 2026-10-17 (malam) — Claude
 - Mode kerja diganti: satu folder, bergantian (lihat AGENTS.md §3). Worktree dihapus; hasil parsial Codex (bridge.js + tes) hilang bersama folder worktree, perlu dikerjakan ulang.
 - Selesai: preflight OpenVPN (K-001), prompt relabel (K-002), skrip diagnosa `TEST VPN/diagnosa-laptop.ps1`, `tool/codex-bantu.ps1` (diuji: Codex menjawab). `flutter test` 8 lulus.

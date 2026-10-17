@@ -198,6 +198,9 @@ class AssemblyAiService {
           )
           .timeout(const Duration(seconds: 30));
       if (res.statusCode == 503) throw AssemblyAiRelayNotConfiguredException();
+      if (isFatalPollStatus(res.statusCode)) {
+        throw Exception('AssemblyAI menolak permintaan (${res.statusCode}) — periksa kunci API.');
+      }
       if (res.statusCode < 200 || res.statusCode >= 300) continue;
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       final status = body['status'] as String?;
@@ -229,6 +232,11 @@ class AssemblyAiService {
     }
     throw Exception('AssemblyAI belum selesai memproses dalam 5 menit.');
   }
+
+  /// Auth/not-found style statuses will not fix themselves: stop polling
+  /// instead of waiting out the full 5-minute deadline (5xx/429 keep retrying).
+  @visibleForTesting
+  static bool isFatalPollStatus(int code) => code == 400 || code == 401 || code == 403 || code == 404;
 
   @visibleForTesting
   static List<DiarizedSegment> mapSpeakers(List<Map<String, dynamic>> utterances) {
