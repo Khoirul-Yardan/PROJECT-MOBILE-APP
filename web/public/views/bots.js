@@ -1,12 +1,31 @@
-import { h, icon, pageIntro } from '../ui.js';
+import { h, icon, pageIntro, escapeHtml } from '../ui.js';
 import { Native } from '../bridge.js';
 import { navigate } from '../router.js';
 import { illustration } from '../illustrations.js';
+import { getRemoteBots } from '../remote-config.js';
 
 // Bots are deliberately separate from Chat: each one has its own fixed
 // flow (Bot BPJS: wake word → record → transcript → send to doctor), not a
 // free-form conversation. Providers and agents (ChatGPT, Hermes, etc.) live
 // in Chat instead — see views/chat.js and Settings → "API & Agent Terhubung".
+// Bot tambahan dari Panel Admin. Teks disisipkan lewat innerHTML di bawah,
+// jadi di-escape di sini; target hanya boleh rute internal atau http(s).
+function remoteItems() {
+  return getRemoteBots().map((b) => {
+    const isRoute = b.kind === 'route' && /^\/[a-z0-9\-/]*$/i.test(b.target);
+    const isLink = b.kind === 'link' && /^https?:\/\//i.test(b.target);
+    if (!isRoute && !isLink) return null;
+    return {
+      icon: b.icon || 'bot',
+      art: 'bot',
+      title: escapeHtml(b.title),
+      subtitle: escapeHtml(b.subtitle),
+      available: true,
+      open: () => (isRoute ? navigate(b.target) : window.open(b.target, '_blank', 'noopener')),
+    };
+  }).filter(Boolean);
+}
+
 const ITEMS = [
   {
     icon: 'bot',
@@ -56,7 +75,7 @@ export default async function render(root) {
   el.querySelector('#bpjs-review-link').onclick = () => navigate('/bpjs');
 
   const gridEl = el.querySelector('#grid');
-  ITEMS.forEach((item) => {
+  [...ITEMS, ...remoteItems()].forEach((item) => {
     const card = h(`
       <button type="button" class="card tappable agent-card">
         ${illustration(item.art)}

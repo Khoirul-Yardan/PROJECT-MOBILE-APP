@@ -39,6 +39,7 @@ Prinsip: **satu direktori = satu pemilik**. Beda pemilik tidak mengedit file yan
 | `app/lib/**`, `app/test/**`, `app/android/**`, `app/pubspec.yaml` (Flutter/Dart native) | **Claude Code** | Native bridge, STT/mic, WireGuard/OpenVPN: debugging lintas-lapisan |
 | `app/lib/services/bpjs_service.dart`, `assemblyai_service.dart` (prompt LLM, `relabelSpeakers`, pipeline STT) | **Claude Code** | Menyentuh validitas evaluasi PA; butuh penalaran hati-hati |
 | `app/supabase/schema.sql` (skema, RLS) | **Claude Code** | Keamanan data pasien; migrasi idempoten |
+| `admin/**` (Panel Admin, port 8095), `app/supabase/schema-admin.sql` | **Claude Code** | Memegang service key; pagar privasi ada di `admin/lib/resources.js` (lihat `docs/PANEL-ADMIN.md`) |
 | `PRD/**`, `docs/**` (dokumen akademik, keselarasan judul, review pagar §2) | **Claude Code** | Jaga konsistensi dengan PA |
 | `web/public/views/**`, `web/public/*.js`, `style.css`, `index.html` (UI SPA) | **Codex** | Pekerjaan UI berulang: halaman, komponen, ikon, teks |
 | `web/tests/**` (Playwright/e2e, smoke) | **Codex** | Menulis & menjalankan tes UI |

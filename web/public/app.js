@@ -5,6 +5,7 @@ import { mountNavigation } from './navigation.js';
 import { mountMobileViewport } from './mobile.js';
 import { finishOAuthReturn } from './oauth.js';
 import { toast } from './ui.js';
+import { initRemoteConfig } from './remote-config.js';
 
 import login from './views/login.js';
 import home from './views/home.js';
@@ -63,6 +64,10 @@ const root = document.getElementById('app');
 mountNavigation();
 mountMobileViewport();
 start(root, '/home');
+
+// Maintenance, pengumuman, bot & provider tambahan dari Panel Admin (admin/).
+// Sengaja tidak di-await: gagal/lambat tidak boleh menahan aplikasi.
+initRemoteConfig();
 
 // Back from an OAuth provider login (see oauth.js): exchange the code for a
 // key once the Supabase session is available, then tell the user the result.

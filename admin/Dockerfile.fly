@@ -1,0 +1,13 @@
+# Konteks build = root repo, dibatasi Dockerfile.fly.dockerignore.
+FROM node:20-alpine
+WORKDIR /app
+COPY admin/server.js ./
+COPY admin/lib ./lib
+COPY admin/public ./public
+# Docker lokal memakai bind mount; Fly membawa salinan sumber SQL saat build.
+COPY app/supabase/schema-admin.sql ./schema-admin.sql
+ENV PORT=8095 NODE_ENV=production COOKIE_SECURE=true
+EXPOSE 8095
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:${PORT}/healthz >/dev/null || exit 1
+USER node
+CMD ["node", "server.js"]

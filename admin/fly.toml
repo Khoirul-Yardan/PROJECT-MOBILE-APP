@@ -1,0 +1,34 @@
+app = "ai-hub-admin"
+primary_region = "sin"
+
+# Jalankan dari root repo dengan --ignorefile admin/Dockerfile.fly.dockerignore.
+# Contoh: fly deploy . --config admin/fly.toml --ignorefile admin/Dockerfile.fly.dockerignore --ha=false
+[build]
+  dockerfile = "Dockerfile.fly"
+  ignorefile = "Dockerfile.fly.dockerignore"
+
+[env]
+  PORT = "8095"
+  NODE_ENV = "production"
+  COOKIE_SECURE = "true"
+  WEB_URL = "https://ai-hub-web.fly.dev"
+  RELAY_URL = "https://ai-hub-web.fly.dev/relay"
+  SETUP_SQL_PATH = "/app/schema-admin.sql"
+
+[http_service]
+  internal_port = 8095
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

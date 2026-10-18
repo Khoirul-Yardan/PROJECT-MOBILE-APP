@@ -1,0 +1,18 @@
+# Hanya kode admin dan sumber SQL; .env, APK, VPN, serta dokumen tidak dikirim.
+**
+!admin/
+admin/*
+!admin/server.js
+!admin/lib/
+admin/lib/*
+!admin/lib/*.js
+!admin/public/
+!admin/public/**
+!admin/Dockerfile.fly
+!admin/Dockerfile.fly.dockerignore
+!admin/fly.toml
+!app/
+app/*
+!app/supabase/
+app/supabase/*
+!app/supabase/schema-admin.sql

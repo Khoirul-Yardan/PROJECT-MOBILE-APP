@@ -1,0 +1,442 @@
+[
+  {
+    "path": "docs/ai-models.md",
+    "bytes": 3306,
+    "sha256": "49f2ad4754205610e4e31de09ccba5ac7aed1a90b07edc7230019517ddba2998"
+  },
+  {
+    "path": "docs/ANALISIS-PEMILIHAN-SISTEM-SPEECH.md",
+    "bytes": 7368,
+    "sha256": "b189ae16f79fb7d3396816cc0fd27952b6af58829f7807e3b5c588a2152a75c9"
+  },
+  {
+    "path": "docs/arsip/diagram-alur.md",
+    "bytes": 41370,
+    "sha256": "5aed3f91f4bba02e33243dd38d760b3b3c132a5ced86aca5639c139d2200a322"
+  },
+  {
+    "path": "docs/arsip/Progres.md",
+    "bytes": 84622,
+    "sha256": "25ab128eae5536d3db60645914af8b66548b326ef5314c83223bee785baccc0b"
+  },
+  {
+    "path": "docs/arsip/README.md",
+    "bytes": 476,
+    "sha256": "2d5fd1f378472cc265025aa148e561d669a4fa887c3f61e6db5420dadbbb03e8"
+  },
+  {
+    "path": "docs/arsip/RINCIAN-SISTEM.md",
+    "bytes": 23940,
+    "sha256": "362e110e25f38b8fc5dde34fb9674f427c637f4f59842abd74f7860733e8e835"
+  },
+  {
+    "path": "docs/ASSEMBLYAI-DIARIZATION.md",
+    "bytes": 4543,
+    "sha256": "6b20b6e6287842d6ab7d80bd13bcd7619fb4413f078304e549ae2367a0602af3"
+  },
+  {
+    "path": "docs/BOT-BPJS-PERBANDINGAN.md",
+    "bytes": 2919,
+    "sha256": "5d1c6fb55bd915c0f6944cee9d7a614f6ccac0ef526a53a33473d2e2844c2349"
+  },
+  {
+    "path": "docs/DAFTAR-BUG.md",
+    "bytes": 3402,
+    "sha256": "9832d7f4303d846ef52424ddbdf284709469912a2fff5dbc89592530bc605b04"
+  },
+  {
+    "path": "docs/desain.md",
+    "bytes": 61563,
+    "sha256": "83b68bf58c4540d6bdc71c1e5568f825026bb2f07ad4ee03797b5f15a00c16a8"
+  },
+  {
+    "path": "docs/diagram-alur.md",
+    "bytes": 2406,
+    "sha256": "a818a3cde7a08d1d2bc5b091527123c0eb9e32cf91d289694cee8c9a5f8f7c7e"
+  },
+  {
+    "path": "docs/DISKUSI.md",
+    "bytes": 702,
+    "sha256": "838ff960ced07db900400aa450b8d24050b8fac2357378ca09a3f831df94e7d8"
+  },
+  {
+    "path": "docs/HANDOFF.md",
+    "bytes": 14144,
+    "sha256": "7d336ffec0c2b3eb94eb5f7b13b0b11b02d2a79d176a986bcf5665aa56640a71"
+  },
+  {
+    "path": "docs/hasil percobaan vpn dan terminal asli.md",
+    "bytes": 7728,
+    "sha256": "8c08202e342f749a6e66ecd3e66dd25f4ec9c4dd895e29b77784cbce08981b29"
+  },
+  {
+    "path": "docs/HERMES-API-SETUP.md",
+    "bytes": 5845,
+    "sha256": "ec5185886104a68490fecbd44be8d60558dd3a3676a2021ed2b38cbc1cdb0aea"
+  },
+  {
+    "path": "docs/IMPLEMENTASI-DESAIN.md",
+    "bytes": 5191,
+    "sha256": "198716ba29dce896ead873bd61e3d56cd080017512bf463c7fdede007817ab6a"
+  },
+  {
+    "path": "docs/kemungkinan tools yang dapat dikembangkan.md",
+    "bytes": 12804,
+    "sha256": "43403d3baa38ba8849ded1612e84ffafadf9b3fa62071080af0347b8d40c7cbb"
+  },
+  {
+    "path": "docs/Kemungkinan-Pembangunan-Sistem.md",
+    "bytes": 23712,
+    "sha256": "128528b1bb0fd667225b18403a7240387d8e1f41da0659ec62c0809be439880e"
+  },
+  {
+    "path": "docs/KEPUTUSAN.md",
+    "bytes": 5480,
+    "sha256": "08414228f3cc43d9c505cd75fc6273ffc54d6e5daee4edf89870c3c6981b099c"
+  },
+  {
+    "path": "docs/PANDUAN-DUA-CLI.md",
+    "bytes": 1676,
+    "sha256": "8dd89225d21c1690ecf4036e310cb9fb02a360a5693e3cad2dafe4b97e2b20c2"
+  },
+  {
+    "path": "docs/PANDUAN-PENGGUNAAN.md",
+    "bytes": 7448,
+    "sha256": "7aceb5083bf2fd2c8e7086730c5531a38f15e0ecb9991e0519878a58e617296f"
+  },
+  {
+    "path": "docs/PANEL-ADMIN.md",
+    "bytes": 4802,
+    "sha256": "95b5248cec9bdb8e696a347f12c674fdb50cebe31fdbeb58229865f8b8b3a8e6"
+  },
+  {
+    "path": "docs/PEMETAAN-SPEECH-KE-SISTEM.md",
+    "bytes": 7255,
+    "sha256": "72510e06bd50cc16ad9b225d4bc22cf2bfcd036f1aacaea4c9ff1aa63755d94e"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/.work-laporan/build_report.py",
+    "bytes": 11219,
+    "sha256": "9299a4bcd798f39e50bf424e41baecfbae2689824344f38ebf16e31bbf134314"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/.work-laporan/render_report.ps1",
+    "bytes": 1266,
+    "sha256": "5fe369be8166c5712da8f19b025eb58ab6597e8364315697d9005508f9d47fb7"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/.work-laporan/validate_report.py",
+    "bytes": 1096,
+    "sha256": "a5685c04d0af99bfd6d903d796cbcb81227e24034ff0847ee7e06e1e7b4503f7"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/01-web-dan-relay.md",
+    "bytes": 2634,
+    "sha256": "81bdf7bd54c01b9321c0b589a9754ae8a51b2c1a60f5b7cd61110c43e911d986"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/02-vpn-docker.md",
+    "bytes": 2290,
+    "sha256": "de6721ab8d585ea8af746c59eaa94bf0eef277ef16476a9d2d19b335a4fd076d"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/03-database-rls.md",
+    "bytes": 2435,
+    "sha256": "84c24cb77ccc335dddf050f259d52e214be5f5b1e32ebe0f5c8cee1937c1b2c6"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/04-flutter.md",
+    "bytes": 1311,
+    "sha256": "77fd53478fc2b3f351c629488f175612e0fd12e86c9a874cecc6ddcce9753f73"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/05-perlu-hp-emulator.md",
+    "bytes": 3300,
+    "sha256": "671542c31cca4e1a79f36ccfc4a20f1a9d249034cd40d33691defdc771c47e53"
+  },
+  {
+    "path": "docs/pengujian-minggu-ini/README.md",
+    "bytes": 5782,
+    "sha256": "2c52d39239c6238de86d98191114c3ef3892241cd21e1d59d36086bd65c08671"
+  },
+  {
+    "path": "docs/PENGUJIAN-SPEECH-REALISTIS.md",
+    "bytes": 24477,
+    "sha256": "69e3a38f5d08412deeae4c3442faa30c430455b1378353d02356e092c2acb253"
+  },
+  {
+    "path": "docs/PERUBAHAN-DOKUMENTASI-2026-10-19.md",
+    "bytes": 2055,
+    "sha256": "bb58724b5d7a65bed410107e49b549c03056bd40c4f30d4b44be64756a0b99ef"
+  },
+  {
+    "path": "docs/Progres.md",
+    "bytes": 4218,
+    "sha256": "273dbfd4884c25cac96ae4138366851a69fdc2ab3685a0c6a7b7e9265e8be81b"
+  },
+  {
+    "path": "docs/README.md",
+    "bytes": 3802,
+    "sha256": "c18e9404369a13fd14f7cd530a585fe910e31369315a3a4c05135eacc238a88b"
+  },
+  {
+    "path": "docs/REFERENSI-SUMBER-ILMIAH.md",
+    "bytes": 11992,
+    "sha256": "97de042eec19b1b3cd89046207bded4b2e4a1d456d989d1b89a8ed6758d55858"
+  },
+  {
+    "path": "docs/RENCANA-PRODUKSI-DAN-PENUGASAN.md",
+    "bytes": 8959,
+    "sha256": "7941c955160903106449e83ea1edb6553efde277b409bc17f2234acb64d2fd5f"
+  },
+  {
+    "path": "docs/RINCIAN-SISTEM.md",
+    "bytes": 5558,
+    "sha256": "3d30e52e1e56c602a87ee3a2c97e2bd22a0ccb362c95583b499aa1a24d6b6421"
+  },
+  {
+    "path": "docs/simulasi-bpjs/simulasi.html",
+    "bytes": 11880,
+    "sha256": "8ab081da827fb11a7c84dd901f19ffe010b39c677589276502d1e30f910f22ef"
+  },
+  {
+    "path": "docs/speech-assets/arsitektur-usulan.png",
+    "bytes": 83469,
+    "sha256": "a07d466718a3bc2e732e7d441ff06c5f1dbeaaab10c2cfa65100aa6023e7d075"
+  },
+  {
+    "path": "docs/speech-assets/bahan-diskusi/ilustrasi-01.png",
+    "bytes": 28138,
+    "sha256": "f3cb4b478a13b3e5b259890a6ed983c2c085469b293f73d88a568e241a2d4755"
+  },
+  {
+    "path": "docs/speech-assets/bahan-diskusi/ilustrasi-02.png",
+    "bytes": 37692,
+    "sha256": "2275cc71463fdee4db04c1a86a0ff7aaad039fd97a9515e3f72c937a1b59383b"
+  },
+  {
+    "path": "docs/speech-assets/bahan-diskusi/ilustrasi-03.png",
+    "bytes": 28111,
+    "sha256": "b52380608d78e961f494791f44ce9fd17480fd582a58e9fbc22fce562987c4e0"
+  },
+  {
+    "path": "docs/speech-assets/bahan-diskusi/ilustrasi-05.png",
+    "bytes": 23230,
+    "sha256": "c0948a5801dd48853283422dd2d49d5a09b7bdd5108d32e1990811031974d57e"
+  },
+  {
+    "path": "docs/speech-assets/bahan-diskusi/ilustrasi-07.png",
+    "bytes": 39230,
+    "sha256": "7e892492e76d307378c657c5ce53c5522c853a56c10e688d682f02723ded1c0a"
+  },
+  {
+    "path": "docs/speech-assets/bahan-diskusi/ilustrasi-08.png",
+    "bytes": 34180,
+    "sha256": "a7716812b23667998a65e1e56d7e1cf573cc099f0808ffc9d616d7c3349d1beb"
+  },
+  {
+    "path": "docs/speech-assets/bahan-diskusi/README.md",
+    "bytes": 296,
+    "sha256": "428cf8bcbc7d8313f92184894647edc6b3afbdf4750a4c004be8a279978afb8c"
+  },
+  {
+    "path": "docs/speech-assets/model-01.png",
+    "bytes": 91408,
+    "sha256": "8dbee508249678263dfe80740bf735bbbd99f8a864adb85aec89c892e854841a"
+  },
+  {
+    "path": "docs/speech-assets/model-02.png",
+    "bytes": 103183,
+    "sha256": "7d2d662d43523e6c08bc86d7ccfbbe84acb7bc397ca664060119848fe204264b"
+  },
+  {
+    "path": "docs/speech-assets/model-03.png",
+    "bytes": 92447,
+    "sha256": "4a0f683da7a580a18e8ce9e1a84a68360f49853615240d82d7ec50c84a647e53"
+  },
+  {
+    "path": "docs/speech-assets/model-04.png",
+    "bytes": 83622,
+    "sha256": "522f2d51c736680959ec6f8b83c42ece4ad0465f937b71b86b8278f78264d6b1"
+  },
+  {
+    "path": "docs/speech-assets/model-05.png",
+    "bytes": 83576,
+    "sha256": "e4965582cfa859163da8a3c45c21a0a382598fb2a537b440a32e1c520101533b"
+  },
+  {
+    "path": "docs/speech-assets/model-06.png",
+    "bytes": 87894,
+    "sha256": "4680facef6e6d783904f108d5c86d86400eb65189363aad60990b96f983d2dcf"
+  },
+  {
+    "path": "docs/speech-assets/model-07.png",
+    "bytes": 99204,
+    "sha256": "63b35cbb7e35739c0d44ea9797167ea2a423df576dac11af34c125a97d7e695a"
+  },
+  {
+    "path": "docs/speech-assets/model-08.png",
+    "bytes": 95141,
+    "sha256": "c87fe712dc63b43c95349bd240b41d43b791574ec8e8a60f3c3888baef0866c6"
+  },
+  {
+    "path": "docs/speech-assets/README.md",
+    "bytes": 740,
+    "sha256": "df8cbe8ce91d0acc1b93e3b01cd13fd76e8491bdc18604fe543644d630378fca"
+  },
+  {
+    "path": "docs/speech-assets/rujukan-asha-kartu.png",
+    "bytes": 22134,
+    "sha256": "50d11bb5e60811188c1130ac84f2ce4acefb0a95b89b38f534a6ce2db4251d1b"
+  },
+  {
+    "path": "docs/speech-assets/rujukan-nhs-simbol.png",
+    "bytes": 64371,
+    "sha256": "76545272fe2e840e4ea0686eb2a30fc4ea911a2c9b58c178d0ddf48c85759be0"
+  },
+  {
+    "path": "docs/speech-assets/rujukan-td-pilot.png",
+    "bytes": 746300,
+    "sha256": "3042ec8b76dd21ed540cb59d02af51b6e1ad909ec578e3bbaf2e377e109ddc6a"
+  },
+  {
+    "path": "docs/SPEECH-PERAWAT-DOKTER-DAN-KESELARASAN-JUDUL.md",
+    "bytes": 10764,
+    "sha256": "aaa7b0af76596a572c11d76fa025fa02785706a51af42bfb0a34d975d5827b7d"
+  },
+  {
+    "path": "docs/ui-preview/agents.png",
+    "bytes": 39683,
+    "sha256": "72684e371fce8a3014206610378329cd75fa702085dc49b4ef6e1036c3968513"
+  },
+  {
+    "path": "docs/ui-preview/bpjs.png",
+    "bytes": 29497,
+    "sha256": "cf9e1f77a96bef1354450244139a4746f9ca7ba240870804eee874a99e35e6fd"
+  },
+  {
+    "path": "docs/ui-preview/chat-keyboard-390.png",
+    "bytes": 14006,
+    "sha256": "1b03ff6a66bc2f4920ba2f46b085786ebd6495d13716f7a3dc3927ea8337c47c"
+  },
+  {
+    "path": "docs/ui-preview/chat-model-fallback.png",
+    "bytes": 26529,
+    "sha256": "d2c9abac4d2d18c8c0ec91f39b77dc28fa83d30f4cd108536fecdef2031c383f"
+  },
+  {
+    "path": "docs/ui-preview/chat.png",
+    "bytes": 30125,
+    "sha256": "b3c15b2fa678d042271df01b7d42cb5107a477e69007f0a16acb7e126bb096ee"
+  },
+  {
+    "path": "docs/ui-preview/dashboard.png",
+    "bytes": 48023,
+    "sha256": "6dfd6142b306db19445d91d1d68c27e3b257f9d610d0696e153f544dc063d93c"
+  },
+  {
+    "path": "docs/ui-preview/home-desktop.png",
+    "bytes": 69333,
+    "sha256": "6b999f4162c99b5d087e128d081ac102e081b820fb8e867513403a9fd5a17741"
+  },
+  {
+    "path": "docs/ui-preview/login-desktop.png",
+    "bytes": 43177,
+    "sha256": "b57942e719b61104770ad617788e684a08759e4803f15bc2569e184449419ae9"
+  },
+  {
+    "path": "docs/ui-preview/login.png",
+    "bytes": 28039,
+    "sha256": "29a18ae14d0de42d8ecae8b628a52cc150e470e81eb7f9c763ae20031d61cfb4"
+  },
+  {
+    "path": "docs/ui-preview/model-picker-phone.png",
+    "bytes": 32691,
+    "sha256": "2bbab6c1153c19316d38f6f390aadc022a70cb4165d2181bb22e4eb280009b47"
+  },
+  {
+    "path": "docs/ui-preview/README.md",
+    "bytes": 3468,
+    "sha256": "434e8c9a8106b9908c0842276a27734901c744a481d2e7aff76b6d6f7cff1f8b"
+  },
+  {
+    "path": "docs/ui-preview/settings-activity.png",
+    "bytes": 36475,
+    "sha256": "ac66300ef5677b860414307ca8b4189027a23187b2a52825f6f8f914bdf0521b"
+  },
+  {
+    "path": "docs/ui-preview/settings-add-api-key.png",
+    "bytes": 41055,
+    "sha256": "dac6dc1535ddb19ad999667c2623e550e0936727ae5c111c5ee21cdb9eebe6e1"
+  },
+  {
+    "path": "docs/ui-preview/settings-apikeys.png",
+    "bytes": 33341,
+    "sha256": "fccdd29503488e1c51de139c3aafca03e2c2f0f63056f868342154444259b5b0"
+  },
+  {
+    "path": "docs/ui-preview/settings-profile.png",
+    "bytes": 27627,
+    "sha256": "1b143b63e672f756c9ce2e6e065b172ff057e9c4b9296f5f7d5092892056f9e4"
+  },
+  {
+    "path": "docs/ui-preview/settings.png",
+    "bytes": 40947,
+    "sha256": "0a12f81e0ac4e6e1e2ae2eac8b26efbdd92b7325ded8fe70983a379d8e313821"
+  },
+  {
+    "path": "docs/ui-preview/vpn-config.png",
+    "bytes": 37159,
+    "sha256": "a07a7374d005328184002cdb3604e7b07515d5a03c28062b17a2bc9e137b61e1"
+  },
+  {
+    "path": "docs/ui-preview/vpn.png",
+    "bytes": 38958,
+    "sha256": "ad3598156431ba0cbef337287169266f4eed3a3f0d10146acd1d37d4f987fd61"
+  },
+  {
+    "path": "docs/ujitest dan dokumentasi.md",
+    "bytes": 12181,
+    "sha256": "48e80d2f372e8aa8fedbba5688800f3bb4a9c175e1b28ebc717a705fdba3d19c"
+  },
+  {
+    "path": "docs/VPN-TEST-DOCKER.md",
+    "bytes": 2903,
+    "sha256": "c79320d99f843c6618a4cf90dccb76aad110cec9adc0a3582df035cc91ee5759"
+  },
+  {
+    "path": "docs/word/arsip/Dokumentasi-Speech-Perawat-ke-Pasien-v1.docx",
+    "bytes": 210768,
+    "sha256": "9786dc4e7ca24d8340f8c44e5dae9bf4f30b9ad7f1acc544caca01debc82ab76"
+  },
+  {
+    "path": "docs/word/laporan/laporan mingguan.docx",
+    "bytes": 46381,
+    "sha256": "64bc2071519bde39b50f7afc57a7ab597a432f0fb2c74eda3ae88df546a9f924"
+  },
+  {
+    "path": "docs/word/pengajuan/Pengajuan-Pemilihan-Sistem-Speech.docx",
+    "bytes": 22569,
+    "sha256": "c9e77b19326d8346636d92fe3efbd8e4538c6993027323e33b6e7c1ea5f0ee46"
+  },
+  {
+    "path": "docs/word/README.md",
+    "bytes": 1478,
+    "sha256": "f7f9602cc1b6523b6888a696c4d20c979a89d397e24a59c5d886884f10960251"
+  },
+  {
+    "path": "docs/word/referensi/Dokumentasi macam speech perawat dan pasien.docx",
+    "bytes": 1066658,
+    "sha256": "6cbb9fc5d6721ea48a485a426adc686a7012a733b75a562ba2b1053895cb35e8"
+  },
+  {
+    "path": "docs/word/referensi/Dokumentasi-Speech-Perawat-ke-Pasien-Revisi-Diskusi.docx",
+    "bytes": 1047187,
+    "sha256": "fe0d7bf93eed721f2c0a420dcba8cd6cd285d4e98edf812995f995abb858a030"
+  },
+  {
+    "path": "docs/word/referensi/Dokumentasi-Speech-Perawat-ke-Pasien.docx",
+    "bytes": 1727243,
+    "sha256": "6d3135b070760fadd90f0b0ef1679b40db8f07bfac03eb9d0b159048ae6f25a1"
+  }
+]

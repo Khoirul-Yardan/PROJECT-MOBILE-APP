@@ -1,0 +1,196 @@
+{
+  "image_mode": "original",
+  "sections": [
+    "Sampul",
+    "1. Perkembangan dari progres sebelumnya",
+    "2. Papan Komunikasi",
+    "2.1 Ruangan dan tautan pasien",
+    "2.2 Catatan dari pilihan pasien",
+    "3. Anamnesis Terpandu",
+    "4. Dokumentasi & Riwayat",
+    "5. Percobaan koneksi OpenVPN",
+    "6. Percobaan Terminal SSH",
+    "7. Panel Admin",
+    "7.1 Akun pengguna",
+    "7.2 Data sesi Bot BPJS",
+    "7.3 Data dokumentasi LLM",
+    "7.4 Segmen transkrip",
+    "7.5 Log aktivitas pengguna",
+    "7.6 Maintenance",
+    "7.7 Pengumuman",
+    "7.8 Audit log admin",
+    "7.9 Status layanan",
+    "8. Hasil sementara dan pekerjaan berikutnya"
+  ],
+  "figures": [
+    {
+      "source": "papan komunikasi.png",
+      "sha256": "471adfe59628b0bb3917a6ed7927e64d71617ee20d714ce78466bb5c701b2d34",
+      "width_inches": 3.715238954012624,
+      "height_inches": 6.3,
+      "number": 1,
+      "caption": "Pilihan kebutuhan pada Papan Komunikasi."
+    },
+    {
+      "source": "papan komunikasi share link.png",
+      "sha256": "53cf5811970060f0d9b37720d80e62676755417493a5231c041575379f3dc43f",
+      "width_inches": 3.05,
+      "height_inches": 4.057339449541284,
+      "number": 2,
+      "caption": "Tab Ruangan sebelum ada ruangan."
+    },
+    {
+      "source": "contoh pembuatan share link .png",
+      "sha256": "5555945f276e03a8b94896e19c546616fabb8540f96883bb86bea1e5bfeca8b9",
+      "width_inches": 3.05,
+      "height_inches": 4.057339449541284,
+      "number": 3,
+      "caption": "Ruangan yang sudah dibuat beserta pilihan pengelolaannya."
+    },
+    {
+      "source": "catatan papan komunikasi.png",
+      "sha256": "4528902c00611a74fc6da06870252690763188b3a2cb29213562d5f66bea02b6",
+      "width_inches": 4.510344827586207,
+      "height_inches": 5.999999999999999,
+      "number": 4,
+      "caption": "Catatan kebutuhan pasien dari Papan Komunikasi."
+    },
+    {
+      "source": "dokumentasi penuh semua bot.png",
+      "sha256": "de33f247acd9fd0d0b4e43d185305eabac3ba218d080a36c232fd49a20da9eb6",
+      "width_inches": 3.2578438661710036,
+      "height_inches": 6.7,
+      "number": 5,
+      "caption": "Riwayat gabungan dari tiga fitur pada Bot Hub."
+    },
+    {
+      "source": "try&error pada vpn.jpeg",
+      "sha256": "4d517fb31dfb8fae2b746ee241dbbd4cb86c70d10223031f6690948505ea94f8",
+      "width_inches": 2.5270935960591134,
+      "height_inches": 5.7,
+      "number": 6,
+      "caption": "Kegagalan koneksi pada percobaan awal."
+    },
+    {
+      "source": "percobaan koneksi VPN data asli.jpeg",
+      "sha256": "075b410bda9da7c83f739bebfb53e5df4de54a7777c5a89708f11b333439919f",
+      "width_inches": 2.5258125000000002,
+      "height_inches": 5.7,
+      "number": 7,
+      "caption": "VPN terhubung setelah penyesuaian cipher."
+    },
+    {
+      "source": "try&error pada termina.jpeg",
+      "sha256": "a66e7c1be24dc67e119639e4ec927fd2e454658afa9b00f00587b45d7f30f10e",
+      "width_inches": 2.7030624999999997,
+      "height_inches": 6.1,
+      "number": 8,
+      "caption": "Koneksi SSH mengalami timeout saat VPN tidak aktif."
+    },
+    {
+      "source": "percobaan koneksi terminal data asli.jpeg",
+      "sha256": "b78348929a8466ec2df8ff4ede43c0d0b3f96520753e65efcbd647fed5dd50b6",
+      "width_inches": 2.7030624999999997,
+      "height_inches": 6.1,
+      "number": 9,
+      "caption": "Terminal berhasil membuka shell server melalui VPN."
+    },
+    {
+      "source": "login admin.png",
+      "sha256": "ceca4c58637669411357075fd942c04925e89a322208d26baa6d0cb20ba71321",
+      "width_inches": 3.05,
+      "height_inches": 4.088597842835131,
+      "number": 10,
+      "caption": "Form login Panel Admin."
+    },
+    {
+      "source": "dashboard admin.png",
+      "sha256": "562bd844b3e6980f712d7d596452012ad19d2d3d1a62cfb60631dec48b226897",
+      "width_inches": 3.05,
+      "height_inches": 5.771032357473035,
+      "number": 11,
+      "caption": "Dashboard dan ringkasan data sistem."
+    },
+    {
+      "source": "menu akun pengguna.png",
+      "sha256": "6c111343fcda82131dd07c36c7b065a75f24ee0d0c626c0d5de5a3cda6ef1729",
+      "width_inches": 3.542928039702233,
+      "height_inches": 6.6,
+      "number": 12,
+      "caption": "Daftar akun pengguna pada panel admin."
+    },
+    {
+      "source": "menu database log bot BPJS.png",
+      "sha256": "17d971f52fe915de64ecbdf5c082f2d335b29d4ea4926abb592fe680ed13965d",
+      "width_inches": 4.475862068965517,
+      "height_inches": 6.0,
+      "number": 13,
+      "caption": "Metadata sesi Bot BPJS."
+    },
+    {
+      "source": "menu database dokumentasi llm.png",
+      "sha256": "38b182296d55581be23c8afa30261fb8a43339ffc08ffcd69af6bc4a47103a13",
+      "width_inches": 4.889655172413793,
+      "height_inches": 6.0,
+      "number": 14,
+      "caption": "Metadata dokumen hasil pengolahan LLM."
+    },
+    {
+      "source": "menu database segmen transkrip.png",
+      "sha256": "789ec7c2e4403b705a66bb0056f57d1b78f26a418a809fe751e5969985056ef9",
+      "width_inches": 4.013796384395813,
+      "height_inches": 6.5,
+      "number": 15,
+      "caption": "Metadata segmen transkrip yang tersimpan."
+    },
+    {
+      "source": "menu database log pengguna.png",
+      "sha256": "bef92c5d67992b236f31bec6f35f87b6ae0ec44a2e1c4b724a86e603274c3ae7",
+      "width_inches": 2.7372479240806644,
+      "height_inches": 7.1,
+      "number": 16,
+      "caption": "Log aktivitas pengguna."
+    },
+    {
+      "source": "menu maintenance admin.png",
+      "sha256": "68912a87f8f974b2d2a2b76d555186e8116ec1a9a98bf8bfa3540c38187d578f",
+      "width_inches": 3.983474976392823,
+      "height_inches": 6.5,
+      "number": 17,
+      "caption": "Pengaturan pesan dan jadwal maintenance."
+    },
+    {
+      "source": "menu pengumuman admin.png",
+      "sha256": "aefd1f72102a64b8bb2e04558b1684c8fed9ce6d66e78d877999879338622063",
+      "width_inches": 3.05,
+      "height_inches": 4.088597842835131,
+      "number": 18,
+      "caption": "Daftar pengumuman sebelum ada data."
+    },
+    {
+      "source": "contoh tambah pengumuman admin.png",
+      "sha256": "0507c5bbb9ac94d177165dd09e9dcc03003722debf3f01d8cc777237815350a9",
+      "width_inches": 3.05,
+      "height_inches": 4.088597842835131,
+      "number": 19,
+      "caption": "Form penambahan pengumuman."
+    },
+    {
+      "source": "menu log admin.png",
+      "sha256": "f690e55d4a74447a2184aae5a4e00b4ab7fdb89d743981c13b0f3e93e5d1a698",
+      "width_inches": 3.6751054852320677,
+      "height_inches": 6.7,
+      "number": 20,
+      "caption": "Riwayat tindakan admin."
+    },
+    {
+      "source": "menu status admin.png",
+      "sha256": "f6f052801168ea22d311c8bc457b3f6d75d6d57a5a6bf2eb0d6293e54d85a372",
+      "width_inches": 3.3681361175560713,
+      "height_inches": 6.7,
+      "number": 21,
+      "caption": "Pemeriksaan layanan dan tabel panel admin."
+    }
+  ],
+  "report_sha256": "bb4e71c1e1e710ce496a2fb0f06217b9823e53a46ffc14023ee00365c6815a35"
+}

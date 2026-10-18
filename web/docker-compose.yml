@@ -24,3 +24,30 @@ services:
     # the app just falls back to asking each nurse for her own key.
     environment:
       - ASSEMBLYAI_API_KEY=${ASSEMBLYAI_API_KEY:-}
+
+  # Panel Admin (admin/): web penuh di http://localhost:8095, port berbeda dari
+  # aplikasi (8090). Satu jaringan compose dengan web & relay, jadi halaman
+  # Status bisa memeriksa keduanya lewat nama service. Menjadi satu-satunya
+  # pemegang SUPABASE_SERVICE_KEY — isi di web/.env, bukan di sini. Lihat
+  # docs/PANEL-ADMIN.md.
+  admin:
+    build:
+      context: ../admin
+    container_name: ai-hub-admin
+    ports:
+      - "8095:8095"
+    restart: unless-stopped
+    depends_on:
+      - web
+      - relay
+    environment:
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - SUPABASE_URL=${SUPABASE_URL:-https://zcydtoywdcfjmhofdwwq.supabase.co}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
+      - WEB_URL=http://web
+      - RELAY_URL=http://relay:8091
+    volumes:
+      # Satu sumber SQL: file yang sama dipakai halaman "Status & Setup".
+      - ../app/supabase/schema-admin.sql:/app/schema-admin.sql:ro
