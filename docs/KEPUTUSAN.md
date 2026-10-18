@@ -11,6 +11,13 @@ Format:
 - Posisi di laporan: inti | pendukung | pengembangan lanjutan
 ```
 
+## K-004 — Panel Admin web (18 Okt 2026, Claude, atas permintaan pengguna)
+- Apa: layanan `admin/` (port 8095, satu compose dengan web/relay) untuk CRUD bot, provider, pengumuman, pengaturan, profil; mode maintenance dengan notifikasi; manajemen akun; penelusuran data. Tabel baru `app_settings`, `announcements`, `remote_bots`, `remote_providers`, `admin_audit_log` (`app/supabase/schema-admin.sql`). Sisi aplikasi: `web/public/remote-config.js`.
+- Dasar: kebutuhan operasional (ubah sistem tanpa rilis APK / tanpa buka Supabase). Detail: `docs/PANEL-ADMIN.md`.
+- Keputusan privasi: service key melewati RLS, jadi tabel data pasien dibuka hanya sebagai metadata read-only (kolom isi tidak pernah di-select); tidak ada editor SQL bebas; RLS tabel lama tidak diubah. Tabel baru: pengguna hanya SELECT.
+- Dampak ke PA: tidak mengubah pipeline Bot BPJS/metrik. Admin bukan antarmuka dokter dan tidak menampilkan isi dokumentasi (selaras K-003). Sisi evaluasi: tidak ada.
+- Posisi di laporan: pendukung (operasional/pengelolaan sistem).
+
 ## K-003 — Verifikasi dokter dilakukan di luar aplikasi (17 Okt 2026, keputusan pengguna)
 - Apa: tidak ada antarmuka verifikasi dokter (FR-08–FR-10 PRD PA) di aplikasi. Perawat mengedit draf, lalu mengirim PDF/DOCX/teks ke dokter lewat kanal yang sudah dipakai; dokter memverifikasi di luar aplikasi.
 - Dasar: review-dokter-berbasis-akun dihapus karena mewajibkan dokter punya akun dan menghambat pemakaian (PRD-INTI §9). Dokumen ekspor sudah memuat catatan bahwa draf perlu diverifikasi dokter (`bpjs_service.dart`).
@@ -34,3 +41,17 @@ Format:
 - Dasar: dokumen "Dokumentasi macam speech perawat dan pasien" (Drive, Doku Konsep).
 - Dampak: evaluasi WER hanya untuk #1–#2.
 - Posisi di laporan: lihat pemetaan.
+
+
+## K-005 — Penyederhanaan dan deployment admin (18 Oktober 2026; dicatat 19 Oktober, Codex)
+- Apa: keluarkan katalog Bot/Provider/Pengaturan dari panel; akun/profil umum tanpa pemilih peran; pertahankan maintenance, pengumuman, metadata, audit/status. Deploy admin dan web ke Fly sesuai HANDOFF 18 Oktober.
+- Dasar: permintaan pengguna dan hasil implementasi/uji yang sudah tercatat; pencatatan ini tidak membuat deployment baru.
+- Dampak: operasional saja, tanpa perubahan pipeline PA atau pelonggaran RLS. Metadata pasien tetap tanpa isi klinis.
+- Posisi di laporan: pendukung. K-004 adalah riwayat rancangan awal, bukan cakupan panel terkini.
+
+## K-006 — Pelaporan dua tambahan mandiri dan pemisahan dokumen (19 Oktober 2026, Codex)
+- Apa: melaporkan Papan Komunikasi dan Anamnesis Terpandu sebagai dua tambahan mandiri berdasarkan pengajuan 15 Oktober; pengguna menyatakan dosen belum menjawab. Tidak menyatakan persetujuan pembimbing atau validasi klinis.
+- Dasar: permintaan pengguna dan konfirmasi langsung nama dua tambahan dalam percakapan ini, dokumen pengajuan lama, kode lokal, 21 gambar Progres 2, dan catatan hasil uji. Tidak ada fitur aplikasi baru pada tugas ini.
+- Dampak ke PA: Bot BPJS tetap inti; suara pertanyaan Anamnesis adalah TTS sistem. Gambar riwayat menunjukkan nol sesi Anamnesis; evaluasi baseline/proposed masih perlu data terukur. Dokter meninjau di luar aplikasi.
+- Penataan: enam Word lama di `docs/word`; non-Word tetap di lokasi stabil dengan indeks/status. Laporan baru berada di `Dokumentasi/Progres 2/progres 2 Try and error sistem.docx`. Identitas/alamat pada gambar laporan disamarkan tanpa mengubah sumber asli.
+- Posisi di laporan: perkembangan prototipe dan batas pengujian, bukan kesimpulan efektivitas klinis.

@@ -1,5 +1,7 @@
 # Rencana Sampai Produksi dan Penugasan Claude Code / Codex
 
+> **Status dokumentasi — 19 Oktober 2026:** Ini backlog, bukan klaim semua fase selesai. OpenVPN asli dan SSH sampai prompt berhasil pada 18 Oktober; admin/web Fly dan navigasi HP juga telah diuji sesuai HANDOFF. Evaluasi speech, Anamnesis lengkap, papan lintas perangkat, dan kesiapan produksi tetap perlu bukti masing-masing.
+
 Tujuan: AI Hub stabil (bebas bug yang diketahui), teruji, dan bisa dipakai banyak orang (rilis Android + web layer di Fly). Sasaran akademik tetap: sidang PA dengan Bot BPJS sebagai inti.
 
 Pemilik: **C** = Claude Code, **X** = Codex, **C+X** = keduanya (satu menulis, satu mereview). Aturan area dan eskalasi: `AGENTS.md` §3.
@@ -9,7 +11,7 @@ Kondisi awal yang ditemukan di kode (17 Okt 2026):
 - Tidak ada CI (`.github/` tidak ada); tes hanya manual: `flutter test`, `web/tests/*.py`.
 - Fly `min_machines_running = 0` (cold start), relay berjalan dalam container yang sama.
 - API key dipanggil dari klien (BYOK); data pasien lewat Supabase + RLS.
-- OpenVPN/SSH belum punya tunnel nyata (WireGuard sudah). Risiko store (WebView-heavy) belum didokumentasikan.
+- Koreksi status jaringan: OpenVPN memiliki tunnel native dan berhasil diuji pada 18 Oktober; Terminal SSH berhasil sampai prompt melalui VPN. Konfigurasi SSH bukan tunnel VPN penuh. Detail/batas ada di `hasil percobaan vpn dan terminal asli.md`.
 - `PRD-INTI.md` tertinggal dari kode.
 
 ---

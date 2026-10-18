@@ -1,5 +1,7 @@
 # Desain UI/UX AI Hub
 
+> **Status dokumentasi — 19 Oktober 2026:** Spesifikasi desain historis 2 Oktober; target/usulan di bawah tidak otomatis fitur aktif. Kondisi terkini ada di [RINCIAN-SISTEM.md](RINCIAN-SISTEM.md).
+
 > Versi 1.0 · 2 Oktober 2026 · Spesifikasi desain untuk implementasi berikutnya.
 > Cakupan: web di dalam Flutter WebView, browser, serta layar native Bot BPJS.
 > Dokumen ini menetapkan desain target; keberadaan spesifikasi tidak berarti fiturnya sudah diimplementasikan atau diuji pada perangkat.

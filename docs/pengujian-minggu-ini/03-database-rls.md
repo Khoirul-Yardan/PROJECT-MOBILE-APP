@@ -1,5 +1,7 @@
 # 03 — Database dan RLS (Postgres 16 di Docker)
 
+> **Status dokumentasi — 19 Oktober 2026:** 31/31 adalah hasil lingkungan Postgres tiruan yang dicatat 17 Oktober, bukan pengujian ulang kebijakan produksi. RLS dan skema tidak diubah pada tugas laporan.
+
 Skema `app/supabase/schema.sql` + `migrasi_komunikasi_rooms.sql` dijalankan di Postgres 16 terpisah (port 55432, dihapus setelah selesai) dengan tiruan minimal skema `auth` Supabase (`auth.uid()`, `auth.role()`, peran `anon` dan `authenticated`). Supabase asli tidak disentuh. File: `app/supabase/tests/` (`rls_bootstrap.sql`, `rls_test.sql`, `run-rls-test.sh`).
 
 Batasan: ini tiruan, bukan Supabase sungguhan. Perilaku PostgREST, Realtime, dan izin default Supabase hanya dimodelkan lewat `grant` ke `anon`/`authenticated` seperti default Supabase.

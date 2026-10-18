@@ -1,5 +1,7 @@
 # Speech Perawat & Dokter — Mana yang Cocok Masuk Sistem, dan Keselarasan dengan Judul PA
 
+> **Status dokumentasi — 19 Oktober 2026:** Kajian keselarasan tetap berlaku. Pengguna melaporkan penambahan mandiri Papan Komunikasi dan Anamnesis Terpandu sambil menunggu jawaban dosen. Ini bukan izin merekam ucapan dokter atau persetujuan scope baru; K-003 tetap berlaku. Lihat [RINCIAN-SISTEM.md](RINCIAN-SISTEM.md).
+
 > Pertanyaan yang dijawab dokumen ini: dari sekian banyak kemungkinan ucapan/skenario
 > bicara **perawat** dan **dokter**, mana yang cocok dimasukkan ke sistem Bot Hub yang
 > sudah ada — dan apakah itu masih selaras dengan **judul resmi Proyek Akhir**. Disusun

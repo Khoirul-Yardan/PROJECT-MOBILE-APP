@@ -1,6 +1,8 @@
 # Pemetaan 9 Jenis Komunikasi Perawat–Pasien ke Sistem AI Hub
 
-Sumber: *Dokumentasi macam speech perawat dan pasien.docx* (Drive, folder Doku Konsep; juga `docs/Dokumentasi-Speech-Perawat-ke-Pasien.docx`). Tolok ukur keselarasan: judul PA "Dokumentasi **Percakapan Perawat-Pasien** … STT dan LLM" dan batas scope PRD §5.2. Pelengkap: `docs/SPEECH-PERAWAT-DOKTER-DAN-KESELARASAN-JUDUL.md`.
+> **Status dokumentasi — 19 Oktober 2026:** Sembilan jenis adalah peta konsep, bukan sembilan fitur selesai. Dua tambahan mandiri yang diajukan adalah Papan Komunikasi dan Anamnesis Terpandu; jawaban dosen belum diterima. Anamnesis menggunakan pertanyaan TTS sistem, bukan rekaman perawat. Status uji terkini ada di [Progres.md](Progres.md).
+
+Sumber: *Dokumentasi macam speech perawat dan pasien.docx* (Drive, folder Doku Konsep; juga `docs/word/referensi/Dokumentasi-Speech-Perawat-ke-Pasien.docx`). Tolok ukur keselarasan: judul PA "Dokumentasi **Percakapan Perawat-Pasien** … STT dan LLM" dan batas scope PRD §5.2. Pelengkap: `docs/SPEECH-PERAWAT-DOKTER-DAN-KESELARASAN-JUDUL.md`.
 
 Kriteria "cocok": (a) pihak yang bicara tetap perawat dan pasien, (b) berkaitan dengan STT/LLM/dokumentasi atau pelengkap langsung anamnesis, (c) tidak butuh perangkat khusus, (d) tidak menetapkan diagnosis.
 
@@ -24,7 +26,7 @@ Kriteria "cocok": (a) pihak yang bicara tetap perawat dan pasien, (b) berkaitan 
 
 ## Catatan ketidaksesuaian dokumen
 
-- `PRD/PRD-INTI.md` (5 Oktober) belum memuat Papan Komunikasi, Anamnesis Terpandu, `komunikasi_events/rooms`, maupun AssemblyAI. Kode lebih baru. Perbarui PRD-INTI bila ingin dijadikan acuan sidang (tugas Claude, tunggu persetujuan pengguna).
+- `PRD/PRD-INTI.md` (5 Oktober) belum memuat Papan Komunikasi, Anamnesis Terpandu, `komunikasi_events/rooms`, maupun AssemblyAI. Kode lebih baru. Perbarui PRD-INTI bila ingin dijadikan acuan sidang (tugas pemilik PRD; sinkronkan dengan keputusan pengguna yang sudah tercatat).
 - Dokumen Drive menyebut sumber diperiksa 16 Oktober 2026; kutip rujukan [1]–[11] apa adanya bila dimasukkan ke Bab 2 (tinjauan pustaka). Lihat juga `docs/REFERENSI-SUMBER-ILMIAH.md`.
 
 ## Penambahan "speech umum" perawat dan dokter (usulan, 17 Okt 2026)

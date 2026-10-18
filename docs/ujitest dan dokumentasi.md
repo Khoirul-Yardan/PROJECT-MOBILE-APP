@@ -1,5 +1,7 @@
 # Uji Test & Dokumentasi — 14 Oktober 2026
 
+> **Status dokumentasi — 19 Oktober 2026:** Hasil uji 14 Oktober dipertahankan sesuai lingkungan saat itu. Uji VPN asli 18 Oktober dan admin/Fly dirangkum di [Progres.md](Progres.md); hasil simulasi tidak diubah menjadi klaim data nyata.
+
 Uji menyeluruh sistem AI Hub di Docker: chat ChatGPT, VPN (WireGuard / OpenVPN / SSH),
 terminal, dan alur Bot BPJS. Semua screenshot ada di `Images/UjiTest/`.
 
@@ -125,7 +127,7 @@ dan dokter menerima dokumen di luar aplikasi.
 
 ## 5. Perbaikan desain Bot BPJS (Flutter)
 
-Masalah yang terlihat di `Dokumentasi/*.jpeg` dan perbaikannya di `app/lib/screens/bot_bpjs_screen.dart`:
+Masalah yang terlihat di `Dokumentasi/Progres 1/*.jpeg` dan perbaikannya di `app/lib/screens/bot_bpjs_screen.dart`:
 
 | Masalah di screenshot | Perbaikan |
 |---|---|

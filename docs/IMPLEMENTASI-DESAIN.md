@@ -1,5 +1,7 @@
 # Implementasi desain — 3 Oktober 2026
 
+> **Status dokumentasi — 19 Oktober 2026:** Catatan implementasi 3 Oktober dipertahankan sebagai riwayat. Tampilan Progres 2 dan perkembangan berikutnya ada di [Progres.md](Progres.md).
+
 Acuan: [desain.md](desain.md). Perubahan ini melanjutkan Beranda, Bot, Pengaturan, dan rancangan state Chat yang sudah berada di working tree.
 
 ## Sudah diterapkan

@@ -1,5 +1,7 @@
 # 02 — VPN (server tiruan di Docker)
 
+> **Status dokumentasi — 19 Oktober 2026:** Hasil server tiruan di bawah tetap berlaku untuk lingkungan uji tersebut. Dugaan tentang server asli telah diperbarui oleh [hasil 18 Oktober](<../hasil percobaan vpn dan terminal asli.md>): kompatibilitas cipher pada klien diperbaiki; bukan bukti password salah.
+
 Server tiruan meniru profil asli `kp-la-2.ovpn`: TCP 1194, `dev tun`, AES-128-CBC, auth SHA512, `auth-user-pass`, private key terenkripsi (password key terpisah), `remote-cert-tls server`. Server asli tidak diakses.
 
 ## OpenVPN (`TEST VPN/docker`)

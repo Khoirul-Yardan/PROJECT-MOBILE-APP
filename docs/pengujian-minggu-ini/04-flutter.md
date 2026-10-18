@@ -1,5 +1,7 @@
 # 04 — Flutter (host)
 
+> **Status dokumentasi — 19 Oktober 2026:** Angka tes di bawah mengikuti catatan 17 Oktober. Tes cipher tambahan 18 Oktober tercatat di hasil VPN asli; tidak ada flutter test/build baru pada penyusunan laporan.
+
 Dijalankan di laptop (Flutter 3.47.4), bukan di Docker: aplikasi Android tidak bisa diuji penuh tanpa perangkat/emulator.
 
 | Perintah | Hasil |

@@ -1,5 +1,7 @@
 # 01 — Web dan Relay (Docker + Playwright)
 
+> **Status dokumentasi — 19 Oktober 2026:** Hasil bertanggal 17 Oktober, tidak dijalankan ulang saat penyusunan laporan. Validasi admin/Fly 18 Oktober ada di [HANDOFF](../HANDOFF.md).
+
 ## Build dan jalan
 - `docker compose up -d --build` di `web/`: image `web-web` dan `web-relay` terbangun, kontainer `ai-hub-web` (port 8090) dan `ai-hub-relay` berjalan.
 - `GET /` → 200. `GET /relay/` → 405 (relay hidup, metode GET tidak diizinkan, wajar).

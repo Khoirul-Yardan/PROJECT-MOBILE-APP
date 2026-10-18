@@ -1,5 +1,7 @@
 # Daftar Bug dan Temuan
 
+> **Status dokumentasi — 19 Oktober 2026:** Daftar audit bertanggal tetap dipertahankan; jangan menganggap seluruh temuan sudah selesai. Hasil VPN asli 18 Oktober dan validasi admin/Fly ada di [Progres.md](Progres.md) serta [HANDOFF.md](HANDOFF.md). Penulisan laporan tidak mengubah status bug tanpa bukti uji.
+
 Prioritas: P0 data pasien bocor/hilang tanpa jejak, P1 fungsi inti rusak/data hilang, P2 degradasi nyata, P3 kosmetik. Semua temuan di bawah berasal dari **pembacaan kode** (17 Okt 2026); belum ada yang direproduksi di perangkat fisik kecuali dinyatakan.
 
 ## App / Backend

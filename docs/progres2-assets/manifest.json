@@ -1,0 +1,289 @@
+[
+  {
+    "source": "catatan papan komunikasi.png",
+    "source_sha256": "4528902c00611a74fc6da06870252690763188b3a2cb29213562d5f66bea02b6",
+    "report_asset": "catatan papan komunikasi.png",
+    "masked_regions": []
+  },
+  {
+    "source": "contoh pembuatan share link .png",
+    "source_sha256": "5555945f276e03a8b94896e19c546616fabb8540f96883bb86bea1e5bfeca8b9",
+    "report_asset": "contoh pembuatan share link .png",
+    "masked_regions": []
+  },
+  {
+    "source": "contoh tambah pengumuman admin.png",
+    "source_sha256": "0507c5bbb9ac94d177165dd09e9dcc03003722debf3f01d8cc777237815350a9",
+    "report_asset": "contoh tambah pengumuman admin.png",
+    "masked_regions": []
+  },
+  {
+    "source": "dashboard admin.png",
+    "source_sha256": "562bd844b3e6980f712d7d596452012ad19d2d3d1a62cfb60631dec48b226897",
+    "report_asset": "dashboard admin.png",
+    "masked_regions": []
+  },
+  {
+    "source": "dokumentasi penuh semua bot.png",
+    "source_sha256": "de33f247acd9fd0d0b4e43d185305eabac3ba218d080a36c232fd49a20da9eb6",
+    "report_asset": "dokumentasi penuh semua bot.png",
+    "masked_regions": [
+      [
+        40,
+        790,
+        260,
+        822
+      ],
+      [
+        155,
+        828,
+        470,
+        852
+      ],
+      [
+        40,
+        914,
+        260,
+        947
+      ],
+      [
+        155,
+        950,
+        470,
+        976
+      ],
+      [
+        40,
+        1030,
+        260,
+        1063
+      ],
+      [
+        155,
+        1066,
+        470,
+        1094
+      ],
+      [
+        40,
+        1145,
+        260,
+        1179
+      ],
+      [
+        155,
+        1182,
+        505,
+        1208
+      ]
+    ]
+  },
+  {
+    "source": "login admin.png",
+    "source_sha256": "ceca4c58637669411357075fd942c04925e89a322208d26baa6d0cb20ba71321",
+    "report_asset": "login admin.png",
+    "masked_regions": []
+  },
+  {
+    "source": "menu akun pengguna.png",
+    "source_sha256": "6c111343fcda82131dd07c36c7b065a75f24ee0d0c626c0d5de5a3cda6ef1729",
+    "report_asset": "menu akun pengguna.png",
+    "masked_regions": [
+      [
+        24,
+        364,
+        177,
+        1105
+      ]
+    ]
+  },
+  {
+    "source": "menu database dokumentasi llm.png",
+    "source_sha256": "38b182296d55581be23c8afa30261fb8a43339ffc08ffcd69af6bc4a47103a13",
+    "report_asset": "menu database dokumentasi llm.png",
+    "masked_regions": [
+      [
+        25,
+        457,
+        204,
+        632
+      ]
+    ]
+  },
+  {
+    "source": "menu database log bot BPJS.png",
+    "source_sha256": "17d971f52fe915de64ecbdf5c082f2d335b29d4ea4926abb592fe680ed13965d",
+    "report_asset": "menu database log bot BPJS.png",
+    "masked_regions": [
+      [
+        25,
+        457,
+        215,
+        632
+      ]
+    ]
+  },
+  {
+    "source": "menu database log pengguna.png",
+    "source_sha256": "bef92c5d67992b236f31bec6f35f87b6ae0ec44a2e1c4b724a86e603274c3ae7",
+    "report_asset": "menu database log pengguna.png",
+    "masked_regions": [
+      [
+        25,
+        457,
+        239,
+        1582
+      ]
+    ]
+  },
+  {
+    "source": "menu database segmen transkrip.png",
+    "source_sha256": "789ec7c2e4403b705a66bb0056f57d1b78f26a418a809fe751e5969985056ef9",
+    "report_asset": "menu database segmen transkrip.png",
+    "masked_regions": [
+      [
+        25,
+        457,
+        215,
+        949
+      ]
+    ]
+  },
+  {
+    "source": "menu log admin.png",
+    "source_sha256": "f690e55d4a74447a2184aae5a4e00b4ab7fdb89d743981c13b0f3e93e5d1a698",
+    "report_asset": "menu log admin.png",
+    "masked_regions": [
+      [
+        397,
+        537,
+        632,
+        665
+      ]
+    ]
+  },
+  {
+    "source": "menu maintenance admin.png",
+    "source_sha256": "68912a87f8f974b2d2a2b76d555186e8116ec1a9a98bf8bfa3540c38187d578f",
+    "report_asset": "menu maintenance admin.png",
+    "masked_regions": []
+  },
+  {
+    "source": "menu pengumuman admin.png",
+    "source_sha256": "aefd1f72102a64b8bb2e04558b1684c8fed9ce6d66e78d877999879338622063",
+    "report_asset": "menu pengumuman admin.png",
+    "masked_regions": []
+  },
+  {
+    "source": "menu status admin.png",
+    "source_sha256": "f6f052801168ea22d311c8bc457b3f6d75d6d57a5a6bf2eb0d6293e54d85a372",
+    "report_asset": "menu status admin.png",
+    "masked_regions": []
+  },
+  {
+    "source": "papan komunikasi share link.png",
+    "source_sha256": "53cf5811970060f0d9b37720d80e62676755417493a5231c041575379f3dc43f",
+    "report_asset": "papan komunikasi share link.png",
+    "masked_regions": []
+  },
+  {
+    "source": "papan komunikasi.png",
+    "source_sha256": "471adfe59628b0bb3917a6ed7927e64d71617ee20d714ce78466bb5c701b2d34",
+    "report_asset": "papan komunikasi.png",
+    "masked_regions": []
+  },
+  {
+    "source": "percobaan koneksi terminal data asli.jpeg",
+    "source_sha256": "b78348929a8466ec2df8ff4ede43c0d0b3f96520753e65efcbd647fed5dd50b6",
+    "report_asset": "percobaan koneksi terminal data asli.png",
+    "masked_regions": [
+      [
+        133,
+        104,
+        555,
+        153
+      ],
+      [
+        0,
+        918,
+        708,
+        980
+      ],
+      [
+        0,
+        984,
+        195,
+        1017
+      ]
+    ]
+  },
+  {
+    "source": "percobaan koneksi VPN data asli.jpeg",
+    "source_sha256": "075b410bda9da7c83f739bebfb53e5df4de54a7777c5a89708f11b333439919f",
+    "report_asset": "percobaan koneksi VPN data asli.png",
+    "masked_regions": [
+      [
+        190,
+        760,
+        465,
+        794
+      ],
+      [
+        190,
+        943,
+        465,
+        978
+      ],
+      [
+        55,
+        1120,
+        248,
+        1230
+      ]
+    ]
+  },
+  {
+    "source": "try&error pada termina.jpeg",
+    "source_sha256": "a66e7c1be24dc67e119639e4ec927fd2e454658afa9b00f00587b45d7f30f10e",
+    "report_asset": "try&error pada termina.png",
+    "masked_regions": [
+      [
+        96,
+        667,
+        377,
+        713
+      ],
+      [
+        96,
+        803,
+        350,
+        850
+      ],
+      [
+        264,
+        1207,
+        406,
+        1235
+      ]
+    ]
+  },
+  {
+    "source": "try&error pada vpn.jpeg",
+    "source_sha256": "4d517fb31dfb8fae2b746ee241dbbd4cb86c70d10223031f6690948505ea94f8",
+    "report_asset": "try&error pada vpn.png",
+    "masked_regions": [
+      [
+        140,
+        471,
+        361,
+        501
+      ],
+      [
+        145,
+        608,
+        366,
+        639
+      ]
+    ]
+  }
+]

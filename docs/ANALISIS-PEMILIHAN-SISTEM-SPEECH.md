@@ -1,5 +1,7 @@
 # Analisis Pemilihan Sistem Speech untuk Anamnesis
 
+> **Status dokumentasi — 19 Oktober 2026:** Skor di bawah adalah penilaian usulan, bukan hasil eksperimen atau persetujuan dosen. Dua pilihan, Papan Komunikasi dan Anamnesis Terpandu, sudah tersedia di kode dan ditambahkan mandiri menurut pengguna. Dosen belum menjawab pengajuan. “Inti” pada tabel lama berarti prioritas tambahan; inti akademik tetap Bot BPJS. Lihat [Progres.md](Progres.md).
+
 Turunan dari `kemungkinan tools yang dapat dikembangkan.md`. Menjawab:
 **dari semua sistem speech, mana yang dipilih lebih dulu (inti), dan mengapa.**
 Rujukan bernomor [n] ada di `REFERENSI-SUMBER-ILMIAH.md`.
@@ -47,7 +49,7 @@ pengembangan.
 
 ## 3. Keputusan
 
-### Inti (dikerjakan sekarang)
+### Prioritas tambahan (dipilih pada usulan; implementasi mandiri tersedia)
 
 1. **Papan Komunikasi** (WebView). Pasien yang tidak dapat berbicara memilih
    ikon keluhan; ada skala nyeri 0–10 [19] dan tombol Panggil Suster. Bukti
@@ -78,7 +80,7 @@ pengembangan.
 
 | Kebutuhan | Pilihan | Alasan |
 |---|---|---|
-| Mikrofon kontinu, wake word, rekaman berkualitas | Flutter | Sudah dipakai Bot BPJS (`record`); WebView tidak andal untuk audio latar |
+| Mikrofon dan rekaman berkualitas (wake word tidak aktif) | Flutter | Sudah dipakai Bot BPJS (`record`); WebView tidak andal untuk audio latar |
 | TTS yang harus andal | Flutter (`flutter_tts`) | Kendali audio native |
 | Kamera + ML on-device | Flutter | Hanya untuk tool riset |
 | Papan ikon, form, riwayat, grafik, ekspor | WebView | HTML/JS, bisa diuji di browser desktop |

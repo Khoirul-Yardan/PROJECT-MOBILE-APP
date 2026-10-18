@@ -243,7 +243,7 @@ for start,end in [(0,6),(6,11)]:
         para('Gambar 1, 2, 3, 5, 7, dan 8 adalah ilustrasi penjelas asli. Gambar 4, 6, dan 9 merupakan cuplikan sumber yang disebutkan pada caption. Hak gambar rujukan tetap pada pemiliknya.')
         para('Artikel profesi, panduan layanan, dan dokumentasi produk memiliki tujuan berbeda. Rujukan di sini menjelaskan bentuk komunikasi dan contoh alat; tidak digunakan untuk menyimpulkan bahwa seluruh cara sama efektifnya bagi semua pasien.')
 
-out=ROOT/'Dokumentasi-Speech-Perawat-ke-Pasien-Revisi-Diskusi.docx'
+out=ROOT/'word/referensi/Dokumentasi-Speech-Perawat-ke-Pasien-Revisi-Diskusi.docx'
 doc.save(out)
 (ASSETS/'README.md').write_text('# Gambar bahan diskusi\n\nIlustrasi 01, 02, 03, 05, 07, dan 08 dibuat khusus untuk penjelasan umum, bukan tampilan aplikasi. Dasar konsep dan tautan sumber ada pada dokumen revisi.\n\nGambar sumber resmi menggunakan berkas rujukan di folder induk speech-assets; caption dokumen memuat atribusi.\n',encoding='utf-8')
 (Path(__file__).parent/'content.json').write_text(json.dumps({'items':items,'sources':sources},ensure_ascii=False,indent=2),encoding='utf-8')

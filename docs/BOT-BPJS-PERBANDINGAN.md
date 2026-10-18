@@ -1,5 +1,7 @@
 # Bot BPJS — Perbandingan Hasil STT vs Ringkasan LLM
 
+> **Status dokumentasi — 19 Oktober 2026:** Metrik yang tersedia dalam aplikasi tidak otomatis berarti eksperimen baseline/proposed selesai. Screenshot Progres 2 tidak memuat hasil WER baru. Tandai relabel LLM/koreksi manual terpisah dari STT murni dan gunakan acuan manual untuk WER. Lihat [Progres.md](Progres.md).
+
 Bahan metodologi untuk tugas akhir. Setiap sesi Bot BPJS menghasilkan **dua
 keluaran dari audio yang sama**, plus metrik pembandingnya.
 

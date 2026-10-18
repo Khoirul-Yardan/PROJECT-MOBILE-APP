@@ -1,8 +1,10 @@
 # Panduan Pemakaian AI Hub — dari nol sampai jalan
 
+> **Status dokumentasi — 19 Oktober 2026:** Panduan diperbarui untuk tiga modul Bot Hub dan admin sederhana. Keberadaan langkah penggunaan tidak berarti semua skenario telah diuji pada perangkat; batas pembuktian ada di [Progres.md](Progres.md).
+
 Untuk siapa pun di tim yang baru pertama kali memakai sistem ini. Urutannya:
 **(1) jalankan server → (2) ambil API key yang dibutuhkan → (3) sambungkan di
-aplikasi → (4) pakai fitur (Chat, Bot BPJS, VPN).**
+aplikasi → (4) pakai fitur (Chat, Bot BPJS, Papan Komunikasi, Anamnesis, VPN/Terminal).**
 
 Dokumen rinci per topik:
 [HERMES-API-SETUP.md](HERMES-API-SETUP.md) ·
@@ -16,7 +18,7 @@ Dokumen rinci per topik:
 
 ```sh
 cd web
-copy .env.example .env      # lalu isi ASSEMBLYAI_API_KEY (lihat bagian 2.6)
+copy .env.example .env      # lalu isi ASSEMBLYAI_API_KEY (lihat bagian 2.2)
 docker compose up -d --build
 ```
 
@@ -91,16 +93,30 @@ pilih model dari daftar live provider itu.
    - **Banding** — jumlah kata, waktu proses, rasio ringkas, jumlah
      pembicara terdeteksi (bahan tugas akhir).
 5. Salin teks atau ekspor PDF/DOCX — kedua hasil + tabel perbandingan ikut.
-6. Riwayat (web → Riwayat Bot BPJS) menampilkan kedua hasil tersebut kembali.
+6. Dokumentasi & Riwayat (dari Bot Hub) menampilkan kedua hasil tersebut kembali.
 
 Syarat agar ringkasan AI muncul: minimal satu provider **OpenAI-style**
 (Hermes API Server, ChatGPT, Claude, Gemini, OpenRouter, Hermes Portal)
 sudah tersambung. Tanpa itu, hasil ke-2 berisi transkrip mentah + catatan.
 
+### Papan Komunikasi
+Bot Hub → Papan Komunikasi. Gunakan kode/label tempat tidur, pilih ikon, lalu periksa tab Catatan. Nyeri memiliki pilihan lokasi dan skala 0–10 sebagai laporan pasien. Tab Ruangan dapat membuat tautan untuk pasien/keluarga; nonaktifkan bila tidak dipakai. Tautan tidak memberikan akses bebas ke isi riwayat. TTS perlu diperiksa pada perangkat yang digunakan; pilihan “Minta obat” bukan resep dan tombol panggil bukan pengganti sistem panggil perawat resmi.
+
+### Anamnesis Terpandu
+Buka dari aplikasi Android. Sistem membacakan tujuh pertanyaan, pasien menjawab, lalu perawat memeriksa/koreksi teks sebelum membuat draf. Simpan dan periksa kemunculannya di Dokumentasi & Riwayat. Pertanyaan adalah TTS sistem, bukan suara perawat yang direkam. Implementasi tersedia, tetapi gambar Progres 2 belum membuktikan sesi lengkap berhasil.
+
+### Dokumentasi & Riwayat
+Gunakan pencarian dan filter Semua/Bot BPJS/Anamnesis/Papan. Tinjau transkrip sumber bersama draf sebelum ekspor atau berbagi. Verifikasi dokter dilakukan di luar aplikasi. Gunakan contoh fiktif untuk latihan.
+
 ### VPN
 Pengaturan VPN → pilih OpenVPN → tekan **Pilih file .ovpn…** (atau tempel isinya). Aplikasi membaca file dan memberi tahu server tujuan, apakah butuh login, dan apakah private key terenkripsi. Lalu isi username/password
 (dan "Password private key" bila key di file terenkripsi) → Sambungkan.
 Untuk latihan tanpa server asli: [VPN-TEST-DOCKER.md](VPN-TEST-DOCKER.md).
+
+### Terminal dan admin
+Untuk server SSH di balik VPN, sambungkan VPN terlebih dahulu lalu buka Terminal. Uji asli 18 Oktober baru membuktikan login sampai prompt; `force-stop` aplikasi memutus VPN. Pesan “Server menolak login” pada percobaan lama ternyata berkaitan dengan negosiasi cipher, sehingga bukan bukti pasti password salah.
+
+Panel admin terpisah; lihat [PANEL-ADMIN.md](PANEL-ADMIN.md). Cakupan saat ini akun umum, metadata, maintenance/pengumuman, audit/status; tidak ada katalog bot/provider atau pilihan peran.
 
 ## 4. Masalah umum
 

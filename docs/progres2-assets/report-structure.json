@@ -1,0 +1,134 @@
+{
+  "pages_planned": [
+    "Sampul",
+    "Panduan membaca dan daftar isi",
+    "1. Ringkasan perkembangan",
+    "2. Kronologi pengembangan",
+    "3. Speech dan posisi tiap modul",
+    "4. Papan Komunikasi",
+    "4.1 Ruangan dan tautan",
+    "4.2 Catatan Papan Komunikasi",
+    "5. Anamnesis Terpandu",
+    "6. Dokumentasi & Riwayat",
+    "7. Try and error OpenVPN",
+    "8. Try and error Terminal SSH",
+    "9. Panel Admin",
+    "9.1 Akun pengguna",
+    "9.2 Metadata sesi dan draf",
+    "9.3 Segmen dan aktivitas pengguna",
+    "9.4 Maintenance",
+    "9.5 Pengumuman",
+    "9.6 Audit dan status layanan",
+    "10. Evaluasi dan batas hasil",
+    "11. Tindak lanjut dan penutup",
+    "Sumber penyusunan",
+    "Daftar gambar dan penataan berkas"
+  ],
+  "figures": [
+    {
+      "number": 1,
+      "source": "papan komunikasi.png",
+      "caption": "Papan Komunikasi dengan 11 pilihan kebutuhan dan tab Papan, Ruangan, Catatan."
+    },
+    {
+      "number": 2,
+      "source": "papan komunikasi share link.png",
+      "caption": "Keadaan awal tab Ruangan sebelum ada ruangan."
+    },
+    {
+      "number": 3,
+      "source": "contoh pembuatan share link .png",
+      "caption": "Ruangan terbentuk dengan tindakan salin, bagikan, nonaktifkan, dan hapus."
+    },
+    {
+      "number": 4,
+      "source": "catatan papan komunikasi.png",
+      "caption": "Catatan bertimestamp dari pilihan papan, dengan akses salin dan dokumentasi."
+    },
+    {
+      "number": 5,
+      "source": "dokumentasi penuh semua bot.png",
+      "caption": "Riwayat gabungan: Semua 7, Bot BPJS 4, Anamnesis 0, dan Papan 3. Identitas disamarkan."
+    },
+    {
+      "number": 6,
+      "source": "try&error pada vpn.jpeg",
+      "caption": "Kegagalan awal dengan pesan login; alamat disamarkan."
+    },
+    {
+      "number": 7,
+      "source": "percobaan koneksi VPN data asli.jpeg",
+      "caption": "Status Terhubung setelah perbaikan; alamat disamarkan."
+    },
+    {
+      "number": 8,
+      "source": "try&error pada termina.jpeg",
+      "caption": "Timeout saat koneksi SSH belum berhasil; host/akun disamarkan."
+    },
+    {
+      "number": 9,
+      "source": "percobaan koneksi terminal data asli.jpeg",
+      "caption": "Shell berhasil terbuka; identitas/alamat disamarkan."
+    },
+    {
+      "number": 10,
+      "source": "login admin.png",
+      "caption": "Form login Panel Admin."
+    },
+    {
+      "number": 11,
+      "source": "dashboard admin.png",
+      "caption": "Dashboard hitungan data, grafik sesi, dan aktivitas admin."
+    },
+    {
+      "number": 12,
+      "source": "menu akun pengguna.png",
+      "caption": "Pengelolaan akun umum tanpa pemilih peran; identitas disamarkan."
+    },
+    {
+      "number": 13,
+      "source": "menu database log bot BPJS.png",
+      "caption": "Metadata sesi BPJS; ID disamarkan."
+    },
+    {
+      "number": 14,
+      "source": "menu database dokumentasi llm.png",
+      "caption": "Metadata dokumentasi LLM; ID disamarkan."
+    },
+    {
+      "number": 15,
+      "source": "menu database segmen transkrip.png",
+      "caption": "Metadata segmen: speaker, offset dan waktu; ID disamarkan."
+    },
+    {
+      "number": 16,
+      "source": "menu database log pengguna.png",
+      "caption": "Kategori/status aktivitas pengguna; ID disamarkan."
+    },
+    {
+      "number": 17,
+      "source": "menu maintenance admin.png",
+      "caption": "Form Maintenance: pesan, jadwal, pilihan blokir/banner, dan tombol penerapan."
+    },
+    {
+      "number": 18,
+      "source": "menu pengumuman admin.png",
+      "caption": "Daftar pengumuman dalam keadaan belum ada data."
+    },
+    {
+      "number": 19,
+      "source": "contoh tambah pengumuman admin.png",
+      "caption": "Form tambah pengumuman sebelum pengisian/penyimpanan."
+    },
+    {
+      "number": 20,
+      "source": "menu log admin.png",
+      "caption": "Audit tindakan admin, dengan ID target disamarkan."
+    },
+    {
+      "number": 21,
+      "source": "menu status admin.png",
+      "caption": "Status Supabase/web/relay dan keberadaan tabel panel."
+    }
+  ]
+}

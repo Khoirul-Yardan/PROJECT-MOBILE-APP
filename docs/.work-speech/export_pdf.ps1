@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $speechRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-$speechInput = Join-Path $speechRoot 'Dokumentasi-Speech-Perawat-ke-Pasien-Revisi-Diskusi.docx'
+$speechInput = Join-Path $speechRoot 'word/referensi/Dokumentasi-Speech-Perawat-ke-Pasien-Revisi-Diskusi.docx'
 $speechPdf = Join-Path $speechRoot 'Dokumentasi-Speech-Perawat-ke-Pasien-Revisi-Diskusi.pdf'
 $speechWord = $null
 $speechDoc = $null

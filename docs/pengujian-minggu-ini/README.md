@@ -1,5 +1,7 @@
 # Pengujian Minggu Ini (17 Oktober 2026)
 
+> **Status dokumentasi — 19 Oktober 2026:** Laporan 17 Oktober adalah snapshot historis. Dugaan masalah VPN asli pada jaringan telah dikoreksi oleh [uji 18 Oktober](<../hasil percobaan vpn dan terminal asli.md>): negosiasi cipher diperbaiki dan SSH terbuka sampai prompt. Word lama ada di [word/laporan](../word/laporan/).
+
 Pengujian menyeluruh di Docker dan terminal laptop. Pengujian di HP/emulator sengaja ditaruh paling akhir (lihat `05-perlu-hp-emulator.md`) karena butuh Anda.
 
 ## Lingkungan

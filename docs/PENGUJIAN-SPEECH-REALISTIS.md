@@ -1,5 +1,7 @@
 # Pengujian Speech Realistis — Bukan Hanya Audio Jelas (Audible)
 
+> **Status dokumentasi — 19 Oktober 2026:** Dokumen ini adalah rencana/protokol evaluasi. Progres 2 menyediakan bukti tampilan dan catatan operasional, belum tabel pengukuran speech baru. WER harus memakai acuan manual; pisahkan STT murni dari relabel/koreksi LLM, serta jangan campurkan pertanyaan TTS Anamnesis dengan rekaman perawat. Pipeline tidak diubah pada tugas dokumentasi ini.
+
 > **Pemicu dokumen:** arahan dosen pembimbing — pengujian Bot BPJS (STT + diarization +
 > LLM) **tidak boleh hanya memakai rekaman yang jelas/bersih (audible)**, tetapi harus
 > mencakup jenis ucapan yang **umum terjadi sungguhan dalam percakapan perawat-pasien**

@@ -1,5 +1,7 @@
 # Referensi Sumber Ilmiah dan Regulasi
 
+> **Status dokumentasi — 19 Oktober 2026:** Daftar pustaka lama tetap sebagai bahan penelusuran. Penyusunan Progres 2 tidak memverifikasi ulang sumber eksternal, tidak mengubah skor usulan menjadi bukti efektivitas, dan memakai bukti internal untuk klaim implementasi. Pengajuan Word dipindah ke `word/pengajuan/Pengajuan-Pemilihan-Sistem-Speech.docx`.
+
 Daftar rujukan untuk dokumen pemilihan sistem speech
 (`ANALISIS-PEMILIHAN-SISTEM-SPEECH.md` dan `Pengajuan-Pemilihan-Sistem-Speech.docx`).
 Disusun 15 Oktober 2026. Semua rujukan dapat ditelusuri lewat tautan/DOI.

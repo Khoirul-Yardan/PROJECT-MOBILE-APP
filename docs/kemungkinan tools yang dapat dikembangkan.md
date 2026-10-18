@@ -1,8 +1,10 @@
 # Kemungkinan Tools yang Dapat Dikembangkan di Menu Bot
 
+> **Status dokumentasi — 19 Oktober 2026:** Ini daftar usulan historis. Papan Komunikasi dan Anamnesis Terpandu kini tersedia di kode sebagai tambahan mandiri; pilihan lain tetap usulan kecuali ada keputusan/bukti baru. Jawaban dosen atas dua pilihan tersebut belum diterima. Lihat [Progres.md](Progres.md).
+
 Dokumen perencanaan: tools berbasis suara/komunikasi untuk pasien dan perawat
 yang dapat **mendukung proses anamnesis**, dan cara memasukkannya ke sistem
-yang sudah ada (Bot Hub). Status: **usulan, belum diimplementasikan**.
+yang sudah ada (Bot Hub). Status awal: **usulan**; status implementasi terbaru mengikuti catatan di atas.
 
 ## 1. Prinsip penempatan
 

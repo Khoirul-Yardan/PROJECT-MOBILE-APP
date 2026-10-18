@@ -1,5 +1,7 @@
 # Preview UI AI Hub
 
+> **Status dokumentasi — 19 Oktober 2026:** Aset preview historis awal Oktober; gambar laporan terbaru ada di `Dokumentasi/Progres 2`. Jangan memakai preview sebagai bukti fitur terbaru sudah lulus uji.
+
 Desain menyeluruh mengikuti referensi 4 Oktober 2026: permukaan kertas, garis
 tepi gelap, sudut membulat, bayangan tegas, ilustrasi pastel, dan label pil.
 Header, panel pembuka, navigasi, login, chat, form, pengaturan, akun, VPN,

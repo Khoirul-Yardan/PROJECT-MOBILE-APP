@@ -1,5 +1,7 @@
 # Kemungkinan Pembangunan Sistem — AI Hub
 
+> **Status dokumentasi — 19 Oktober 2026:** Kajian historis September dipertahankan sebagai dasar awal, bukan spesifikasi aktif. Lihat [RINCIAN-SISTEM.md](RINCIAN-SISTEM.md) untuk arsitektur dan fitur saat ini.
+
 > Dokumen ini menakar **apakah AI Hub (dengan arsitektur hybrid Flutter-shell + WebView + Docker yang sudah dibangun) bisa dikembangkan lebih jauh** ke arah hub AI serbaguna dengan konsep **"semua lewat API"**: satu kolom input API universal (auto-deteksi jenisnya, entah provider chat biasa atau agentic AI), menu Chat yang bebas dipakai dengan provider AI apapun atau agent apapun, menu Bot yang punya sistemnya sendiri terpisah dari chat/agent, dan VPN yang field-nya sesuai protokol sungguhan. Untuk tiap topik: **status saat ini → apakah bisa dibangun → seberapa sulit → alternatif desain → rekomendasi.**
 >
 > Konteks kode dirujuk dari `app/lib/`, `web/public/`, dan `app/supabase/schema.sql` per 27 Sept 2026. Lihat juga `docs/RINCIAN-SISTEM.md` (arsitektur umum) dan `web/README.md` (kontrak bridge).
