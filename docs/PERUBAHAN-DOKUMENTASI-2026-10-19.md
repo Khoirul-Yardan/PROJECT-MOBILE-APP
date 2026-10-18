@@ -20,3 +20,11 @@ Permintaan: pisahkan Word dan non-Word, selaraskan riwayat awal–akhir, dan bua
 - Dokumen referensi ilmiah lama tidak diverifikasi ulang ke web pada tugas penataan ini; laporan perkembangan memakai sumber internal.
 - PRD serta kode aplikasi tidak diubah. Berkas pengguna yang sebelumnya berubah tetap dipertahankan.
 - Pengguna mengonfirmasi langsung bahwa dua tambahan adalah Papan Komunikasi dan Anamnesis Terpandu pada percakapan tugas ini.
+
+## Revisi laporan untuk pembimbing
+
+Atas permintaan lanjutan pengguna, laporan `progres 2 Try and error sistem.docx` diganti dengan versi bergambar asli. Seluruh 21 gambar ditanam langsung dari sumber tanpa penyamaran atau kompresi ulang. File gambar sumber tidak diubah. Salinan tersamarkan tetap sebagai arsip versi pertama.
+
+Bahasa laporan disederhanakan: pembuka ditulis dari sudut pandang penyusun, penjelasan fitur dipersingkat, dan kalimat pembatas yang berulang dihapus. Susunan menjadi perkembangan, fitur komunikasi, percobaan VPN/Terminal, panel admin, lalu pekerjaan berikutnya. Gambar diperbesar, caption dibuat singkat, font dan jarak antarbagian diseragamkan. Status Anamnesis yang belum memiliki sesi lengkap tetap dijelaskan.
+
+Revisi DOCX bergambar asli tersedia lokal untuk dikirim pengguna kepada dosen. Tidak dimasukkan ke commit karena identitas pada gambar belum dikonfirmasi sebagai data fiktif; perubahan skrip dan catatan dicatat terpisah. Pemeriksaan mencakup kecocokan hash seluruh gambar tertanam dengan sumber, paket Word, dan rujukan lokal. Pratinjau cetak Word belum tersedia karena hambatan ekspor lingkungan yang tercatat di atas.

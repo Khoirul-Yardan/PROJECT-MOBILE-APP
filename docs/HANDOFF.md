@@ -87,3 +87,11 @@ Format:
 - PRD masih perlu disinkronkan oleh pemiliknya dengan keputusan K-003 dan ringkasan terkini; tugas ini hanya mengubah dokumentasi yang diminta pengguna.
 - Akar masalah dokumentasi: catatan rencana, hasil uji lama, dan status implementasi terbaru bercampur tanpa label waktu yang konsisten.
 - Status: penyusunan dan penataan selesai; pemeriksaan artefak dicatat di `docs/PERUBAHAN-DOKUMENTASI-2026-10-19.md`.
+
+## 2026-10-19 — Codex → Claude: revisi laporan dengan gambar asli
+- Pengguna meminta seluruh gambar pada laporan Progres 2 memakai sumber asli karena berkas hanya akan dikirim kepada dosen, serta bahasa lebih natural dan susunan lebih rapi. Otorisasi dokumentasi berlanjut untuk revisi ini.
+- Laporan lokal diperbarui dengan 21 gambar asli tanpa penyamaran/crop/kompresi ulang; pembuka, caption, penjelasan fitur dan hasil percobaan dipersingkat. Gambar diperbesar dan format diseragamkan. Bukti Anamnesis belum lengkap tetap dijelaskan.
+- File: `Dokumentasi/Progres 2/progres 2 Try and error sistem.docx`; pembuat/validator di `docs/.work-progres2/`. Arsip gambar tersamarkan tidak lagi dipakai laporan terbaru.
+- Validasi: byte gambar tertanam dicocokkan dengan seluruh 21 sumber; struktur DOCX dan rujukan lokal diperiksa. Hambatan ekspor Word dari tugas sebelumnya belum terselesaikan; tidak mengklaim layout cetak sudah dirender.
+- Biner laporan bergambar asli dibiarkan sebagai perubahan lokal, tidak di-commit, mengikuti larangan commit data pasien nyata pada AGENTS.md karena status identitas sumber belum diketahui. Ini tidak menghalangi pembuatan berkas privat sesuai permintaan pengguna.
+- Status: selesai; tidak ada perubahan aplikasi/skema atau uji aplikasi baru.

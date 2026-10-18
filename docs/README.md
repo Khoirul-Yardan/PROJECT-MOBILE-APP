@@ -11,7 +11,7 @@ Diselaraskan **19 Oktober 2026**. Untuk laporan terbaru, buka [progres 2 Try and
 | Laporan Progres 2 | `Dokumentasi/Progres 2/` | Lokasi khusus sesuai permintaan pengguna; satu dokumen final dengan 21 gambar sumber |
 | Riwayat gambar Progres 1 | `Dokumentasi/Progres 1/` | 16 gambar tahap sebelumnya |
 | Alat bantu lokal | `.work-speech/` | Skrip/pustaka pembuat dokumen, bukan bahan laporan; template/lock Word dikecualikan dari inventaris |
-| Gambar laporan tersamarkan | [progres2-assets/](progres2-assets/README.md) | 21 salinan gambar dan manifest pemetaan sumber |
+| Arsip gambar tersamarkan | [progres2-assets/](progres2-assets/README.md) | Versi awal; laporan terbaru memakai 21 gambar asli dari Progres 2 sesuai permintaan pengguna |
 | Pembuat laporan Progres 2 | [.work-progres2/](.work-progres2/README.md) | Skrip penyusunan dan pemeriksaan berkas |
 
 ## Cara membaca status

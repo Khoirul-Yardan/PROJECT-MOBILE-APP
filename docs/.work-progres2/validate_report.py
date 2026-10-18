@@ -49,6 +49,10 @@ with zipfile.ZipFile(REPORT) as z:
     findings['zip_integrity_error']=z.testzip()
     findings['embedded_images']=len([n for n in z.namelist() if n.startswith('word/media/')])
     findings['external_image_relationship']=any('TargetMode="External"' in z.read(n).decode('utf-8') and 'relationships/image' in z.read(n).decode('utf-8') for n in z.namelist() if n.endswith('.rels'))
+    embedded_hashes={hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist() if n.startswith('word/media/')}
+    source_images=sorted(p for p in (ROOT/'Dokumentasi/Progres 2').iterdir() if p.suffix.lower() in ('.png','.jpg','.jpeg'))
+    findings['embedded_images_identical_to_originals']={p.name:hashlib.sha256(p.read_bytes()).hexdigest() in embedded_hashes for p in source_images}
+    findings['all_21_original_images_embedded']=len(source_images)==21 and all(findings['embedded_images_identical_to_originals'].values())
 document=Document(REPORT)
 findings['inline_images']=len(document.inline_shapes)
 findings['tables']=len(document.tables)
