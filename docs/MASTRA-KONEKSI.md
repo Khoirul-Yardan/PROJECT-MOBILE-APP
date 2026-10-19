@@ -5,7 +5,7 @@ Status 20 Oktober 2026: implementasi lokal, belum deployment. Panduan ini mengga
 ## Untuk pengguna AI Hub
 
 1. Minta **kode koneksi AI Hub** dari pemilik agent Mastra. Awal kode: `aihub-mastra-v1.`.
-2. Buka **Hubungkan Agent**, tempel seluruh kode ke kolom **API key atau kode koneksi agent**. Tidak perlu URL atau key Gemini/OpenAI/Claude terpisah.
+2. Buka **Hubungkan Agent**, cari kartu **Mastra** di bagian atas, lalu tempel seluruh kode ke kolom **Kode koneksi Mastra**. Tidak perlu URL atau key Gemini/OpenAI/Claude terpisah.
 3. Periksa tujuan server yang tampil, lalu tekan **Periksa koneksi Mastra**. Token dikirim ke server tersebut untuk autentikasi dan discovery. Tidak ada percakapan yang dikirim pada tahap ini.
 4. Periksa nama agent, provider, dan model yang dilaporkan server, lalu **Simpan & Hubungkan Agent**.
 5. Pilih agent di Chat. `/skills` memuat kemampuan yang dipublikasikan pemilik server. Model tidak dipilih dari UI: pemilik agent yang mengaturnya.

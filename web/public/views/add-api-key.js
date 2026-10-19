@@ -57,12 +57,36 @@ export default async function render(root) {
     el.appendChild(h('<p class="section-title" style="text-align:center;">atau</p>'));
   }
 
+  let mastraInput = null;
+  let mastraResult = null;
+  if (isAgent) {
+    const card = h(`
+      <div class="card form-panel" id="mastra-card">
+        <div class="row" style="margin-bottom:10px;">
+          <span class="feature-icon">${icon('layers')}</span>
+          <div class="grow"><div class="item-title">Mastra</div><div class="muted small">Agent milikmu atau pemilik lain ? provider bebas</div></div>
+          <span class="pill">Agent</span>
+        </div>
+        <div class="field">
+          <label for="mastra-connection">Kode koneksi Mastra</label>
+          <textarea id="mastra-connection" rows="3" placeholder="aihub-mastra-v1.?" autocomplete="off" spellcheck="false"></textarea>
+          <p class="field-hint">Tempel satu kode dari pemilik agent. Tidak perlu mengisi URL atau API key provider. Nama agent dan provider akan dibaca dari server saat koneksi diperiksa.</p>
+        </div>
+        <div id="mastra-result" aria-live="polite"></div>
+      </div>
+    `);
+    mastraInput = card.querySelector('#mastra-connection');
+    mastraResult = card.querySelector('#mastra-result');
+    mastraInput.addEventListener('input', () => renderMastraConnection(mastraInput, mastraResult));
+    el.appendChild(card);
+  }
+
   const pasteCard = h(`
     <div class="card form-panel">
       <div class="field" style="margin-bottom:0;">
         <label for="key-input">${isAgent ? 'API key atau kode koneksi agent' : 'Pakai API key'}</label>
         <textarea id="key-input" rows="2" placeholder="Tempel kunci API di sini" autocomplete="off" spellcheck="false"></textarea>
-        <p class="field-hint">${isAgent ? 'Mastra: tempel kode aihub-mastra-v1. dari pemilik agent. Provider dan model diatur oleh pemiliknya; kamu tidak perlu mengisi URL atau key provider.' : 'Jenis provider dikenali otomatis dari kunci API.'}</p>
+        <p class="field-hint">${isAgent ? 'Untuk Mastra gunakan kartu di atas. Key agent lain dapat ditempel di sini.' : 'Jenis provider dikenali otomatis dari kunci API.'}</p>
       </div>
       <div id="detect-result" style="margin-top:14px;"></div>
     </div>
@@ -77,6 +101,34 @@ export default async function render(root) {
   const keyInput = pasteCard.querySelector('#key-input');
   const detectResult = pasteCard.querySelector('#detect-result');
 
+  function renderMastraConnection(input, result) {
+    const raw = input.value.trim();
+    result.innerHTML = "";
+    if (!raw) return;
+      result.innerHTML = '';
+      let connection;
+      try { connection = parseMastraConnection(raw); }
+      catch (error) { result.textContent = error.message; return; }
+      const info = h('<p class="muted small"></p>');
+      info.textContent = `Koneksi Mastra · ${connection.agentId} · ${new URL(connection.endpoint).host}. Periksa untuk membaca identitas dan provider dari server pemilik agent.`;
+      const check = h('<button class="btn btn-primary" id="mastra-check">Periksa koneksi Mastra</button>');
+      result.append(info, check);
+      check.onclick = async () => {
+        check.disabled = true;
+        info.textContent = 'Memeriksa agent…';
+        try {
+          const { entry, metadata } = await connectMastraAgent(connection);
+          if (input.value.trim() !== raw || !check.isConnected) return;
+          info.textContent = `${entry.label} · Model: ${typeof metadata.agent.model === 'string' ? metadata.agent.model.slice(0, 120) : 'diatur server'} · Informasi dilaporkan oleh server agent.`;
+          const save = h('<button class="btn btn-primary" id="mastra-save">Simpan &amp; Hubungkan Agent</button>');
+          save.onclick = () => saveDetected(entry, connection.token, save);
+          check.replaceWith(save);
+        } catch (error) {
+          if (check.isConnected) { info.textContent = error.message; check.disabled = false; }
+        }
+      };
+  }
+
   function renderDetectResult() {
     if (manualMode) {
       detectResult.innerHTML = '';
@@ -88,28 +140,15 @@ export default async function render(root) {
       return;
     }
     if (raw.startsWith(CONNECTION_PREFIX)) {
-      detectResult.innerHTML = '';
-      let connection;
-      try { connection = parseMastraConnection(raw); }
-      catch (error) { detectResult.textContent = error.message; return; }
-      const info = h('<p class="muted small"></p>');
-      info.textContent = `Koneksi Mastra · ${connection.agentId} · ${new URL(connection.endpoint).host}. Periksa untuk membaca identitas dan provider dari server pemilik agent.`;
-      const check = h('<button class="btn btn-primary" id="mastra-check">Periksa koneksi Mastra</button>');
-      detectResult.append(info, check);
-      check.onclick = async () => {
-        check.disabled = true;
-        info.textContent = 'Memeriksa agent…';
-        try {
-          const { entry, metadata } = await connectMastraAgent(connection);
-          if (keyInput.value.trim() !== raw || !check.isConnected) return;
-          info.textContent = `${entry.label} · Model: ${typeof metadata.agent.model === 'string' ? metadata.agent.model.slice(0, 120) : 'diatur server'} · Informasi dilaporkan oleh server agent.`;
-          const save = h('<button class="btn btn-primary" id="mastra-save">Simpan &amp; Hubungkan Agent</button>');
-          save.onclick = () => saveDetected(entry, connection.token, save);
-          check.replaceWith(save);
-        } catch (error) {
-          if (check.isConnected) { info.textContent = error.message; check.disabled = false; }
-        }
-      };
+      if (mastraInput) {
+        mastraInput.value = raw;
+        keyInput.value = '';
+        detectResult.innerHTML = '';
+        renderMastraConnection(mastraInput, mastraResult);
+        mastraInput.focus();
+      } else {
+        renderMastraConnection(keyInput, detectResult);
+      }
       return;
     }
     detected = detectProvider(raw);
@@ -301,7 +340,7 @@ export default async function render(root) {
     el.appendChild(
       h(`
       <p class="muted small" style="margin-top:-8px;">
-        Untuk Mastra, tempel kode koneksi pada kolom di atas.
+        Untuk Mastra, gunakan kartu Mastra di atas.
         Agent lainnya memakai URL dan token dari gateway milikmu.
       </p>
     `)

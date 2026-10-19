@@ -156,23 +156,26 @@ def main():
             print('PASS no tool leakage and authenticated agent discovery')
 
             page.goto(origin + '/#/settings/add-api-key?type=provider')
+            expect(page.locator('#mastra-card')).to_have_count(0)
             expect(page.locator('#mastra-save')).to_have_count(0)
             page.goto(origin + '/#/settings/add-api-key?type=agent')
+            expect(page.locator('#mastra-card')).to_be_visible()
+            expect(page.locator('#mastra-connection')).to_be_visible()
             expect(page.locator('#mastra-url')).to_have_count(0)
             assert page.locator('#mastra-direct').count() == 0
             token = 'fixture-agent-token-123456'
             code = 'aihub-mastra-v1.' + base64.urlsafe_b64encode(json.dumps({'endpoint': origin, 'agentId': 'helper', 'token': token}).encode()).decode().rstrip('=')
-            page.locator('#key-input').fill('aihub-mastra-v1.invalid')
-            expect(page.locator('#detect-result')).to_contain_text('tidak valid')
-            page.locator('#key-input').fill(code)
+            page.locator('#mastra-connection').fill('aihub-mastra-v1.invalid')
+            expect(page.locator('#mastra-result')).to_contain_text('tidak valid')
+            page.locator('#mastra-connection').fill(code)
             failed['discovery'] = True
             page.locator('#mastra-check').click()
-            expect(page.locator('#detect-result')).to_contain_text('Token agent ditolak')
+            expect(page.locator('#mastra-result')).to_contain_text('Token agent ditolak')
             expect(page.locator('#mastra-save')).to_have_count(0)
             failed['discovery'] = False
             page.locator('#mastra-check').click()
-            expect(page.locator('#detect-result')).to_contain_text('Provider Bebas')
-            expect(page.locator('#detect-result')).to_contain_text('model-server')
+            expect(page.locator('#mastra-result')).to_contain_text('Provider Bebas')
+            expect(page.locator('#mastra-result')).to_contain_text('model-server')
             page.locator('#mastra-save').click()
             page.wait_for_function('window.__providers.length === 1')
             saved = page.evaluate('window.__providers[0]')

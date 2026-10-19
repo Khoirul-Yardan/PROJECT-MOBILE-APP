@@ -111,3 +111,8 @@ Format:
 - Panduan utama: `docs/MASTRA-KONEKSI.md`; dokumentasi BYOK lama diberi penanda legacy; README diperbarui tanpa menghapus perubahan skills yang sudah ada sebelum tugas ini.
 - Validasi: typecheck lulus; 10 tes Node adapter/legacy lulus; tes browser Mastra/provider lulus termasuk kode malformed, token ditolak, metadata discovery, token disimpan tanpa envelope, chat memakai bearer token tanpa model override. Build Mastra lulus. Tes menggunakan fixture, belum uji provider berbayar/server pihak ketiga nyata atau deployment Fly.
 - Catatan operasi: adapter contoh satu token per agent, provider key ada di server pemilik; tanpa token konfigurasi gagal tertutup. Pemilik pihak ketiga perlu adapter dan pengelolaan rate limit/token/sesi sesuai kebutuhan. Tidak membuka endpoint Studio melalui nginx.
+
+## 2026-10-20 — Codex: kartu Mastra terlihat pada setup Agent
+- Akar masalah: koneksi satu kode hanya tersedia lewat kolom umum sehingga pengguna mengira pilihan Mastra hilang ketika melihat kartu OpenClaw/Hermes.
+- Perbaikan: kartu Mastra tersendiri di bagian atas Hubungkan Agent, kolom Kode koneksi Mastra, dan hasil pemeriksaan dalam kartu yang sama. Paste kode pada kolom umum tetap diarahkan ke kartu Mastra. Panduan koneksi diperbarui.
+- Validasi: pemeriksaan JavaScript dan tes browser Mastra/provider terhadap http://localhost:8090 lulus; kartu tidak muncul di halaman Provider AI, terlihat di halaman Agent, dan alur token/discovery/chat tetap lulus. Container web Docker sudah dibangun ulang. Tidak deploy Fly.
