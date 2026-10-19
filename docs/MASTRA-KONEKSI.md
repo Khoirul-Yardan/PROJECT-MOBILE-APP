@@ -5,7 +5,7 @@ Status 20 Oktober 2026: implementasi lokal, belum deployment. Panduan ini mengga
 ## Untuk pengguna AI Hub
 
 1. Minta **kode koneksi AI Hub** dari pemilik agent Mastra. Awal kode: `aihub-mastra-v1.`.
-2. Buka **Hubungkan Agent**, cari kartu **Mastra** di bagian atas, lalu tempel seluruh kode ke kolom **Kode koneksi Mastra**. Tidak perlu URL atau key Gemini/OpenAI/Claude terpisah.
+2. Buka **Hubungkan Agent**, lalu tempel seluruh kode ke kolom tunggal **API key, token, atau URL agent**. Status **Terbaca: Mastra** muncul. Tidak perlu URL atau key Gemini/OpenAI/Claude terpisah; tidak ada kartu agent terpisah.
 3. Periksa tujuan server yang tampil, lalu tekan **Periksa koneksi Mastra**. Token dikirim ke server tersebut untuk autentikasi dan discovery. Tidak ada percakapan yang dikirim pada tahap ini.
 4. Periksa nama agent, provider, dan model yang dilaporkan server, lalu **Simpan & Hubungkan Agent**.
 5. Pilih agent di Chat. `/skills` memuat kemampuan yang dipublikasikan pemilik server. Model tidak dipilih dari UI: pemilik agent yang mengaturnya.
@@ -13,6 +13,12 @@ Status 20 Oktober 2026: implementasi lokal, belum deployment. Panduan ini mengga
 Identitas/provider adalah deklarasi server, bukan verifikasi independen oleh AI Hub. Jika provider atau model tidak diumumkan, AI Hub tidak menebaknya. Model ditampilkan sebagai “diatur server”. Nama/provider disimpan sebagai label saat koneksi dibuat; hubungkan ulang jika ingin memperbarui label setelah pemilik mengganti konfigurasinya.
 
 API key biasa tidak cukup untuk menemukan server Mastra yang berbeda-beda. Kode ini mengemas endpoint, agent ID, dan token sehingga cukup sekali tempel. Ini **format integrasi AI Hub**, bukan API key universal/resmi Mastra dan bukan token platform Mastra yang otomatis kompatibel.
+
+### Input bertahap: token atau URL juga diterima
+
+Halaman Agent dimulai dengan satu kolom. Pola key yang dikenal (misalnya Hermes/Nous) langsung menampilkan identitas berdasarkan pola, bukan klaim bahwa key sudah valid. Token umum menampilkan pilihan jenis agent; setelah dipilih, kolom URL muncul. Jika input pertama berupa URL, yang diminta adalah token. Koneksi Mastra juga memerlukan ID agent jika belum tercantum di URL. URL dengan path `/ai-hub/agents/{id}` (boleh diakhiri `/capabilities` atau `/chat`) dikenali sebagai format Mastra dan hanya memerlukan token; identitas server diperiksa setelah tombol pemeriksaan ditekan.
+
+Pilihan tambahan mendukung Hermes A2A, Hermes API Server, OpenClaw, dan API OpenAI-compatible. Link sesi langsung berada dalam pengaturan opsional. Token/URL yang tidak memiliki penanda tidak ditebak sebagai Hermes atau OpenClaw: pengguna memilih jenisnya. Status “Terbaca” menunjukkan format/pola; “Jenis dipilih” menunjukkan pilihan pengguna; “Terhubung” pada Mastra muncul setelah discovery terautentikasi berhasil. Agent lainnya disimpan sebagai konfigurasi, lalu koneksi digunakan saat Chat dibuka. Mengubah input menghapus hasil deteksi lama; mengubah token/URL Mastra setelah pemeriksaan mengharuskan pemeriksaan ulang sebelum disimpan.
 
 ## Untuk pemilik agent: provider tetap bebas
 

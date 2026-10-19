@@ -116,3 +116,9 @@ Format:
 - Akar masalah: koneksi satu kode hanya tersedia lewat kolom umum sehingga pengguna mengira pilihan Mastra hilang ketika melihat kartu OpenClaw/Hermes.
 - Perbaikan: kartu Mastra tersendiri di bagian atas Hubungkan Agent, kolom Kode koneksi Mastra, dan hasil pemeriksaan dalam kartu yang sama. Paste kode pada kolom umum tetap diarahkan ke kartu Mastra. Panduan koneksi diperbarui.
 - Validasi: pemeriksaan JavaScript dan tes browser Mastra/provider terhadap http://localhost:8090 lulus; kartu tidak muncul di halaman Provider AI, terlihat di halaman Agent, dan alur token/discovery/chat tetap lulus. Container web Docker sudah dibangun ulang. Tidak deploy Fly.
+
+## 2026-10-20 — Codex: setup Agent satu input (selesai)
+- Permintaan pengguna: tampilan bersih seperti Provider AI, tanpa deretan kartu; API key/token/URL diperiksa dahulu, kemudian hanya field yang kurang ditampilkan.
+- Implementasi: modul `web/public/agent-setup.js`, satu textarea awal. Pola key dikenali via katalog; kode dan URL protokol Mastra dikenali; token/URL umum meminta pilihan jenis. Mendukung isian bertahap Mastra/Hermes A2A/Hermes API Server/OpenClaw/custom. Input berubah membatalkan hasil pemeriksaan lama. Slot tambahan untuk key katalog dipertahankan.
+- Status UI jujur: pola terbaca bukan autentikasi; pilihan manual bukan hasil discovery. Mastra menampilkan terhubung sesudah discovery terautentikasi, agent lain diuji saat dipakai Chat. Panduan dan K-009 diperbarui.
+- Validasi: JavaScript valid; tes browser sumber lokal dan Docker lulus untuk tampilan awal satu kolom, deteksi key Hermes, token ke URL Hermes, URL ke token OpenClaw, URL Mastra ke token, pembatalan hasil saat token berubah, serta regresi discovery/chat/provider. Docker web dibangun ulang; tidak deploy Fly. Tidak mengubah native/skema/RLS/pipeline PA.

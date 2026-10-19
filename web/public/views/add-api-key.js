@@ -1,5 +1,6 @@
+import { renderAgentSetup } from '../agent-setup.js';
 import { h, header, icon, toast, pageIntro } from '../ui.js';
-import { KNOWN_PROVIDERS, SELF_HOSTED_PROVIDERS, detectProvider, slugify } from '../providers.js';
+import { KNOWN_PROVIDERS, detectProvider, slugify } from '../providers.js';
 import { saveProvider, connectMastraAgent } from '../ai.js';
 import { CONNECTION_PREFIX, parseMastraConnection } from '../mastra-connection.js';
 import { countCredentialSlots } from '../credentials.js';
@@ -19,7 +20,6 @@ export default async function render(root) {
   const isAgent = mode === 'agent';
 
   const providersForMode = KNOWN_PROVIDERS.filter((p) => (isAgent ? p.type === 'agent' : p.type === 'chat'));
-  const selfHostedForMode = isAgent ? SELF_HOSTED_PROVIDERS : [];
 
   let detected = null;
   let manualMode = false;
@@ -28,6 +28,12 @@ export default async function render(root) {
   const el = h(`<div class="page add-api-page"></div>`);
   el.appendChild(header(isAgent ? 'Hubungkan Agent' : 'Hubungkan Provider AI', { back: true }));
   el.appendChild(pageIntro(isAgent ? 'Undang asisten barumu.' : 'Bawa AI favoritmu.', isAgent ? 'Hubungkan agent untuk membantu tugas sehari-hari.' : 'Siapkan API key dari provider pilihanmu untuk mulai mengobrol.', { art: isAgent ? 'bot' : 'providers', label: 'KONEKSI BARU', tone: isAgent ? 'intro-mint' : '' }));
+
+  if (isAgent) {
+    renderAgentSetup(el, saveDetected);
+    root.appendChild(el);
+    return;
+  }
 
   // Option 1 of 2: log in with the provider account instead of pasting a key.
   // Only providers that officially support OAuth appear here (see oauth.js).
@@ -57,36 +63,12 @@ export default async function render(root) {
     el.appendChild(h('<p class="section-title" style="text-align:center;">atau</p>'));
   }
 
-  let mastraInput = null;
-  let mastraResult = null;
-  if (isAgent) {
-    const card = h(`
-      <div class="card form-panel" id="mastra-card">
-        <div class="row" style="margin-bottom:10px;">
-          <span class="feature-icon">${icon('layers')}</span>
-          <div class="grow"><div class="item-title">Mastra</div><div class="muted small">Agent milikmu atau pemilik lain ? provider bebas</div></div>
-          <span class="pill">Agent</span>
-        </div>
-        <div class="field">
-          <label for="mastra-connection">Kode koneksi Mastra</label>
-          <textarea id="mastra-connection" rows="3" placeholder="aihub-mastra-v1.?" autocomplete="off" spellcheck="false"></textarea>
-          <p class="field-hint">Tempel satu kode dari pemilik agent. Tidak perlu mengisi URL atau API key provider. Nama agent dan provider akan dibaca dari server saat koneksi diperiksa.</p>
-        </div>
-        <div id="mastra-result" aria-live="polite"></div>
-      </div>
-    `);
-    mastraInput = card.querySelector('#mastra-connection');
-    mastraResult = card.querySelector('#mastra-result');
-    mastraInput.addEventListener('input', () => renderMastraConnection(mastraInput, mastraResult));
-    el.appendChild(card);
-  }
-
   const pasteCard = h(`
     <div class="card form-panel">
       <div class="field" style="margin-bottom:0;">
-        <label for="key-input">${isAgent ? 'API key atau kode koneksi agent' : 'Pakai API key'}</label>
+        <label for="key-input">Pakai API key</label>
         <textarea id="key-input" rows="2" placeholder="Tempel kunci API di sini" autocomplete="off" spellcheck="false"></textarea>
-        <p class="field-hint">${isAgent ? 'Untuk Mastra gunakan kartu di atas. Key agent lain dapat ditempel di sini.' : 'Jenis provider dikenali otomatis dari kunci API.'}</p>
+        <p class="field-hint">Jenis provider dikenali otomatis dari kunci API.</p>
       </div>
       <div id="detect-result" style="margin-top:14px;"></div>
     </div>
@@ -103,30 +85,29 @@ export default async function render(root) {
 
   function renderMastraConnection(input, result) {
     const raw = input.value.trim();
-    result.innerHTML = "";
+    result.innerHTML = '';
     if (!raw) return;
-      result.innerHTML = '';
-      let connection;
-      try { connection = parseMastraConnection(raw); }
-      catch (error) { result.textContent = error.message; return; }
-      const info = h('<p class="muted small"></p>');
-      info.textContent = `Koneksi Mastra · ${connection.agentId} · ${new URL(connection.endpoint).host}. Periksa untuk membaca identitas dan provider dari server pemilik agent.`;
-      const check = h('<button class="btn btn-primary" id="mastra-check">Periksa koneksi Mastra</button>');
-      result.append(info, check);
-      check.onclick = async () => {
-        check.disabled = true;
-        info.textContent = 'Memeriksa agent…';
-        try {
-          const { entry, metadata } = await connectMastraAgent(connection);
-          if (input.value.trim() !== raw || !check.isConnected) return;
-          info.textContent = `${entry.label} · Model: ${typeof metadata.agent.model === 'string' ? metadata.agent.model.slice(0, 120) : 'diatur server'} · Informasi dilaporkan oleh server agent.`;
-          const save = h('<button class="btn btn-primary" id="mastra-save">Simpan &amp; Hubungkan Agent</button>');
-          save.onclick = () => saveDetected(entry, connection.token, save);
-          check.replaceWith(save);
-        } catch (error) {
-          if (check.isConnected) { info.textContent = error.message; check.disabled = false; }
-        }
-      };
+    let connection;
+    try { connection = parseMastraConnection(raw); }
+    catch (error) { result.textContent = error.message; return; }
+    const info = h('<p class="muted small"></p>');
+    info.textContent = `Koneksi Mastra · ${connection.agentId} · ${new URL(connection.endpoint).host}. Periksa untuk membaca identitas dan provider dari server pemilik agent.`;
+    const check = h('<button class="btn btn-primary" id="mastra-check">Periksa koneksi Mastra</button>');
+    result.append(info, check);
+    check.onclick = async () => {
+      check.disabled = true;
+      info.textContent = 'Memeriksa agent…';
+      try {
+        const { entry, metadata } = await connectMastraAgent(connection);
+        if (input.value.trim() !== raw || !check.isConnected) return;
+        info.textContent = `${entry.label} · Model: ${typeof metadata.agent.model === 'string' ? metadata.agent.model.slice(0, 120) : 'diatur server'} · Informasi dilaporkan oleh server agent.`;
+        const save = h('<button class="btn btn-primary" id="mastra-save">Simpan &amp; Hubungkan Agent</button>');
+        save.onclick = () => saveDetected(entry, connection.token, save);
+        check.replaceWith(save);
+      } catch (error) {
+        if (check.isConnected) { info.textContent = error.message; check.disabled = false; }
+      }
+    };
   }
 
   function renderDetectResult() {
@@ -140,15 +121,7 @@ export default async function render(root) {
       return;
     }
     if (raw.startsWith(CONNECTION_PREFIX)) {
-      if (mastraInput) {
-        mastraInput.value = raw;
-        keyInput.value = '';
-        detectResult.innerHTML = '';
-        renderMastraConnection(mastraInput, mastraResult);
-        mastraInput.focus();
-      } else {
-        renderMastraConnection(keyInput, detectResult);
-      }
+      renderMastraConnection(keyInput, detectResult);
       return;
     }
     detected = detectProvider(raw);
@@ -335,67 +308,4 @@ export default async function render(root) {
   });
   el.appendChild(knownList);
 
-  if (selfHostedForMode.length > 0) {
-    el.appendChild(h(`<p class="section-title">Agent self-hosted (gateway milikmu sendiri)</p>`));
-    el.appendChild(
-      h(`
-      <p class="muted small" style="margin-top:-8px;">
-        Untuk Mastra, gunakan kartu Mastra di atas.
-        Agent lainnya memakai URL dan token dari gateway milikmu.
-      </p>
-    `)
-    );
-    selfHostedForMode.forEach((p) => {
-      const card = h(`
-        <div class="card form-panel" style="margin-bottom:12px;">
-          <div class="row" style="margin-bottom:10px;">
-            <span class="feature-icon">${icon(p.icon)}</span>
-            <div class="grow">
-              <div class="item-title" style="font-size:14px;">${p.label}</div>
-              <div class="muted small">${p.vendor}</div>
-            </div>
-          </div>
-          <div class="field">
-            <label for="${p.id}-url">URL Gateway</label>
-            <input id="${p.id}-url" placeholder="${p.urlPlaceholder}" />
-            <div class="muted small">${p.urlHelp}</div>
-          </div>
-          <div class="field">
-            <label for="${p.id}-token">${p.tokenLabel || 'Bearer token'}</label>
-            <input id="${p.id}-token" type="password" placeholder="token" />
-            <div class="muted small">${p.tokenHelp}</div>
-          </div>
-          <div class="field">
-            <label for="${p.id}-direct">${p.directSessionLabel || 'Link sesi langsung (opsional)'}</label>
-            <input id="${p.id}-direct" placeholder="${p.directSessionPlaceholder || ''}" />
-            <div class="muted small">${p.directSessionHelp || ''}</div>
-          </div>
-          <button id="${p.id}-save" class="btn btn-primary">Simpan &amp; Hubungkan</button>
-        </div>
-      `);
-      card.querySelector(`#${p.id}-save`).onclick = async () => {
-        const url = card.querySelector(`#${p.id}-url`).value.trim().replace(/\/$/, '');
-        const token = card.querySelector(`#${p.id}-token`).value.trim();
-        const directSessionUrl = card.querySelector(`#${p.id}-direct`)?.value.trim();
-        if (!url || !token) {
-          toast('Isi URL gateway dan token dulu.');
-          return;
-        }
-        // The 'model' column is meaningless for self-hosted agent formats
-        // (a2a/openclaw have no model-selection concept) — repurposed here
-        // to hold the optional direct-session link instead of adding a
-        // dedicated column just for this.
-        try {
-          const parsed = new URL(url);
-          if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error();
-        } catch {
-          toast('Gunakan URL http/https tanpa password, query, atau fragmen.');
-          return;
-        }
-        const entry = { id: p.id, label: p.label, type: p.type, format: p.format, endpoint: url, model: p.model || directSessionUrl || undefined };
-        await saveDetected(entry, token, card.querySelector(`#${p.id}-save`));
-      };
-      el.appendChild(card);
-    });
-  }
 }

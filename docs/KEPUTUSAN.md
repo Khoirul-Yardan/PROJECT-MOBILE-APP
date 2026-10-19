@@ -68,3 +68,8 @@ Format:
 - Dasar: koreksi dan permintaan langsung pengguna untuk agent pihak ketiga dengan provider bebas, satu input, serta dokumentasi jelas; API route pada paket Mastra terpasang dan pengujian fixture. Kontrak lengkap di `docs/MASTRA-KONEKSI.md`.
 - Batas: kode ini format AI Hub, bukan token universal Mastra. Pemilik server perlu adapter; provider yang tidak diumumkan tidak ditebak. Contoh server tetap Gemini. Base64url bukan enkripsi; token agent disimpan melalui mekanisme kredensial terenkripsi/RLS yang ada. Metadata server merupakan deklarasi, bukan attestasi.
 - Dampak ke PA: hanya pendukung Chat umum. Tidak mengubah Bot BPJS, STT/relabel, diagnosis, verifikasi dokter, skema/RLS, atau evaluasi baseline/proposed. Server contoh tidak memakai memory/traces bersama; pengujian memakai data fiktif.
+
+## K-009 — Setup Agent satu input dengan isian bertahap (20 Oktober 2026, Codex)
+- Apa: mengganti deretan kartu Mastra/Hermes/OpenClaw dengan satu input API key, token, URL, atau kode koneksi. Status deteksi dan kolom yang kurang muncul setelah input/pilihan jenis; data pemeriksaan Mastra dibatalkan jika input berubah.
+- Dasar: permintaan pengguna agar setup sebersih Provider AI. Token umum tidak cukup untuk membuktikan identitas agent, sehingga jenis yang tidak dikenal dipilih pengguna; status pola/pilihan/hasil discovery dibedakan.
+- Dampak ke PA: penyederhanaan UI hub AI umum saja; tidak mengubah pipeline STT/LLM dokumentasi, skema/RLS, atau evaluasi PA. Kontrak Mastra satu kode tetap berlaku.
