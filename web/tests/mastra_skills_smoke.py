@@ -148,13 +148,17 @@ def main():
             print('PASS no tool leakage and authenticated agent discovery')
 
             page.goto(origin + '/#/settings/add-api-key?type=provider')
+            expect(page.locator('#mastra-save')).to_have_count(0)
+            page.goto(origin + '/#/settings/add-api-key?type=agent')
             expect(page.locator('#mastra-url')).to_have_value(origin + '/mastra')
+            expect(page.locator('#mastra-url')).not_to_be_visible()
             assert page.locator('#mastra-direct').count() == 0
             page.locator('#mastra-token').fill('fixture-key')
             page.locator('#mastra-save').click()
             page.wait_for_function('window.__providers.length === 1')
             saved = page.evaluate('window.__providers[0]')
             assert saved['format'] == 'mastra' and saved['model'] == 'google/gemini-2.5-flash'
+            assert saved['type'] == 'agent' and saved['endpoint'] == origin + '/mastra'
             assert not errors, errors
             page.screenshot(path=str(Path(tempfile.gettempdir()) / 'ai-hub-mastra-test.png'))
             print('PASS Mastra setup and no browser errors')

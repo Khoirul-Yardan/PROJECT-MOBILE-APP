@@ -121,7 +121,6 @@ export const SELF_HOSTED_PROVIDERS = [
     type: 'agent',
     format: 'mastra',
     icon: 'layers',
-    showInProviders: true,
     model: 'google/gemini-2.5-flash',
     urlPlaceholder: 'http://localhost:8090/mastra',
     urlHelp: 'Alamat integrasi mastra-test. Docker lokal: gunakan alamat AI Hub diikuti /mastra. Server Mastra langsung: http://localhost:4111.',

@@ -18,7 +18,7 @@ export default async function render(root) {
   const isAgent = mode === 'agent';
 
   const providersForMode = KNOWN_PROVIDERS.filter((p) => (isAgent ? p.type === 'agent' : p.type === 'chat'));
-  const selfHostedForMode = SELF_HOSTED_PROVIDERS.filter((p) => isAgent || p.showInProviders);
+  const selfHostedForMode = isAgent ? SELF_HOSTED_PROVIDERS : [];
 
   let detected = null;
   let manualMode = false;
@@ -275,9 +275,8 @@ export default async function render(root) {
     el.appendChild(
       h(`
       <p class="muted small" style="margin-top:-8px;">
-        Bukan API key vendor — kamu jalankan gateway-nya sendiri, jadi isi URL
-        dan token dari instance-mu supaya balasan agent masuk ke Chat di sini,
-        bukan ke Telegram/WhatsApp.
+        Mastra cukup memakai API key Gemini jika server sudah tersedia di alamat aplikasi ini.
+        Agent lainnya memakai URL dan token dari gateway milikmu.
       </p>
     `)
     );
@@ -291,11 +290,13 @@ export default async function render(root) {
               <div class="muted small">${p.vendor}</div>
             </div>
           </div>
+          ${p.format === 'mastra' ? '<p class="field-hint">Masukkan API key Gemini. Alamat server diisi otomatis; server Mastra harus sudah berjalan.</p><details><summary>Pengaturan server (opsional)</summary>' : ''}
           <div class="field">
             <label for="${p.id}-url">URL Gateway</label>
             <input id="${p.id}-url" placeholder="${p.urlPlaceholder}" />
             <div class="muted small">${p.urlHelp}</div>
           </div>
+          ${p.format === 'mastra' ? '</details>' : ''}
           <div class="field">
             <label for="${p.id}-token">${p.tokenLabel || 'Bearer token'}</label>
             <input id="${p.id}-token" type="password" placeholder="token" />
