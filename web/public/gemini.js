@@ -113,7 +113,7 @@ export async function listGeminiModels(entry, apiKey) {
 }
 
 // UI toggle name -> Gemini tool object (see skills.js).
-const GEMINI_TOOLS = { search: { google_search: {} }, code: { code_execution: {} } };
+const GEMINI_TOOLS = { search: { google_search: {} }, code: { code_execution: {} }, url: { url_context: {} } };
 
 function payloadFor(history, tools = []) {
   const system = history.filter((m) => m.role === 'system').map((m) => m.text).join('\n\n');
@@ -147,8 +147,11 @@ export async function generateGemini(entry, apiKey, history, { tools = [] } = {}
     try {
       const body = await request(geminiEndpoint(entry.endpoint, model), apiKey, payload);
       if (body.promptFeedback?.blockReason) throw new Error('Gemini tidak dapat menjawab pesan ini. Coba ubah pertanyaannya.');
-      const text = (body.candidates?.[0]?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || '').join('').trim();
+      const candidate = body.candidates?.[0];
+      let text = (candidate?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || (p.codeExecutionResult?.output ? `\nHasil kode:\n${p.codeExecutionResult.output}` : '')).join('').trim();
       if (!text) throw new Error('Gemini tidak mengembalikan jawaban teks. Coba ubah pesan atau pilih model lain.');
+      const sources = [...new Set((candidate?.groundingMetadata?.groundingChunks || []).map((c) => c.web?.uri).filter((url) => /^https?:\/\//.test(url || '')))];
+      if (sources.length) text += '\n\nSumber:\n' + sources.join('\n');
       return { text, model, previousModel: first || null, changed: model !== first };
     } catch (error) {
       if (!error.modelUnavailable) throw error;

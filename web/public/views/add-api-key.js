@@ -18,7 +18,7 @@ export default async function render(root) {
   const isAgent = mode === 'agent';
 
   const providersForMode = KNOWN_PROVIDERS.filter((p) => (isAgent ? p.type === 'agent' : p.type === 'chat'));
-  const selfHostedForMode = isAgent ? SELF_HOSTED_PROVIDERS : [];
+  const selfHostedForMode = SELF_HOSTED_PROVIDERS.filter((p) => isAgent || p.showInProviders);
 
   let detected = null;
   let manualMode = false;
@@ -297,33 +297,41 @@ export default async function render(root) {
             <div class="muted small">${p.urlHelp}</div>
           </div>
           <div class="field">
-            <label for="${p.id}-token">Bearer token</label>
+            <label for="${p.id}-token">${p.tokenLabel || 'Bearer token'}</label>
             <input id="${p.id}-token" type="password" placeholder="token" />
             <div class="muted small">${p.tokenHelp}</div>
           </div>
-          <div class="field">
+          ${p.format === 'mastra' ? '' : `<div class="field">
             <label for="${p.id}-direct">${p.directSessionLabel || 'Link sesi langsung (opsional)'}</label>
             <input id="${p.id}-direct" placeholder="${p.directSessionPlaceholder || ''}" />
             <div class="muted small">${p.directSessionHelp || ''}</div>
-          </div>
+          </div>`}
           <button id="${p.id}-save" class="btn btn-primary">Simpan &amp; Hubungkan</button>
         </div>
       `);
       card.querySelector(`#${p.id}-save`).onclick = async () => {
         const url = card.querySelector(`#${p.id}-url`).value.trim().replace(/\/$/, '');
         const token = card.querySelector(`#${p.id}-token`).value.trim();
-        const directSessionUrl = card.querySelector(`#${p.id}-direct`).value.trim();
+        const directSessionUrl = card.querySelector(`#${p.id}-direct`)?.value.trim();
         if (!url || !token) {
-          toast('Isi URL gateway dan token dulu.');
+          toast(p.format === 'mastra' ? 'Isi URL Mastra dan API key Gemini dulu.' : 'Isi URL gateway dan token dulu.');
           return;
         }
         // The 'model' column is meaningless for self-hosted agent formats
         // (a2a/openclaw have no model-selection concept) — repurposed here
         // to hold the optional direct-session link instead of adding a
         // dedicated column just for this.
-        const entry = { id: p.id, label: p.label, type: p.type, format: p.format, endpoint: url, model: directSessionUrl || undefined };
+        try {
+          const parsed = new URL(url);
+          if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error();
+        } catch {
+          toast('Gunakan URL http/https tanpa password, query, atau fragmen.');
+          return;
+        }
+        const entry = { id: p.id, label: p.label, type: p.type, format: p.format, endpoint: url, model: p.model || directSessionUrl || undefined };
         await saveDetected(entry, token, card.querySelector(`#${p.id}-save`));
       };
+      if (p.format === 'mastra') card.querySelector(`#${p.id}-url`).value = `${location.origin}/mastra`;
       el.appendChild(card);
     });
   }

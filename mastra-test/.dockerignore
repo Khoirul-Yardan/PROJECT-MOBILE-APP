@@ -1,0 +1,10 @@
+node_modules
+.mastra
+.git
+.agents
+.claude
+.env*
+*.db*
+*.duckdb*
+tool
+tests

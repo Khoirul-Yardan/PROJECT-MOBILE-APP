@@ -55,3 +55,10 @@ Format:
 - Dampak ke PA: Bot BPJS tetap inti; suara pertanyaan Anamnesis adalah TTS sistem. Gambar riwayat menunjukkan nol sesi Anamnesis; evaluasi baseline/proposed masih perlu data terukur. Dokter meninjau di luar aplikasi.
 - Penataan: enam Word lama di `docs/word`; non-Word tetap di lokasi stabil dengan indeks/status. Laporan baru berada di `Dokumentasi/Progres 2/progres 2 Try and error sistem.docx`. Identitas/alamat pada gambar laporan disamarkan tanpa mengubah sumber asli.
 - Posisi di laporan: perkembangan prototipe dan batas pengujian, bukan kesimpulan efektivitas klinis.
+
+## K-007 — Mastra/Gemini sebagai agent Chat lokal (19 Oktober 2026, Codex, permintaan pengguna)
+- Apa: proyek `mastra-test`, profil Docker opsional, provider/agent baru di Chat, discovery tools Mastra, dan pemetaan tools menurut endpoint/model provider. README mencakup pengujian HP lewat USB dan batas HTTPS LAN.
+- Dasar: permintaan langsung pengguna; dokumentasi resmi Mastra, OpenAI, Google, Anthropic, OpenRouter; tes adapter/browser dengan fixture. Rujukan dan batas dukungan ada di `docs/MASTRA.md`.
+- Arsitektur: tambahan server Mastra lokal hanya untuk koneksi agent yang dipilih pengguna. Key Google berasal dari permintaan pengguna, bukan key bersama; memory/traces Mastra dinonaktifkan. Supabase tetap backend akun/riwayat/RLS.
+- Dampak ke PA: tidak mengubah Bot BPJS, STT/relabel, prompt dokumentasi klinis, WER, maupun eksperimen baseline/proposed; bukan diagnosis AI atau antarmuka dokter. Semua skenario pengujian fiktif.
+- Posisi di laporan: pendukung hub AI dan eksperimen integrasi. Belum deployment produksi, bukan bukti peningkatan hasil evaluasi PA.

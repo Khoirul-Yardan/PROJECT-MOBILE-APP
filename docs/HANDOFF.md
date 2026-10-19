@@ -95,3 +95,10 @@ Format:
 - Validasi: byte gambar tertanam dicocokkan dengan seluruh 21 sumber; struktur DOCX dan rujukan lokal diperiksa. Hambatan ekspor Word dari tugas sebelumnya belum terselesaikan; tidak mengklaim layout cetak sudah dirender.
 - Biner laporan bergambar asli dibiarkan sebagai perubahan lokal, tidak di-commit, mengikuti larangan commit data pasien nyata pada AGENTS.md karena status identitas sumber belum diketahui. Ini tidak menghalangi pembuatan berkas privat sesuai permintaan pengguna.
 - Status: selesai; tidak ada perubahan aplikasi/skema atau uji aplikasi baru.
+
+## 2026-10-19 — Codex: integrasi Mastra lokal (sedang dikerjakan)
+- Otorisasi: pengguna meminta pembuatan proyek `mastra-test`, provider Gemini, integrasi Chat/skills, Docker, README, dan dokumentasi `docs`. Permintaan dokumentasi ini menjadi alih kepemilikan sementara area dokumen yang terkait Mastra untuk tugas ini; tidak mencakup native/admin/skema.
+- Keputusan teknis: Mastra memakai key Google per permintaan (BYOK), tidak memakai key Studio sebagai fallback bagi Chat, tidak menyimpan memory/traces bersama. Riwayat dan kredensial tetap melalui Supabase/RLS yang ada.
+- Kontrak: format kredensial baru `mastra` memakai kolom yang sudah tersedia; tidak ada perubahan payload NativeBridge atau migrasi SQL. Pemilik native perlu mengetahui format baru bila kelak menambah pemrosesan provider di Dart.
+- Akar masalah skills: UI hanya memiliki pemetaan Gemini dan discovery A2A; endpoint OpenAI-compatible bukan bukti dukungan semua hosted tools vendor.
+- Generator `create-mastra` dua kali membersihkan hasil sementara karena timeout instalasi default 60 detik. Percobaan lanjutan memakai opsi resmi `--timeout 600000`.

@@ -1,7 +1,7 @@
 """E2E palet "/" di Chat mengikuti provider yang dipilih.
 
 Gemini -> /search, /code (Google Search & eksekusi kode, dikirim sebagai `tools`
-ke API Gemini); ChatGPT -> hanya perintah umum; Hermes Agent (A2A) -> daftar
+ke API Gemini); ChatGPT gpt-4o-mini -> /search; Hermes Agent (A2A) -> daftar
 skill dari kartu agent-nya sendiri. Gemini API dan relay A2A DITIRU (kunci/
 agent asli tidak dipakai); yang diuji adalah sisi aplikasi. Screenshot ->
 Images/UjiTest/.
@@ -98,7 +98,7 @@ def main():
         pick(page, 'ChatGPT')
         menu = open_palette(page)
         page.screenshot(path=str(SHOTS / '51-skills-chatgpt-hanya-umum.png'))
-        check('Skills ChatGPT: tanpa /search & /code', '/search' not in menu and '/code' not in menu)
+        check('Skills ChatGPT: /search tersedia, /code tidak untuk model ini', '/search' in menu and '/code' not in menu)
         check('Skills ChatGPT: perintah umum ada', '/system' in menu and '/help' in menu)
 
         # Hermes Agent (A2A)

@@ -14,7 +14,7 @@ export function openModelPicker(entry) {
     // exposes GET /v1/models, so it gets the same pick-don't-type dropdown
     // as Gemini — only the "Otomatis" auto-fallback option is Gemini-only
     // (there's no server-side model-swap-on-failure for the others).
-    const hasList = gemini || entry.format === 'openai';
+    const hasList = gemini || entry.format === 'openai' || entry.format === 'mastra';
     const dialog = h(`<dialog class="model-sheet" aria-labelledby="model-title">
       <form class="model-form">
         <div class="sheet-heading"><div><span class="eyebrow">ASISTEN AI</span><h2 id="model-title">Pilih model</h2></div>

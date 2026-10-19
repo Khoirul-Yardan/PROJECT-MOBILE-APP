@@ -1,4 +1,17 @@
 services:
+  mastra:
+    profiles: [mastra]
+    build: ../mastra-test
+    ports:
+      - "127.0.0.1:4111:4111"
+    restart: unless-stopped
+    environment:
+      - MASTRA_HOST=0.0.0.0
+    # Optional key for Studio only. AI Hub Chat supplies its own key per call.
+    env_file:
+      - path: ../mastra-test/.env
+        required: false
+
   web:
     build: .
     container_name: ai-hub-web

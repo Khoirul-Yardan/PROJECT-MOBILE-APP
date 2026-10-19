@@ -48,7 +48,7 @@ export default async function render(root) {
   let skillMenuQuery = null;
   // Per-provider set of enabled toggle skills (e.g. 'search' for Gemini).
   const toolsByEntry = new Map();
-  const activeTools = (e) => [...(toolsByEntry.get(e.id) || [])];
+  const activeTools = (e) => [...(toolsByEntry.get(e.id) || [])].filter((t) => providerSkills(e).some((s) => s.toggle === t));
 
   const el = h(`
     <div class="page chat-page">
@@ -207,12 +207,23 @@ export default async function render(root) {
    * the first time it's opened — a no-op for non-A2A entries. Re-renders an
    * open skill menu once it resolves, since the first open right after
    * connecting won't have it cached yet. */
-  async function prefetchAgentSkills(target) {
-    if (target.format !== 'a2a' || agentSkillsByEntry.has(target.id)) return;
-    const skills = await getAgentSkills(target);
-    if (disposed) return;
-    agentSkillsByEntry.set(target.id, skills);
-    if (skillMenuQuery !== null && entry?.id === target.id) showSkillMenu(skillMenuQuery);
+  async function prefetchAgentSkills(target, force = false) {
+    if (!['a2a', 'mastra'].includes(target.format) || (!force && agentSkillsByEntry.has(target.id))) return;
+    try {
+      const skills = await getAgentSkills(target);
+      if (disposed) return;
+      agentSkillsByEntry.set(target.id, skills);
+      if (force && entry?.id === target.id) noticeEl.hidden = true;
+      if (skillMenuQuery !== null && entry?.id === target.id) showSkillMenu(skillMenuQuery);
+      return true;
+    } catch (error) {
+      agentSkillsByEntry.delete(target.id);
+      if (!disposed && entry?.id === target.id) {
+        noticeEl.hidden = false;
+        noticeEl.textContent = `${error.message} Ketik /skills untuk mencoba lagi.`;
+      }
+      return false;
+    }
   }
 
   skillBtnEl.onclick = () => {
@@ -446,6 +457,9 @@ export default async function render(root) {
       if (!IMAGE_URL_RE.test(url)) return match;
       return `<img src="${url}" alt="${escapeQuotesOnly(alt)}" class="chat-image" loading="lazy" />`;
     });
+    // API grounding sources are plain URL lines. Link only whole lines so
+    // URLs inside an already-rendered image attribute cannot become HTML.
+    html = html.replace(/^(https?:\/\/[^\s<>"]+)$/gm, (url) => `<a href="${escapeQuotesOnly(url)}" target="_blank" rel="noopener noreferrer">${url}</a>`);
     return html;
   }
 
@@ -477,7 +491,7 @@ export default async function render(root) {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  function runSkill(text) {
+  async function runSkill(text) {
     const [cmd, ...rest] = text.split(' ');
     const arg = rest.join(' ').trim();
     const list = messagesByEntry.get(entry.id) || [];
@@ -500,7 +514,20 @@ export default async function render(root) {
       }
       case '/help': {
         const lines = skillsFor(entry).map((s) => `${s.hint} — ${s.label}`).join('\n');
-        list.push({ text: `Perintah tersedia:\n${lines}`, fromMe: false, local: true });
+        const remote = (agentSkillsByEntry.get(entry.id) || []).map((s) => `/${s.name} <permintaan> — ${s.description || s.name}`).join('\n');
+        list.push({ text: `Perintah tersedia untuk ${entry.label}:\n${lines}${remote ? '\n' + remote : ''}\nTools mengikuti dukungan model dan akun provider. Tools berbayar dapat memakai kuota tambahan.`, fromMe: false, local: true });
+        break;
+      }
+      case '/skills': {
+        const target = entry;
+        const loaded = await prefetchAgentSkills(target, true);
+        if (disposed || entry?.id !== target.id) return;
+        if (loaded === false) break;
+        const own = providerSkills(target).map((s) => s.cmd);
+        const remote = (agentSkillsByEntry.get(target.id) || []).map((s) => `/${s.name}`);
+        list.push({ text: [...own, ...remote].length
+          ? `Kemampuan ${target.label}: ${[...own, ...remote].join(', ')}. Pilih lewat tombol /. Tools agent dipilih oleh agent berdasarkan permintaan.`
+          : `Tidak ada tools tambahan yang terhubung untuk model/endpoint ${target.label} ini. Perintah umum tetap tersedia.`, fromMe: false, local: true });
         break;
       }
       default: {

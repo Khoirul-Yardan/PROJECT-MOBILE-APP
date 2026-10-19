@@ -13,6 +13,7 @@ import {
 } from './credentials.js';
 import { generateGemini, listGeminiModels, normalizeGeminiModel } from './gemini.js';
 import { Native } from './bridge.js';
+import { providerSkills } from './skills.js';
 
 export const saveProvider = saveCredential;
 export const listRegisteredProviders = listCredentials;
@@ -60,9 +61,14 @@ async function callWithRotation(entry, callFn, onSlotChange) {
 
 /** history: [{role:'user'|'assistant'|'system', text}], returns the reply text. */
 export async function sendChat(entry, history, { onModelChange, onSlotChange, tools = [] } = {}) {
+  // Do not leak a previous provider/model's toggles into a different API.
+  const allowed = new Set(providerSkills(entry).map((s) => s.toggle).filter(Boolean));
+  tools = tools.filter((tool) => allowed.has(tool));
   switch (entry.format) {
     case 'anthropic':
-      return callWithRotation(entry, (apiKey) => callAnthropic(entry, apiKey, history), onSlotChange);
+      return callWithRotation(entry, (apiKey) => callAnthropic(entry, apiKey, history, tools), onSlotChange);
+    case 'mastra':
+      return callWithRotation(entry, (apiKey) => callMastra(entry, apiKey, history), onSlotChange);
     case 'gemini':
       return callWithRotation(entry, async (apiKey) => {
         const result = await generateGemini(entry, apiKey, history, { tools });
@@ -83,11 +89,12 @@ export async function sendChat(entry, history, { onModelChange, onSlotChange, to
     case 'hermes-api':
       return callWithRotation(entry, (apiKey) => callHermesApiServer(entry, apiKey, history), onSlotChange);
     default:
-      return callWithRotation(entry, (apiKey) => callOpenAiCompatible(entry, apiKey, history), onSlotChange);
+      return callWithRotation(entry, (apiKey) => callOpenAiCompatible(entry, apiKey, history, tools), onSlotChange);
   }
 }
 
 export async function availableModels(entry) {
+  if (entry.format === 'mastra') return (await mastraRequest(entry, 'capabilities')).models || [];
   if (entry.format !== 'gemini' && entry.format !== 'openai') return [];
   const key = await getCredentialKey(entry.id);
   if (!key) throw new Error('Kunci API belum tersedia. Hubungkan ulang provider ini.');
@@ -117,16 +124,48 @@ async function listOpenAiModels(entry, apiKey) {
 // there's no per-tool command to run from here. Cached per entry by the
 // caller since this doesn't change mid-session.
 export async function getAgentSkills(entry) {
+  if (entry.format === 'mastra') {
+    const body = await mastraRequest(entry, 'capabilities');
+    return (body.skills || []).filter((s) => typeof s.name === 'string' && /^[\w-]+$/.test(s.name));
+  }
   if (entry.format !== 'a2a') return [];
-  try {
-    const url = new URL('.well-known/agent.json', entry.endpoint).toString();
-    const res = await selfHostedFetch(url, { method: 'GET' });
-    if (!res.ok) return [];
+  const apiKey = await getCredentialKey(entry.id);
+  for (const path of ['.well-known/agent-card.json', '.well-known/agent.json']) {
+    const url = new URL(path, entry.endpoint.endsWith('/') ? entry.endpoint : `${entry.endpoint}/`).toString();
+    const res = await selfHostedFetch(url, { method: 'GET', headers: { Authorization: `Bearer ${apiKey}` } });
+    if (res.status === 404) continue;
+    if (!res.ok) throw httpError(res.status, 'Tidak dapat memuat skills agent. Periksa URL dan token.');
     const card = await res.json();
     return (card.skills || []).map((s) => ({ id: s.id, name: s.name, description: s.description }));
-  } catch {
-    return [];
   }
+  throw new Error('Kartu skills agent tidak ditemukan.');
+}
+
+// mastra-test exposes this small BYOK contract. The same-origin Docker route
+// avoids a relay to localhost (which otherwise means the relay container).
+async function mastraRequest(entry, path, apiKey, payload) {
+  const url = new URL(`${entry.endpoint.replace(/\/$/, '')}/ai-hub/${path}`, location.origin);
+  const options = {
+    method: payload ? 'POST' : 'GET',
+    headers: { ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}), ...(payload ? { 'Content-Type': 'application/json' } : {}) },
+    ...(payload ? { body: JSON.stringify(payload) } : {}),
+  };
+  const res = url.origin === location.origin
+    ? await fetch(url, { ...options, signal: AbortSignal.timeout(120000) })
+    : await selfHostedFetch(url.toString(), options);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw httpError(res.status, body.error?.message || `Mastra belum dapat dihubungi (HTTP ${res.status}). Jalankan profil Docker mastra dan periksa URL.`);
+  if (body.protocol !== 'ai-hub-mastra-v1') throw new Error('URL ini bukan endpoint integrasi mastra-test. Gunakan URL dasar server atau /mastra pada Docker AI Hub.');
+  return body;
+}
+
+async function callMastra(entry, apiKey, history) {
+  const body = await mastraRequest(entry, 'chat', apiKey, {
+    model: entry.model || 'google/gemini-2.5-flash',
+    messages: history.map((m) => ({ role: m.role, content: m.text })),
+  });
+  if (!body.text?.trim()) throw new Error('Mastra tidak mengembalikan jawaban teks.');
+  return body.text;
 }
 
 export async function setProviderModel(entry, value) {
@@ -203,7 +242,10 @@ function wrapRelayResult(result) {
 // Covers OpenAI itself, OpenRouter, and most agent/gateway APIs that mimic
 // the OpenAI chat-completions shape (the large majority of what's out
 // there) — including a plain 'system' role message, same as OpenAI's API.
-async function callOpenAiCompatible(entry, apiKey, history) {
+async function callOpenAiCompatible(entry, apiKey, history, tools = []) {
+  if (new URL(entry.endpoint).hostname === 'api.openai.com' && tools.length) {
+    return callOpenAiResponses(entry, apiKey, history, tools);
+  }
   const res = await fetch(entry.endpoint, {
     method: 'POST',
     headers: {
@@ -213,11 +255,36 @@ async function callOpenAiCompatible(entry, apiKey, history) {
     body: JSON.stringify({
       model: entry.model,
       messages: history.map((m) => ({ role: m.role, content: m.text })),
+      ...(tools.includes('search') && new URL(entry.endpoint).hostname === 'openrouter.ai' ? { plugins: [{ id: 'web', max_results: 5 }] } : {}),
     }),
   });
   const body = await res.json();
   if (!res.ok) throw httpError(res.status, `${entry.label} error: ${body.error?.message ?? res.statusText}`);
-  return body.choices?.[0]?.message?.content?.trim() ?? '(respons kosong)';
+  const message = body.choices?.[0]?.message;
+  return appendSources(message?.content?.trim() || '(respons kosong)', (message?.annotations || []).map((a) => a.url_citation));
+}
+
+function appendSources(text, sources = []) {
+  const urls = [...new Map(sources.filter((s) => s?.url && /^https?:\/\//.test(s.url)).map((s) => [s.url, s])).values()];
+  return text + (urls.length ? '\n\nSumber:\n' + urls.map((s) => s.url).join('\n') : '');
+}
+
+async function callOpenAiResponses(entry, apiKey, history, tools) {
+  const res = await fetch(new URL('/v1/responses', entry.endpoint), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: entry.model,
+      store: false,
+      input: history.map((m) => ({ role: m.role, content: m.text })),
+      tools: tools.map((t) => t === 'search' ? { type: 'web_search' } : { type: 'code_interpreter', container: { type: 'auto' } }),
+    }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw httpError(res.status, `OpenAI: ${body.error?.message || res.statusText}`);
+  const content = (body.output || []).filter((o) => o.type === 'message').flatMap((o) => o.content || []);
+  const text = content.map((c) => c.text || c.refusal || '').join('\n').trim();
+  return appendSources(text || '(respons kosong)', content.flatMap((c) => c.annotations || []));
 }
 
 // Hermes Agent's API Server — same OpenAI chat-completions wire shape as
@@ -248,7 +315,7 @@ async function callHermesApiServer(entry, apiKey, history) {
 // Anthropic's Messages API takes the system prompt as its own top-level
 // `system` field, not a message with role:'system' — pull any out of the
 // history and join them, same idea as OpenAI's role but different wire shape.
-async function callAnthropic(entry, apiKey, history) {
+async function callAnthropic(entry, apiKey, history, tools = []) {
   const systemText = history
     .filter((m) => m.role === 'system')
     .map((m) => m.text)
@@ -259,18 +326,21 @@ async function callAnthropic(entry, apiKey, history) {
     headers: {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model: entry.model,
       max_tokens: 1024,
+      ...(tools.includes('search') ? { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }] } : {}),
       ...(systemText ? { system: systemText } : {}),
       messages: messages.map((m) => ({ role: m.role, content: m.text })),
     }),
   });
   const body = await res.json();
   if (!res.ok) throw httpError(res.status, `${entry.label} error: ${body.error?.message ?? res.statusText}`);
-  return body.content?.[0]?.text?.trim() ?? '(respons kosong)';
+  const content = (body.content || []).filter((c) => c.type === 'text');
+  return appendSources(content.map((c) => c.text).join('\n').trim() || '(respons kosong)', content.flatMap((c) => c.citations || []));
 }
 
 // OpenClaw self-hosted Gateway: instead of Telegram/WhatsApp being the

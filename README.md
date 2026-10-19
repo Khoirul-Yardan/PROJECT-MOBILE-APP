@@ -1,97 +1,152 @@
-# AI Hub
+﻿# AI Hub
 
-Aplikasi mobile Android yang jadi hub terpusat untuk **chat multi-provider/agent AI**, **VPN pribadi**, dan **Bot BPJS** — asisten suara untuk dokumentasi klinis perawat-pasien.
+Aplikasi Android hybrid untuk chat multi-provider, agent AI, VPN, dan dokumentasi percakapan perawat–pasien. Flutter (`app/`) memuat SPA vanilla JavaScript (`web/public/`). Supabase menangani akun, riwayat, kredensial terenkripsi, dan RLS pemilik data.
 
-Arsitekturnya hybrid: hampir seluruh UI adalah SPA vanilla JS (`web/`) yang disajikan container Docker dan dimuat dalam satu WebView persisten di dalam shell Flutter (`app/`). Hanya fungsi yang betul-betul butuh akses OS — mikrofon Bot BPJS, koneksi VPN WireGuard, penyimpanan config VPN — yang tetap native. Hasilnya: hampir semua perubahan (fitur baru, perbaikan bug, UI) bisa dirilis lewat `docker compose up --build`, tanpa submit ulang ke Play Store.
+Bot BPJS tetap inti akademik: transkrip asli, draf dokumentasi, penyuntingan perawat, lalu ekspor untuk ditinjau dokter **di luar aplikasi**. AI tidak menetapkan diagnosis. Mastra adalah tambahan eksperimen chat umum; tidak mengganti pipeline Bot BPJS.
 
-## Mulai cepat
+## Mulai dengan Docker
 
-```sh
-# 1. Jalankan layer web (wajib — ini yang dimuat WebView di dalam app)
-cd web
-docker compose up -d --build
-# tersedia di http://localhost:8090
+Prasyarat: Docker Desktop dengan Linux containers dan internet untuk mengunduh image/dependensi serta menghubungi Supabase/provider. Dari direktori proyek:
 
-# 2. Jalankan aplikasi Flutter
-cd ../app
-flutter pub get
-flutter run
+```powershell
+docker compose -f web/docker-compose.yml --profile mastra up -d --build web relay mastra
+docker compose -f web/docker-compose.yml --profile mastra ps
 ```
 
-Testing di device Android fisik lewat USB butuh port-forward manual (sering ter-reset setelah install ulang APK):
+| Layanan | Alamat laptop | Kegunaan |
+|---|---|---|
+| AI Hub | http://localhost:8090 | Login, pengaturan provider, Chat, fitur aplikasi |
+| Mastra Studio | http://localhost:4111 | Membangun, menguji, mengelola agent, workflow, tools |
+| Health Mastra | http://localhost:8090/mastra/ai-hub/health | Cek server tanpa key/kuota AI |
+| Admin opsional | http://localhost:8095 | Konfigurasi terpisah; [panduan admin](docs/PANEL-ADMIN.md) |
 
-```sh
+Perintah tersebut hanya menjalankan web, relay, dan Mastra. Tanpa Mastra: `docker compose -f web/docker-compose.yml up -d --build web relay`. Admin memerlukan konfigurasi `web/.env`; jangan menyalin service key ke aplikasi.
+
+```powershell
+# Setelah mengubah kode
+docker compose -f web/docker-compose.yml --profile mastra up -d --build web mastra
+# Log server; jangan mencatat key/isi percakapan
+docker compose -f web/docker-compose.yml --profile mastra logs --tail 40 mastra
+# Hentikan Mastra saja
+docker compose -f web/docker-compose.yml --profile mastra stop mastra
+```
+
+## Hubungkan Mastra dengan Gemini ke Chat
+
+1. Login AI Hub, buka pengaturan API, pilih **Hubungkan Provider AI** atau **Hubungkan Agent**.
+2. Cari **Mastra Test (Gemini)**. URL Docker mengikuti alamat AI Hub ditambah `/mastra`, misalnya `http://localhost:8090/mastra`.
+3. Isi **API key Gemini untuk Mastra** dari [Google AI Studio](https://aistudio.google.com/apikey), lalu simpan.
+4. Buka Chat, pilih **Mastra Test (Gemini)**, kirim sapaan singkat.
+5. Buka tombol `/` atau kirim `/skills`. Coba `/calculate hitung 6 dikali 7` dan `/current_time jam berapa di Asia/Jakarta?`. Agent menentukan penggunaan tools berdasarkan permintaan.
+6. **Pilih model** menampilkan pilihan Google pada integrasi; ketersediaan dan kuota key dikonfirmasi saat pesan dikirim.
+
+Mastra adalah framework TypeScript, bukan penerbit key universal. Integrasi `mastra-test` memakai key Gemini pengguna per permintaan. API key Mastra Cloud bukan pengganti key Google. Instance Mastra lain harus menyediakan kontrak `ai-hub-mastra-v1` yang sama.
+
+[Mastra model router](https://mastra.ai/models) memberi akses ke ribuan model. Setup awal ini memakai Google/Gemini; provider lain membutuhkan key dan konfigurasi sesuai. Detail: [docs/MASTRA.md](docs/MASTRA.md).
+
+## Gunakan pada HP Android
+
+### USB: cara utama untuk pengujian lokal
+
+Pasang Android Platform Tools (`adb`), aktifkan USB debugging, sambungkan kabel, lalu terima izin laptop di HP:
+
+```powershell
+adb devices
 adb reverse tcp:8090 tcp:8090
 ```
 
-### Validasi sebelum commit
+Buka Chrome HP ke `http://localhost:8090`, login, lalu gunakan Chat. URL Mastra tetap `http://localhost:8090/mastra`; satu reverse cukup karena nginx meneruskan permintaan ke container.
 
-```sh
+Untuk fitur native (mikrofon/STT, TTS, VPN), gunakan Flutter dan Android SDK:
+
+```powershell
 cd app
-flutter analyze --no-pub
-flutter test --no-pub
+flutter pub get
+flutter run --dart-define=WEB_HUB_URL=http://localhost:8090
 ```
 
-```sh
-cd web/public
-node --check <file-yang-diubah>.js
-```
+Jika ada beberapa perangkat: `adb -s <serial> reverse tcp:8090 tcp:8090` dan `flutter run -d <serial> --dart-define=WEB_HUB_URL=http://localhost:8090`. Ulangi reverse setelah kabel terputus/restart.
 
-## Struktur Proyek
+APK release lama defaultnya membuka Fly, sehingga **tidak otomatis menampilkan perubahan Docker lokal**. Gunakan build debug/perintah di atas atau browser HP lewat USB. Override URL tidak memerlukan perubahan Dart.
 
-```
-PROJECT MOBILE APP/
-├── app/                    # Flutter — cangkang native tipis
-│   ├── lib/
-│   │   ├── main.dart                  # setup immersive nav bar
-│   │   ├── screens/
-│   │   │   ├── splash_screen.dart
-│   │   │   ├── web_shell_screen.dart  # WebView persisten + native bridge
-│   │   │   └── bot_bpjs_screen.dart   # 100% native: mic, STT, review, export
-│   │   └── services/                  # VPN config, tunnel WireGuard, Supabase mirror
-│   ├── android/                       # termasuk override compileSdk untuk wireguard_flutter
-│   └── supabase/schema.sql            # skema database (7 tabel + RLS)
-├── web/                    # SPA aktif — INI yang disajikan nginx, dimuat WebView
-│   ├── public/
-│   │   ├── views/                     # satu file per halaman (chat, history, vpn, dst.)
-│   │   ├── providers.js               # katalog provider/agent + deteksi API key
-│   │   ├── credentials.js             # penyimpanan key terenkripsi (multi-slot)
-│   │   ├── ai.js / gemini.js          # panggilan AI + auto-rotation + auto-fallback model
-│   │   └── chat-history.js            # riwayat chat persisten
-│   └── docker-compose.yml
-├── docs/
-│   ├── RINCIAN-SISTEM.md              # gambaran sistem + evaluasi arsitektur
-│   └── diagram-alur.md                # diagram Mermaid + status tiap fitur
-└── PRD/
-    ├── PRD-INTI.md                    # ⭐ acuan fitur yang berlaku saat ini
-    └── (3 PRD lama — arsip sejarah, beberapa fitur di dalamnya sudah dihapus)
-```
+Untuk Studio di HP, jalankan `adb reverse tcp:4111 tcp:4111`, lalu buka `http://localhost:4111`. Port Studio hanya di loopback laptop/reverse USB.
 
-## Baca ini dulu kalau ingin paham sistemnya
+### Wi-Fi/VPN
 
-| Butuh apa | Baca |
+HP harus dapat menjangkau IP laptop, port 8090. Firewall Windows/jaringan tamu dapat memblokirnya. `localhost` pada HP berarti HP sendiri kecuali menggunakan `adb reverse`.
+
+Untuk browser HP lewat LAN, gunakan **HTTPS dengan sertifikat dipercaya HP**. `http://<IP-laptop>:8090` dapat menampilkan halaman tetapi bukan secure context Web Crypto untuk menyimpan key. Gunakan USB/localhost bila belum menyiapkan HTTPS. Untuk shell Flutter lewat LAN, isi URL HTTPS pada `WEB_HUB_URL`. Jangan mengirim key lewat HTTP jaringan terbuka.
+
+## Skills mengikuti provider
+
+| Provider | Tools yang terhubung |
 |---|---|
-| Fitur apa saja yang **benar-benar berjalan** dan requirement-nya | `PRD/PRD-INTI.md` |
-| Diagram alur teknis tiap fitur + status (✅/🟡/🔴) | `docs/diagram-alur.md` |
-| Kenapa arsitekturnya begini, apa yang terbukti benar/meleset | `docs/RINCIAN-SISTEM.md` |
-| Konteks tujuan produk & akademik (sudah banyak berubah, jangan jadi acuan fitur) | `PRD/PRD-Hub-Multi-Provider-AI-Agent-VPN.md`, `PRD/PRD-AI-Hub-Jarvis-BPJS.md`, `PRD/PRD-Dokumentasi-Percakapan-Perawat-Pasien.md` |
+| Semua | `/system`, `/clear`, `/help`, `/skills` |
+| Gemini langsung | `/search`, `/code`, `/url` |
+| OpenAI langsung | `/search`; `/code` untuk model dalam daftar dukungan aplikasi |
+| OpenRouter | `/search` plugin web |
+| Claude | `/search` pada keluarga model yang mendukung; default baru Haiku 4.5 |
+| Mastra Test | Discovery tools server: `/calculate`, `/current_time` |
+| Hermes A2A | Discovery skills dari agent card dengan token pengguna |
+| Hermes API Server/OpenClaw | Permintaan teks ke agent; tools mengikuti server, discovery belum tersedia dalam adapter |
+| Groq/Nous/custom OpenAI-compatible | Chat/perintah umum; kompatibilitas format bukan dukungan hosted tools OpenAI |
 
-> **Catatan**: `app/README.md` dan `web/README.md` memuat detail setup yang sebagian sudah usang (masih menyebut Friend System, `ai_provider_service.dart` yang sudah dihapus, dll). Untuk kondisi sistem yang akurat, rujuk `PRD/PRD-INTI.md` dan `docs/` di atas, bukan README di subfolder.
+Skills dari aplikasi vendor atau coding assistant tidak otomatis tersedia lewat API. File search, MCP, computer use, unggah file, dan tools yang memerlukan konfigurasi tambahan belum dihubungkan oleh perubahan ini. Tools dapat memakai kuota/biaya tambahan. Model lama yang tersimpan tidak diubah otomatis; gunakan **Pilih model** bila diperlukan.
 
-## Yang tetap native (sengaja, bukan keterbatasan)
+## Mastra Studio dan pengembangan
 
-| Fungsi | Kenapa tetap native |
+Studio dapat dibuka untuk melihat agent/tools tanpa key. Untuk generasi langsung di Studio, salin `mastra-test/.env.example` menjadi `.env` dan isi `GOOGLE_API_KEY` sendiri, lalu:
+
+```powershell
+docker compose -f web/docker-compose.yml --profile mastra up -d --force-recreate mastra
+```
+
+Chat AI Hub memakai key masing-masing pengguna dan tidak membutuhkan key server tersebut. Memory/traces Mastra dimatikan; riwayat Chat tetap di akun AI Hub.
+
+Alternatif server host (Node.js sesuai `mastra-test/package.json`):
+
+```powershell
+cd mastra-test
+npm ci
+npx bgproc start -n mastra-test -w -- npm run dev
+```
+
+Gunakan satu server pada port 4111. Hentikan container Mastra sebelum menjalankan host. Pada browser laptop dengan web Docker, URL server host dapat diisi `http://host.docker.internal:4111`; hostname ini khusus Docker, bukan alamat HP. Untuk HP gunakan Docker penuh dan reverse USB.
+
+## Pengujian dan masalah umum
+
+```powershell
+python web/tests/ui_smoke.py
+python web/tests/mastra_skills_smoke.py
+cd mastra-test
+npm run typecheck
+npm test
+npm run build
+```
+
+Tes browser memakai fixture tanpa Supabase/API berbayar. Uji Gemini nyata perlu key valid dan kuota; fixture bukan bukti keberhasilan layanan Google.
+
+| Masalah | Pemeriksaan |
 |---|---|
-| Mikrofon + Speech-to-Text (Bot BPJS) | Latensi rendah, kontrol izin OS langsung — WebView Web Audio API kurang andal untuk ini |
-| Koneksi VPN WireGuard (`VpnService`) | Butuh akses OS-level yang tidak tersedia dari web |
-| Penyimpanan config VPN | `FlutterSecureStorage` (Keystore/Keychain) |
+| Health Mastra 502 | Profil `mastra` harus berjalan; cek `compose ps` |
+| 401/403 | Periksa key Google, akses model/API |
+| 429 | Periksa kuota Google; slot key dapat digunakan untuk rotasi |
+| Skills gagal dimuat | Periksa URL/token; ketik `/skills` |
+| HP gagal membuka lokal | Cek `adb devices`, reverse, dan `WEB_HUB_URL` |
+| Simpan key gagal di IP Wi-Fi | Gunakan HTTPS atau USB/localhost |
+| Tool/model ditolak | Pilih model kompatibel atau matikan tool |
 
-API key provider/agent AI **tidak** disimpan native — dienkripsi (AES-GCM) di sisi web lalu disinkron lewat akun Supabase, supaya tidak hilang saat uninstall/ganti device. Row Level Security tetap jadi kontrol akses sesungguhnya.
+## Struktur dan dokumentasi
 
-## Supabase
+| Lokasi | Isi |
+|---|---|
+| `web/public/` | SPA, provider, adapter AI, skills, pengaturan, Chat |
+| `web/tests/` | Smoke/e2e browser |
+| `web/docker-compose.yml` | Web, relay, admin, profil Mastra |
+| `mastra-test/` | Agent Gemini, tools, kontrak integrasi, Docker |
+| `app/` | Flutter, native bridge, STT/TTS, VPN |
+| `app/supabase/` | Skema/RLS; tidak diubah integrasi ini |
+| `docs/` | [Indeks](docs/README.md), [Mastra](docs/MASTRA.md), [keputusan](docs/KEPUTUSAN.md) |
+| `PRD/` | Kebutuhan akademik/produk; kode adalah acuan implementasi |
 
-Jalankan `app/supabase/schema.sql` di Supabase SQL Editor (aman dijalankan berkali-kali — pakai `if not exists`/migrasi idempoten). Aktifkan Email sign-up di Authentication → Providers.
-
-## Yang sudah dihapus dari rencana awal
-
-Beberapa fitur yang sempat direncanakan di PRD lama **sengaja dihapus total**, bukan belum selesai dikerjakan — lihat `PRD/PRD-INTI.md` §9 untuk daftar lengkap dan alasannya: Friend System, wake word "Halo Jarvis" + Text-to-Speech, dan alur review-dokter-berbasis-akun.
+Gunakan akun Supabase sendiri dan pertahankan RLS. Jangan commit `.env`, key, profil VPN asli, data pasien nyata, atau folder build. README subfolder app/web sebagian usang; gunakan README utama untuk setup lokal. Penambahan Mastra ini belum dipush/deploy ke Fly.

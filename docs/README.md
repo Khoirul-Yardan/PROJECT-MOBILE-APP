@@ -27,6 +27,7 @@ Dua tambahan mandiri ialah **Papan Komunikasi dan Anamnesis Terpandu**. Pengguna
 - [diagram-alur](<diagram-alur.md>)
 - [PANDUAN-PENGGUNAAN](<PANDUAN-PENGGUNAAN.md>)
 - [PANEL-ADMIN](<PANEL-ADMIN.md>)
+- [MASTRA — integrasi Gemini, Docker, skills dan uji Chat](MASTRA.md)
 - [PERUBAHAN-DOKUMENTASI-2026-10-19](<PERUBAHAN-DOKUMENTASI-2026-10-19.md>)
 
 ## Akademik, pemilihan speech, dan evaluasi
