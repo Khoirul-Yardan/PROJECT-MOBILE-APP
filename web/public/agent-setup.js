@@ -1,5 +1,5 @@
-import { h } from './ui.js';
-import { detectProvider, SELF_HOSTED_PROVIDERS, KNOWN_PROVIDERS } from './providers.js';
+import { h, icon } from './ui.js';
+import { detectProvider, SELF_HOSTED_PROVIDERS } from './providers.js';
 import { connectMastraAgent } from './ai.js';
 import { CONNECTION_PREFIX, parseMastraConnection } from './mastra-connection.js';
 import { countCredentialSlots } from './credentials.js';
@@ -8,28 +8,32 @@ import { countCredentialSlots } from './credentials.js';
 // protocol URLs are recognized locally; arbitrary tokens require a choice.
 export function renderAgentSetup(root, save) {
   const panel = h(`<div class="card form-panel" id="agent-setup">
-    <div class="field">
+    <div class="field" style="margin-bottom:0;">
       <label for="key-input">API key, token, atau URL agent</label>
-      <textarea id="key-input" rows="3" placeholder="Tempel API key, token, URL, atau kode koneksi" autocomplete="off" spellcheck="false"></textarea>
+      <textarea id="key-input" rows="2" placeholder="Tempel API key, token, URL, atau kode koneksi" autocomplete="off" spellcheck="false"></textarea>
       <p class="field-hint">Mendukung Mastra, Hermes, OpenClaw, dan API lainnya. Data tambahan muncul sesuai kebutuhan.</p>
     </div>
-    <div id="detect-result" aria-live="polite"></div>
+    <div id="detect-result" style="margin-top:14px;" aria-live="polite"></div>
   </div>`);
   root.appendChild(panel);
   const guide = h(`<section id="agent-recognition" aria-label="Pengenalan koneksi">
     <p class="section-title">Dikenal otomatis dari pola key-nya</p>
-    <p class="field-hint">Pola membantu mengenali layanan; key belum tentu aktif. Key provider tidak otomatis menunjukkan agent yang memakainya.</p>
+    <p class="field-hint">Kode atau key dengan pola khusus dikenali otomatis. Untuk token umum, pilih jenis agent setelah menempelkannya.</p>
     <div class="list" id="recognized-keys"></div>
-    <details style="margin-top:12px;"><summary>Mastra, Hermes Agent, OpenClaw, dan harness lain</summary>
-      <p class="field-hint">Mastra: kode aihub-mastra-v1.… atau URL /ai-hub/agents/ID dikenali sebagai format koneksi AI Hub.</p>
-      <p class="field-hint">Hermes Agent dan OpenClaw: token ditentukan pemilik server. Pilih jenisnya dan lengkapi URL; token saja tidak bisa dikenali otomatis.</p>
-      <p class="field-hint">DeepSeek memakai awalan sk- yang juga dipakai layanan lain. Harness lain memerlukan API yang kompatibel; nama produk saja belum cukup. Pilih API lain jika server mendukung OpenAI-compatible.</p>
-    </details>
   </section>`);
-  for (const provider of KNOWN_PROVIDERS) {
-    const row = h('<div class="row" style="padding:8px 0;"><div class="grow"><div class="item-title"></div><div class="muted small"></div></div></div>');
-    row.querySelector('.item-title').textContent = provider.id === 'hermes' ? 'Nous Portal / Hermes (API model)' : provider.label;
-    row.querySelector('.muted').textContent = provider.keyHint;
+  const agents = [
+    { name: 'Mastra', hint: 'Kode koneksi atau URL agent dikenali otomatis' },
+    { name: 'Hermes', hint: 'Key Nous Portal dikenali; token server dipilih manual' },
+    { name: 'OpenClaw', hint: 'Token dan URL Gateway; pilih jenis secara manual' },
+  ];
+  for (const agent of agents) {
+    const row = h(`<div class="row" style="padding:10px 2px;">
+      <span class="feature-icon">${icon('layers')}</span>
+      <div class="grow"><div class="item-title" style="font-size:13px;"></div><div class="muted small"></div></div>
+      <span class="pill">Agent</span>
+    </div>`);
+    row.querySelector('.item-title').textContent = agent.name;
+    row.querySelector('.muted').textContent = agent.hint;
     guide.querySelector('#recognized-keys').appendChild(row);
   }
   root.appendChild(guide);

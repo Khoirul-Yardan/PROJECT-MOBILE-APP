@@ -2,6 +2,8 @@
 
 Diperiksa 20 Oktober 2026 melalui dokumentasi resmi dan kode lokal. Cakupan implementasi: koneksi yang sudah ada, ditambah koreksi jalur HTTP OpenClaw. DeepSeek/harness lain tidak diklaim otomatis kompatibel hanya berdasarkan nama. Halaman Agent tetap satu input, dengan daftar **Dikenal otomatis dari pola key-nya** di bawahnya.
 
+Daftar pada halaman **Hubungkan Agent** hanya menampilkan **Mastra, Hermes, OpenClaw**, dengan ikon, nama, keterangan singkat, dan badge Agent seperti daftar Provider AI. Nama provider model tidak ditampilkan sebagai pilihan agent pada daftar tersebut. Tabel pola di bawah mendokumentasikan kemampuan parser aplikasi secara keseluruhan; keterangan setiap agent membedakan pengenalan otomatis dari token yang harus dipilih manual.
+
 ## Tiga hal yang berbeda
 
 1. **Pola key** membantu mengenali kemungkinan penerbit credential; belum membuktikan key valid/berkuota.

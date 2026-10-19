@@ -130,3 +130,8 @@ Format:
 - Konfigurasi lokal: .env Mastra semula belum ada. Key Google dari pengguna dan token agent acak dikonfigurasi lokal (ignored), container Mastra dimulai ulang; nilai credential tidak dicetak atau dicatat di repo. File login uji sementara dihapus setelah tes.
 - Bukti live melalui web/tests/mastra_live.py: login=true, discovery_status=200, provider=Google, model=google/gemini-2.5-flash, credential_saved=true, chat_status=200, reply_received=true, calculation_correct=true, reply_visible=true. Koneksi dan sesi hitungan fiktif tetap tersimpan pada akun untuk dilihat pengguna; browser tes sign out. Ini bukti end-to-end lokal, bukan deployment atau uji server pihak ketiga.
 - Validasi lain: syntax JS dan diff check lulus; fixture browser lokal/Docker lulus (daftar pola, sk- ambigu, OAuth, slot Hermes, request OpenClaw HTTP resmi, regresi Mastra/provider). Docker web diperbarui. Perubahan README dan skills.js yang sudah ada tidak dimasukkan commit tugas ini.
+
+## 2026-10-20 — Codex: daftar khusus agent dan konsistensi desain
+- Permintaan: daftar di Hubungkan Agent hanya berisi nama agent, tanpa Gemini/provider model, dengan desain seperti Hubungkan Provider AI.
+- Hasil: daftar Mastra, Hermes, OpenClaw; row, ikon layers, tipografi, badge Agent, jarak, dan ukuran textarea mengikuti halaman Provider AI. Keterangan singkat tetap membedakan kode/key yang dikenali dari token server manual. Parser dan koneksi tidak berubah.
+- Validasi: syntax/diff check lulus; tes browser pada Docker lulus, termasuk nama daftar persis tiga agent dan tidak memuat Gemini/ChatGPT. Docker web dibangun ulang; tidak deploy Fly. Dokumen kompatibilitas diperbarui.
