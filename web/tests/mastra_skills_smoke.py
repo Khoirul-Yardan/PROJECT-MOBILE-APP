@@ -70,6 +70,8 @@ def main():
                     if url.endswith('/relay/'):
                         body = req.post_data_json
                         calls.append((url, body, req.headers))
+                        if body['url'].startswith('https://gateway.example.test'):
+                            return reply({'status': 200, 'body': json.dumps({'choices': [{'message': {'content': 'OpenClaw HTTP fixture'}}]})})
                         return reply({'status': 200, 'body': json.dumps({'skills': [{'id': 'web', 'name': 'web', 'description': 'Web agent'}]})})
                     return route.continue_()
                 if req.method == 'POST':
@@ -163,11 +165,21 @@ def main():
             expect(page.locator('#agent-setup textarea')).to_have_count(1)
             expect(page.locator('#agent-setup input')).to_have_count(0)
             expect(page.locator('#agent-kind')).to_have_count(0)
+            expect(page.locator('#agent-recognition')).to_contain_text('Dikenal otomatis dari pola key-nya')
+            expect(page.locator('#recognized-keys')).to_contain_text('Nous Portal')
+            expect(page.locator('#recognized-keys')).to_contain_text('AQ.')
             expect(page.locator('#mastra-card')).to_have_count(0)
             expect(page.locator('#openclaw-url')).to_have_count(0)
             expect(page.locator('#mastra-url')).to_have_count(0)
             assert page.locator('#mastra-direct').count() == 0
             token = 'fixture-agent-token-123456'
+            page.locator('#key-input').fill('sk-' + 'a' * 32)
+            expect(page.locator('#detect-result')).not_to_contain_text('Terbaca: ChatGPT')
+            expect(page.locator('#agent-kind')).to_be_visible()
+            page.locator('#key-input').fill('sk-proj-' + 'a' * 24)
+            expect(page.locator('#detect-result')).to_contain_text('Terbaca: ChatGPT')
+            page.locator('#key-input').fill('sk-ant-oat01-fixture')
+            expect(page.locator('#detect-result')).not_to_contain_text('Terbaca: Claude')
             page.locator('#key-input').fill('sk-nous-fixture-detection')
             expect(page.locator('#detect-result')).to_contain_text('Terbaca: Hermes')
             expect(page.locator('#agent-url')).to_have_count(0)
@@ -187,9 +199,21 @@ def main():
             assert page.evaluate('window.__savedKey') == token
             page.goto(origin + '/#/settings/add-api-key?type=agent')
             page.locator('#key-input').fill('https://gateway.example.test')
-            page.locator('#agent-kind').select_option('openclaw')
+            page.locator('#agent-kind').select_option('openclaw-http')
             expect(page.locator('#agent-token')).to_be_visible()
             expect(page.locator('#agent-url')).to_have_count(0)
+            page.locator('#agent-token').fill(token)
+            page.locator('#agent-save').click()
+            page.wait_for_function("window.__providers[0]?.format === 'openclaw-http'")
+            assert page.evaluate('window.__providers[0].endpoint') == 'https://gateway.example.test/v1/chat/completions'
+            assert page.evaluate('window.__providers[0].model') == 'openclaw/default'
+            page.goto(origin + '/#/chat')
+            expect(page.locator('#chat-model')).not_to_be_visible()
+            ask('Uji HTTP OpenClaw fiktif')
+            expect(page.locator('#messages')).to_contain_text('OpenClaw HTTP fixture')
+            payload = json.loads(calls[-1][1]['body'])
+            assert payload['model'] == 'openclaw/default' and payload['messages'][-1]['content'] == 'Uji HTTP OpenClaw fiktif'
+            page.goto(origin + '/#/settings/add-api-key?type=agent')
             page.locator('#key-input').fill(origin + '/ai-hub/agents/helper')
             expect(page.locator('#agent-kind')).to_have_value('mastra')
             expect(page.locator('#agent-id')).to_have_count(0)

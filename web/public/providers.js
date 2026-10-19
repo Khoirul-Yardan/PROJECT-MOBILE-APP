@@ -20,12 +20,9 @@ export const KNOWN_PROVIDERS = [
     format: 'openai',
     endpoint: 'https://api.openai.com/v1/chat/completions',
     model: 'gpt-4o-mini',
-    // Negative lookahead excludes sk-ant-/sk-or-v1-/sk-nous- (and any
-    // future "sk-<vendor>-" prefix) so this catch-all pattern doesn't
-    // shadow the more specific entries below it — detectProvider() checks
-    // in array order, so a key like "sk-ant-..." must fail this test and
-    // fall through to the Anthropic entry, not match here first.
-    keyPattern: /^sk-(?!ant-|or-v1-|nous-)(proj-)?[A-Za-z0-9_-]{20,}$/,
+    // Generic sk- also occurs at DeepSeek and private gateways; ask instead.
+    keyPattern: /^sk-proj-[A-Za-z0-9_-]{20,}$/,
+    keyHint: 'sk-proj-…',
     icon: 'spark',
   },
   {
@@ -36,7 +33,8 @@ export const KNOWN_PROVIDERS = [
     format: 'anthropic',
     endpoint: 'https://api.anthropic.com/v1/messages',
     model: 'claude-haiku-4-5',
-    keyPattern: /^sk-ant-/,
+    keyPattern: /^sk-ant-api/,
+    keyHint: 'sk-ant-api…',
     icon: 'spark',
   },
   {
@@ -52,6 +50,7 @@ export const KNOWN_PROVIDERS = [
     // the classic `AIzaSy...` (still valid for existing keys) and the newer
     // `AQ.Ab8R...`-style key (dot-separated, starts with "AQ.").
     keyPattern: /^(AIza[0-9A-Za-z_-]{35}|AQ\.[A-Za-z0-9_-]{20,})$/,
+    keyHint: 'AIza… atau AQ.…',
     icon: 'spark',
   },
   {
@@ -63,6 +62,7 @@ export const KNOWN_PROVIDERS = [
     endpoint: 'https://openrouter.ai/api/v1/chat/completions',
     model: 'openrouter/auto',
     keyPattern: /^sk-or-v1-/,
+    keyHint: 'sk-or-v1-…',
     icon: 'layers',
   },
   {
@@ -78,6 +78,7 @@ export const KNOWN_PROVIDERS = [
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
     model: 'llama-3.1-8b-instant',
     keyPattern: /^gsk_[A-Za-z0-9]{20,}$/,
+    keyHint: 'gsk_…',
     icon: 'spark',
     defaultSystem: 'medical',
   },
@@ -102,6 +103,7 @@ export const KNOWN_PROVIDERS = [
     // live /v1/models list instead of typing an ID blind.
     model: 'stepfun/step-3.7-flash:free',
     keyPattern: /^sk-nous-/,
+    keyHint: 'sk-nous-… (Nous Portal, API model)',
     icon: 'layers',
   },
 ];
@@ -114,6 +116,15 @@ export const KNOWN_PROVIDERS = [
 // *any* HTTP client into a channel the same way, so this app can be that
 // channel instead of Telegram: same agent, replies land here.
 export const SELF_HOSTED_PROVIDERS = [
+  {
+    id: 'openclaw-http',
+    label: 'OpenClaw Gateway (HTTP)',
+    type: 'agent',
+    format: 'openclaw-http',
+    model: 'openclaw/default',
+    urlHelp: 'URL Gateway atau endpoint /v1/chat/completions. Pemilik perlu mengaktifkan chatCompletions pada Gateway.',
+    tokenHelp: 'Token Gateway milik pemilik server, bukan key provider model.',
+  },
   {
     id: 'openclaw',
     label: 'OpenClaw',

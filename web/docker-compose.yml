@@ -7,7 +7,8 @@ services:
     restart: unless-stopped
     environment:
       - MASTRA_HOST=0.0.0.0
-    # Optional key for Studio only. AI Hub Chat supplies its own key per call.
+    # Owner provider key + agent token for the authenticated connection route.
+    # Only the legacy BYOK route still receives a provider key per request.
     env_file:
       - path: ../mastra-test/.env
         required: false

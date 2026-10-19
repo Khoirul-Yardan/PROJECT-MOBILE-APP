@@ -96,6 +96,7 @@ export async function sendChat(entry, history, { onModelChange, onSlotChange, to
     case 'a2a':
       return callWithRotation(entry, (apiKey) => callA2A(entry, apiKey, history), onSlotChange);
     case 'hermes-api':
+    case 'openclaw-http':
       return callWithRotation(entry, (apiKey) => callHermesApiServer(entry, apiKey, history), onSlotChange);
     default:
       return callWithRotation(entry, (apiKey) => callOpenAiCompatible(entry, apiKey, history, tools), onSlotChange);
@@ -341,7 +342,7 @@ async function callHermesApiServer(entry, apiKey, history) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'hermes-agent',
+      model: entry.format === 'openclaw-http' ? (entry.model || 'openclaw/default') : 'hermes-agent',
       messages: history.map((m) => ({ role: m.role, content: m.text })),
     }),
   });

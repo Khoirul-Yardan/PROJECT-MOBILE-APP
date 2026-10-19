@@ -109,7 +109,7 @@ export default async function render(root) {
   const NO_MODEL_FORMATS = new Set(['openclaw', 'a2a', 'hermes-api']);
 
   function updateModel() {
-    modelEl.hidden = !entry || NO_MODEL_FORMATS.has(entry.format) || entry.format === 'mastra-agent';
+    modelEl.hidden = !entry || NO_MODEL_FORMATS.has(entry.format) || ['mastra-agent', 'openclaw-http'].includes(entry.format);
     if (entry) modelEl.querySelector('.current-model').textContent = modelLabel(entry);
     modelEl.disabled = sending;
     sendEl.disabled = sending || !entry;

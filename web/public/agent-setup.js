@@ -1,5 +1,5 @@
 import { h } from './ui.js';
-import { detectProvider, SELF_HOSTED_PROVIDERS } from './providers.js';
+import { detectProvider, SELF_HOSTED_PROVIDERS, KNOWN_PROVIDERS } from './providers.js';
 import { connectMastraAgent } from './ai.js';
 import { CONNECTION_PREFIX, parseMastraConnection } from './mastra-connection.js';
 import { countCredentialSlots } from './credentials.js';
@@ -16,6 +16,23 @@ export function renderAgentSetup(root, save) {
     <div id="detect-result" aria-live="polite"></div>
   </div>`);
   root.appendChild(panel);
+  const guide = h(`<section id="agent-recognition" aria-label="Pengenalan koneksi">
+    <p class="section-title">Dikenal otomatis dari pola key-nya</p>
+    <p class="field-hint">Pola membantu mengenali layanan; key belum tentu aktif. Key provider tidak otomatis menunjukkan agent yang memakainya.</p>
+    <div class="list" id="recognized-keys"></div>
+    <details style="margin-top:12px;"><summary>Mastra, Hermes Agent, OpenClaw, dan harness lain</summary>
+      <p class="field-hint">Mastra: kode aihub-mastra-v1.… atau URL /ai-hub/agents/ID dikenali sebagai format koneksi AI Hub.</p>
+      <p class="field-hint">Hermes Agent dan OpenClaw: token ditentukan pemilik server. Pilih jenisnya dan lengkapi URL; token saja tidak bisa dikenali otomatis.</p>
+      <p class="field-hint">DeepSeek memakai awalan sk- yang juga dipakai layanan lain. Harness lain memerlukan API yang kompatibel; nama produk saja belum cukup. Pilih API lain jika server mendukung OpenAI-compatible.</p>
+    </details>
+  </section>`);
+  for (const provider of KNOWN_PROVIDERS) {
+    const row = h('<div class="row" style="padding:8px 0;"><div class="grow"><div class="item-title"></div><div class="muted small"></div></div></div>');
+    row.querySelector('.item-title').textContent = provider.id === 'hermes' ? 'Nous Portal / Hermes (API model)' : provider.label;
+    row.querySelector('.muted').textContent = provider.keyHint;
+    guide.querySelector('#recognized-keys').appendChild(row);
+  }
+  root.appendChild(guide);
   const input = panel.querySelector('#key-input');
   const result = panel.querySelector('#detect-result');
   let revision = 0;
@@ -94,7 +111,7 @@ export function renderAgentSetup(root, save) {
     }
     const known = detectProvider(raw);
     if (known) {
-      status(result, `Terbaca: ${known.label} (${known.type === 'agent' ? 'Agent' : 'Provider AI'}) dari pola key. Validitas key diperiksa saat digunakan.`);
+      status(result, `Terbaca: ${known.label}${known.id === 'hermes' ? ' / Nous Portal (API model, bukan token Hermes Agent)' : ` (${known.type === 'agent' ? 'Agent' : 'Provider AI'})`} dari pola key. Validitas key diperiksa saat digunakan.`);
       const button = h('<button class="btn btn-primary" id="agent-save">Simpan &amp; Hubungkan</button>');
       button.onclick = async () => {
         const checkedRevision = revision;
@@ -128,7 +145,7 @@ export function renderAgentSetup(root, save) {
     const choice = h(`<div class="field"><label for="agent-kind">Jenis agent</label><select id="agent-kind">
       <option value="">Pilih jenis agent</option><option value="mastra">Mastra</option>
       <option value="hermes-agent">Hermes Agent (A2A)</option><option value="hermes-api-server">Hermes Agent (API Server)</option>
-      <option value="openclaw">OpenClaw</option><option value="custom">API lain (OpenAI-compatible)</option>
+      <option value="openclaw-http">OpenClaw Gateway (HTTP resmi)</option><option value="openclaw">OpenClaw webhook lama (khusus)</option><option value="custom">API lain / harness (OpenAI-compatible)</option>
     </select></div>`);
     result.appendChild(choice);
     const extra = h('<div id="agent-extra"></div>');
@@ -174,12 +191,16 @@ export function renderAgentSetup(root, save) {
       extra.appendChild(button);
       button.onclick = async () => {
         try {
-          const target = validUrl(url || endpoint.value.trim());
+          let target = validUrl(url || endpoint.value.trim());
+          if (kind === 'openclaw-http' || kind === 'hermes-api-server') {
+            if (target.endsWith('/v1')) target += '/chat/completions';
+            else if (!target.endsWith('/v1/chat/completions')) target += '/v1/chat/completions';
+          }
           const secret = token ? token.value.trim() : raw;
           if (!secret || (name && !name.value.trim())) throw new Error('Lengkapi token dan nama koneksi.');
           const directUrl = direct?.value.trim() ? validUrl(direct.value.trim()) : '';
           const entry = { id: catalog?.id || `custom-${crypto.randomUUID()}`, label: catalog?.label || name.value.trim(),
-            type: 'agent', format: catalog?.format || 'openai', endpoint: target, model: model?.value.trim() || directUrl || '' };
+            type: 'agent', format: catalog?.format || 'openai', endpoint: target, model: catalog?.model || model?.value.trim() || directUrl || '' };
           await save(entry, secret, button);
         } catch (e) { error.textContent = e.message || 'Periksa data koneksi.'; }
       };

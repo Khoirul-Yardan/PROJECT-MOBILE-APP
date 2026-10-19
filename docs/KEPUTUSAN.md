@@ -73,3 +73,9 @@ Format:
 - Apa: mengganti deretan kartu Mastra/Hermes/OpenClaw dengan satu input API key, token, URL, atau kode koneksi. Status deteksi dan kolom yang kurang muncul setelah input/pilihan jenis; data pemeriksaan Mastra dibatalkan jika input berubah.
 - Dasar: permintaan pengguna agar setup sebersih Provider AI. Token umum tidak cukup untuk membuktikan identitas agent, sehingga jenis yang tidak dikenal dipilih pengguna; status pola/pilihan/hasil discovery dibedakan.
 - Dampak ke PA: penyederhanaan UI hub AI umum saja; tidak mengubah pipeline STT/LLM dokumentasi, skema/RLS, atau evaluasi PA. Kontrak Mastra satu kode tetap berlaku.
+
+## K-010 — Daftar pengenal key dan koreksi protokol agent (20 Oktober 2026, Codex)
+- Apa: tambah daftar pola key pada setup Agent; batasi OpenAI ke pola sk-proj (sk- umum ambigu dengan DeepSeek), pisahkan OAuth Claude dari API key, jelaskan Nous Portal vs Hermes Agent. Tambah pilihan HTTP resmi OpenClaw dengan chat completions dan target openclaw/default; webhook lama dipertahankan sebagai jalur khusus.
+- Dasar: permintaan pengguna, dokumentasi resmi Mastra Auth, Hermes API Server/A2A, OpenClaw Gateway HTTP, DeepSeek API/integrasi, dan Gemini API keys. Ringkasan sumber dan matriks dukungan ada di docs/AGENT-KOMPATIBILITAS.md. Pengguna mengarahkan harness/DeepSeek lain dicatat dahulu, implementasi berfokus pada yang sudah ada.
+- Bukti: fixture deteksi/kontrak/UI lulus; uji nyata akun yang ditunjuk pengguna berhasil login, menyimpan koneksi, discovery 200, chat Mastra+Gemini 2.5 Flash 200, jawaban hitungan fiktif 42 terlihat. Credential sementara login dibersihkan; provider key/token agent berada di .env lokal yang diabaikan Git.
+- Dampak ke PA: pendukung Chat umum; tidak mengubah pipeline dokumentasi, RLS, evaluasi, atau peran dokter. Uji memakai hitungan fiktif tanpa data pasien. Tidak mengklaim semua harness atau semua token dapat dikenali otomatis.
