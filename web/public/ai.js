@@ -14,6 +14,7 @@ import {
 import { generateGemini, listGeminiModels, normalizeGeminiModel } from './gemini.js';
 import { Native } from './bridge.js';
 import { providerSkills } from './skills.js';
+import { mastraConnectionEntry } from './mastra-connection.js';
 
 export const saveProvider = saveCredential;
 export const listRegisteredProviders = listCredentials;
@@ -69,6 +70,14 @@ export async function sendChat(entry, history, { onModelChange, onSlotChange, to
       return callWithRotation(entry, (apiKey) => callAnthropic(entry, apiKey, history, tools), onSlotChange);
     case 'mastra':
       return callWithRotation(entry, (apiKey) => callMastra(entry, apiKey, history), onSlotChange);
+    case 'mastra-agent':
+      return callWithRotation(entry, async (token) => {
+        const body = await mastraAgentRequest(entry, 'chat', token, {
+          messages: history.map(m => ({ role: m.role, content: m.text })),
+        });
+        if (typeof body.text !== 'string' || !body.text.trim()) throw new Error('Agent Mastra tidak mengembalikan teks.');
+        return body.text;
+      }, onSlotChange);
     case 'gemini':
       return callWithRotation(entry, async (apiKey) => {
         const result = await generateGemini(entry, apiKey, history, { tools });
@@ -124,6 +133,10 @@ async function listOpenAiModels(entry, apiKey) {
 // there's no per-tool command to run from here. Cached per entry by the
 // caller since this doesn't change mid-session.
 export async function getAgentSkills(entry) {
+  if (entry.format === 'mastra-agent') {
+    const body = await mastraAgentRequest(entry, 'capabilities', await getCredentialKey(entry.id));
+    return (Array.isArray(body.skills) ? body.skills : []).filter(s => s && typeof s.name === 'string' && /^[\w-]+$/.test(s.name));
+  }
   if (entry.format === 'mastra') {
     const body = await mastraRequest(entry, 'capabilities');
     return (body.skills || []).filter((s) => typeof s.name === 'string' && /^[\w-]+$/.test(s.name));
@@ -139,6 +152,31 @@ export async function getAgentSkills(entry) {
     return (card.skills || []).map((s) => ({ id: s.id, name: s.name, description: s.description }));
   }
   throw new Error('Kartu skills agent tidak ditemukan.');
+}
+
+export async function connectMastraAgent(connection) {
+  const entry = { endpoint: `${connection.endpoint}/ai-hub/agents/${connection.agentId}` };
+  const metadata = await mastraAgentRequest(entry, 'capabilities', connection.token);
+  return { entry: await mastraConnectionEntry(connection, metadata), metadata };
+}
+
+async function mastraAgentRequest(entry, path, token, payload) {
+  const url = new URL(`${entry.endpoint}/${path}`, location.origin);
+  const options = { method: payload ? 'POST' : 'GET', headers: {
+    Authorization: `Bearer ${token}`, ...(payload ? { 'Content-Type': 'application/json' } : {}),
+  }, ...(payload ? { body: JSON.stringify(payload) } : {}) };
+  let res;
+  try {
+    res = url.origin === location.origin
+      ? await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(120000) })
+      : await selfHostedFetch(url.toString(), options);
+  } catch { throw new Error('Server agent Mastra tidak dapat dihubungi. Periksa koneksi atau hubungi pemilik agent.'); }
+  if (!res.ok) throw httpError(res.status, res.status === 401 || res.status === 403
+    ? 'Token agent ditolak atau sudah dicabut. Minta kode koneksi baru dari pemilik agent.'
+    : `Server agent Mastra gagal merespons (HTTP ${res.status}).`);
+  const body = await res.json().catch(() => ({}));
+  if (body.protocol !== 'ai-hub-mastra-agent-v1') throw new Error('Server belum mendukung protokol koneksi agent Mastra AI Hub.');
+  return body;
 }
 
 // mastra-test exposes this small BYOK contract. The same-origin Docker route

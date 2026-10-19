@@ -109,7 +109,7 @@ export default async function render(root) {
   const NO_MODEL_FORMATS = new Set(['openclaw', 'a2a', 'hermes-api']);
 
   function updateModel() {
-    modelEl.hidden = !entry || NO_MODEL_FORMATS.has(entry.format);
+    modelEl.hidden = !entry || NO_MODEL_FORMATS.has(entry.format) || entry.format === 'mastra-agent';
     if (entry) modelEl.querySelector('.current-model').textContent = modelLabel(entry);
     modelEl.disabled = sending;
     sendEl.disabled = sending || !entry;
@@ -208,7 +208,7 @@ export default async function render(root) {
    * open skill menu once it resolves, since the first open right after
    * connecting won't have it cached yet. */
   async function prefetchAgentSkills(target, force = false) {
-    if (!['a2a', 'mastra'].includes(target.format) || (!force && agentSkillsByEntry.has(target.id))) return;
+    if (!['a2a', 'mastra', 'mastra-agent'].includes(target.format) || (!force && agentSkillsByEntry.has(target.id))) return;
     try {
       const skills = await getAgentSkills(target);
       if (disposed) return;

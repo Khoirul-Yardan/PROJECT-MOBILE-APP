@@ -9,3 +9,4 @@ build/
 TEST VPN/kp-la-2.ovpn
 TEST VPN/docker/out/
 TEST VPN/wireguard/out/
+*.connection.txt

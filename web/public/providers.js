@@ -115,19 +115,6 @@ export const KNOWN_PROVIDERS = [
 // channel instead of Telegram: same agent, replies land here.
 export const SELF_HOSTED_PROVIDERS = [
   {
-    id: 'mastra',
-    label: 'Mastra Test (Gemini)',
-    vendor: 'Mastra lokal · Google Gemini',
-    type: 'agent',
-    format: 'mastra',
-    icon: 'layers',
-    model: 'google/gemini-2.5-flash',
-    urlPlaceholder: 'http://localhost:8090/mastra',
-    urlHelp: 'Alamat integrasi mastra-test. Docker lokal: gunakan alamat AI Hub diikuti /mastra. Server Mastra langsung: http://localhost:4111.',
-    tokenLabel: 'API key Gemini untuk Mastra',
-    tokenHelp: 'Masukkan key Google AI Studio. Mastra meneruskannya ke Gemini hanya saat permintaan berlangsung; bukan API key Mastra Cloud.',
-  },
-  {
     id: 'openclaw',
     label: 'OpenClaw',
     vendor: 'Self-hosted (Gateway kamu sendiri)',

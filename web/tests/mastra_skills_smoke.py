@@ -3,6 +3,7 @@ Run: python web/tests/mastra_skills_smoke.py
 Optional E2E_ORIGIN=http://localhost:8090 tests the Docker-served frontend.
 """
 import json
+import base64
 import os
 import tempfile
 from functools import partial
@@ -49,11 +50,18 @@ def main():
                     if url.endswith('/db.js'):
                         return route.fulfill(content_type='text/javascript', body=DB)
                     if url.endswith('/credentials.js'):
-                        return route.fulfill(content_type='text/javascript', body=CREDS)
+                        return route.fulfill(content_type='text/javascript', body=CREDS.replace('async (entry) => { window.__providers = [entry]; }', 'async (entry, key) => { window.__providers = [entry]; window.__savedKey = key; }'))
                     if url.endswith('/chat-history.js'):
                         return route.fulfill(content_type='text/javascript', body=HISTORY)
                     if url.endswith('/ai-hub/capabilities'):
                         return reply({'error': {'message': 'Discovery offline'}} if failed['discovery'] else capabilities, 503 if failed['discovery'] else 200)
+                    if '/ai-hub/agents/helper/' in url:
+                        calls.append((url, req.post_data_json if req.method == 'POST' else {}, req.headers))
+                        if failed['discovery']:
+                            return reply({'error': {'message': 'Unauthorized'}}, 401)
+                        if url.endswith('/capabilities'):
+                            return reply({'protocol': 'ai-hub-mastra-agent-v1', 'agent': {'id': 'helper', 'name': 'Agent Pemilik', 'provider': 'Provider Bebas', 'model': 'model-server'}, 'skills': [{'id': 'calculate', 'name': 'calculate'}]})
+                        return reply({'protocol': 'ai-hub-mastra-agent-v1', 'text': 'Balasan agent pemilik.'})
                     if url.endswith('/ai-hub/chat'):
                         calls.append((url, req.post_data_json, req.headers))
                         if failed['chat']:
@@ -150,15 +158,35 @@ def main():
             page.goto(origin + '/#/settings/add-api-key?type=provider')
             expect(page.locator('#mastra-save')).to_have_count(0)
             page.goto(origin + '/#/settings/add-api-key?type=agent')
-            expect(page.locator('#mastra-url')).to_have_value(origin + '/mastra')
-            expect(page.locator('#mastra-url')).not_to_be_visible()
+            expect(page.locator('#mastra-url')).to_have_count(0)
             assert page.locator('#mastra-direct').count() == 0
-            page.locator('#mastra-token').fill('fixture-key')
+            token = 'fixture-agent-token-123456'
+            code = 'aihub-mastra-v1.' + base64.urlsafe_b64encode(json.dumps({'endpoint': origin, 'agentId': 'helper', 'token': token}).encode()).decode().rstrip('=')
+            page.locator('#key-input').fill('aihub-mastra-v1.invalid')
+            expect(page.locator('#detect-result')).to_contain_text('tidak valid')
+            page.locator('#key-input').fill(code)
+            failed['discovery'] = True
+            page.locator('#mastra-check').click()
+            expect(page.locator('#detect-result')).to_contain_text('Token agent ditolak')
+            expect(page.locator('#mastra-save')).to_have_count(0)
+            failed['discovery'] = False
+            page.locator('#mastra-check').click()
+            expect(page.locator('#detect-result')).to_contain_text('Provider Bebas')
+            expect(page.locator('#detect-result')).to_contain_text('model-server')
             page.locator('#mastra-save').click()
             page.wait_for_function('window.__providers.length === 1')
             saved = page.evaluate('window.__providers[0]')
-            assert saved['format'] == 'mastra' and saved['model'] == 'google/gemini-2.5-flash'
-            assert saved['type'] == 'agent' and saved['endpoint'] == origin + '/mastra'
+            assert saved['format'] == 'mastra-agent' and saved['model'] == ''
+            assert saved['type'] == 'agent' and saved['endpoint'] == origin + '/ai-hub/agents/helper'
+            assert page.evaluate('window.__savedKey') == token
+            assert token not in json.dumps(saved)
+            page.evaluate('(key) => window.__key = key', token)
+            page.goto(origin + '/#/chat')
+            expect(page.locator('#chat-model')).not_to_be_visible()
+            ask('Uji agent milik orang lain')
+            expect(page.locator('#messages')).to_contain_text('Balasan agent pemilik.')
+            assert calls[-1][1] == {'messages': [{'role': 'user', 'content': 'Uji agent milik orang lain'}]}
+            assert calls[-1][2]['authorization'] == 'Bearer ' + token
             assert not errors, errors
             page.screenshot(path=str(Path(tempfile.gettempdir()) / 'ai-hub-mastra-test.png'))
             print('PASS Mastra setup and no browser errors')

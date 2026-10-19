@@ -62,3 +62,9 @@ Format:
 - Arsitektur: tambahan server Mastra lokal hanya untuk koneksi agent yang dipilih pengguna. Key Google berasal dari permintaan pengguna, bukan key bersama; memory/traces Mastra dinonaktifkan. Supabase tetap backend akun/riwayat/RLS.
 - Dampak ke PA: tidak mengubah Bot BPJS, STT/relabel, prompt dokumentasi klinis, WER, maupun eksperimen baseline/proposed; bukan diagnosis AI atau antarmuka dokter. Semua skenario pengujian fiktif.
 - Posisi di laporan: pendukung hub AI dan eksperimen integrasi. Belum deployment produksi, bukan bukti peningkatan hasil evaluasi PA.
+
+## K-008 — Mastra sebagai koneksi agent satu kode (20 Oktober 2026, Codex)
+- Apa: setup baru menerima kode `aihub-mastra-v1.` berisi endpoint, agent ID, dan token akses agent; discovery terautentikasi membaca nama/provider/model dari server. Provider/model dipilih pemilik Mastra, bukan dipaksa Gemini oleh AI Hub. Format tersimpan baru `mastra-agent`; koneksi BYOK lama tetap kompatibel.
+- Dasar: koreksi dan permintaan langsung pengguna untuk agent pihak ketiga dengan provider bebas, satu input, serta dokumentasi jelas; API route pada paket Mastra terpasang dan pengujian fixture. Kontrak lengkap di `docs/MASTRA-KONEKSI.md`.
+- Batas: kode ini format AI Hub, bukan token universal Mastra. Pemilik server perlu adapter; provider yang tidak diumumkan tidak ditebak. Contoh server tetap Gemini. Base64url bukan enkripsi; token agent disimpan melalui mekanisme kredensial terenkripsi/RLS yang ada. Metadata server merupakan deklarasi, bukan attestasi.
+- Dampak ke PA: hanya pendukung Chat umum. Tidak mengubah Bot BPJS, STT/relabel, diagnosis, verifikasi dokter, skema/RLS, atau evaluasi baseline/proposed. Server contoh tidak memakai memory/traces bersama; pengujian memakai data fiktif.

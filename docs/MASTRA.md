@@ -1,5 +1,7 @@
 # Mastra Test dan skills Chat
 
+> **Pembaruan 20 Oktober 2026:** setup baru memakai satu kode koneksi agent, bukan key Gemini pengguna. Ikuti [panduan koneksi Mastra](MASTRA-KONEKSI.md). Bagian BYOK di bawah dipertahankan sebagai dokumentasi integrasi lama `format: mastra`, yang masih didukung untuk kredensial tersimpan.
+
 Tanggal: 19 Oktober 2026. Status: integrasi lokal Docker, bukan deployment Fly. Panduan operasional HP ada di [README utama](../README.md).
 
 ## Tujuan dan batas akademik

@@ -1,6 +1,8 @@
 # Mastra Test (Gemini)
 
-Agent Mastra untuk Chat AI Hub, dengan key Google per permintaan dan tools kalkulator/waktu.
+Agent contoh untuk Chat AI Hub dengan tools kalkulator/waktu. Setup baru memakai satu kode koneksi dan token agent; key Google contoh ini berada di server pemilik. Provider untuk agent pihak ketiga bebas melalui adapter yang sama. Rute BYOK lama tetap didukung.
+
+Panduan pengguna, adapter untuk agent yang sudah ada, pembuatan kode, dan batas keamanan: [Koneksi Mastra](../docs/MASTRA-KONEKSI.md).
 
 Jalankan dari root repositori: `docker compose -f web/docker-compose.yml --profile mastra up -d --build web relay mastra`. Studio: http://localhost:4111.
 

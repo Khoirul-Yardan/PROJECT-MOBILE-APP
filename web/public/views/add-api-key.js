@@ -1,6 +1,7 @@
 import { h, header, icon, toast, pageIntro } from '../ui.js';
 import { KNOWN_PROVIDERS, SELF_HOSTED_PROVIDERS, detectProvider, slugify } from '../providers.js';
-import { saveProvider } from '../ai.js';
+import { saveProvider, connectMastraAgent } from '../ai.js';
+import { CONNECTION_PREFIX, parseMastraConnection } from '../mastra-connection.js';
 import { countCredentialSlots } from '../credentials.js';
 import { logActivity } from '../db.js';
 import { OAUTH_PROVIDER_IDS, oauthSupported, startOpenRouterLogin } from '../oauth.js';
@@ -59,9 +60,9 @@ export default async function render(root) {
   const pasteCard = h(`
     <div class="card form-panel">
       <div class="field" style="margin-bottom:0;">
-        <label for="key-input">Pakai API key</label>
+        <label for="key-input">${isAgent ? 'API key atau kode koneksi agent' : 'Pakai API key'}</label>
         <textarea id="key-input" rows="2" placeholder="Tempel kunci API di sini" autocomplete="off" spellcheck="false"></textarea>
-        <p class="field-hint">${isAgent ? 'Gunakan key agent atau pilih gateway di bawah.' : 'Jenis provider dikenali otomatis dari kunci API.'}</p>
+        <p class="field-hint">${isAgent ? 'Mastra: tempel kode aihub-mastra-v1. dari pemilik agent. Provider dan model diatur oleh pemiliknya; kamu tidak perlu mengisi URL atau key provider.' : 'Jenis provider dikenali otomatis dari kunci API.'}</p>
       </div>
       <div id="detect-result" style="margin-top:14px;"></div>
     </div>
@@ -84,6 +85,31 @@ export default async function render(root) {
     const raw = keyInput.value.trim();
     if (!raw) {
       detectResult.innerHTML = '';
+      return;
+    }
+    if (raw.startsWith(CONNECTION_PREFIX)) {
+      detectResult.innerHTML = '';
+      let connection;
+      try { connection = parseMastraConnection(raw); }
+      catch (error) { detectResult.textContent = error.message; return; }
+      const info = h('<p class="muted small"></p>');
+      info.textContent = `Koneksi Mastra · ${connection.agentId} · ${new URL(connection.endpoint).host}. Periksa untuk membaca identitas dan provider dari server pemilik agent.`;
+      const check = h('<button class="btn btn-primary" id="mastra-check">Periksa koneksi Mastra</button>');
+      detectResult.append(info, check);
+      check.onclick = async () => {
+        check.disabled = true;
+        info.textContent = 'Memeriksa agent…';
+        try {
+          const { entry, metadata } = await connectMastraAgent(connection);
+          if (keyInput.value.trim() !== raw || !check.isConnected) return;
+          info.textContent = `${entry.label} · Model: ${typeof metadata.agent.model === 'string' ? metadata.agent.model.slice(0, 120) : 'diatur server'} · Informasi dilaporkan oleh server agent.`;
+          const save = h('<button class="btn btn-primary" id="mastra-save">Simpan &amp; Hubungkan Agent</button>');
+          save.onclick = () => saveDetected(entry, connection.token, save);
+          check.replaceWith(save);
+        } catch (error) {
+          if (check.isConnected) { info.textContent = error.message; check.disabled = false; }
+        }
+      };
       return;
     }
     detected = detectProvider(raw);
@@ -275,7 +301,7 @@ export default async function render(root) {
     el.appendChild(
       h(`
       <p class="muted small" style="margin-top:-8px;">
-        Mastra cukup memakai API key Gemini jika server sudah tersedia di alamat aplikasi ini.
+        Untuk Mastra, tempel kode koneksi pada kolom di atas.
         Agent lainnya memakai URL dan token dari gateway milikmu.
       </p>
     `)
@@ -290,23 +316,21 @@ export default async function render(root) {
               <div class="muted small">${p.vendor}</div>
             </div>
           </div>
-          ${p.format === 'mastra' ? '<p class="field-hint">Masukkan API key Gemini. Alamat server diisi otomatis; server Mastra harus sudah berjalan.</p><details><summary>Pengaturan server (opsional)</summary>' : ''}
           <div class="field">
             <label for="${p.id}-url">URL Gateway</label>
             <input id="${p.id}-url" placeholder="${p.urlPlaceholder}" />
             <div class="muted small">${p.urlHelp}</div>
           </div>
-          ${p.format === 'mastra' ? '</details>' : ''}
           <div class="field">
             <label for="${p.id}-token">${p.tokenLabel || 'Bearer token'}</label>
             <input id="${p.id}-token" type="password" placeholder="token" />
             <div class="muted small">${p.tokenHelp}</div>
           </div>
-          ${p.format === 'mastra' ? '' : `<div class="field">
+          <div class="field">
             <label for="${p.id}-direct">${p.directSessionLabel || 'Link sesi langsung (opsional)'}</label>
             <input id="${p.id}-direct" placeholder="${p.directSessionPlaceholder || ''}" />
             <div class="muted small">${p.directSessionHelp || ''}</div>
-          </div>`}
+          </div>
           <button id="${p.id}-save" class="btn btn-primary">Simpan &amp; Hubungkan</button>
         </div>
       `);
@@ -315,7 +339,7 @@ export default async function render(root) {
         const token = card.querySelector(`#${p.id}-token`).value.trim();
         const directSessionUrl = card.querySelector(`#${p.id}-direct`)?.value.trim();
         if (!url || !token) {
-          toast(p.format === 'mastra' ? 'Isi URL Mastra dan API key Gemini dulu.' : 'Isi URL gateway dan token dulu.');
+          toast('Isi URL gateway dan token dulu.');
           return;
         }
         // The 'model' column is meaningless for self-hosted agent formats
@@ -332,7 +356,6 @@ export default async function render(root) {
         const entry = { id: p.id, label: p.label, type: p.type, format: p.format, endpoint: url, model: p.model || directSessionUrl || undefined };
         await saveDetected(entry, token, card.querySelector(`#${p.id}-save`));
       };
-      if (p.format === 'mastra') card.querySelector(`#${p.id}-url`).value = `${location.origin}/mastra`;
       el.appendChild(card);
     });
   }

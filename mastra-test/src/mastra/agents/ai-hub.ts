@@ -18,8 +18,8 @@ export const agent = new Agent({
     + 'Kamu tidak memiliki akses data pasien, filesystem, shell, atau akun dokter.',
   model: ({ requestContext }) => ({
     id: models.find((m) => m.id === requestContext.get('model'))?.id || models[0].id,
-    // Only Studio may use the server key. The HTTP Chat adapter always sets
-    // a non-empty per-request key before it can invoke this agent.
+    // Studio and the authenticated connection adapter use the owner's key.
+    // The legacy BYOK route sets its own non-empty per-request key.
     apiKey: String(requestContext.get('googleApiKey') || process.env.GOOGLE_API_KEY || ''),
   }),
   tools: agentTools,

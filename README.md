@@ -31,18 +31,16 @@ docker compose -f web/docker-compose.yml --profile mastra logs --tail 40 mastra
 docker compose -f web/docker-compose.yml --profile mastra stop mastra
 ```
 
-## Hubungkan Mastra dengan Gemini ke Chat
+## Hubungkan agent Mastra dengan satu kode
 
-1. Login AI Hub, buka pengaturan API, pilih **Hubungkan Provider AI** atau **Hubungkan Agent**.
-2. Cari **Mastra Test (Gemini)**. URL Docker mengikuti alamat AI Hub ditambah `/mastra`, misalnya `http://localhost:8090/mastra`.
-3. Isi **API key Gemini untuk Mastra** dari [Google AI Studio](https://aistudio.google.com/apikey), lalu simpan.
-4. Buka Chat, pilih **Mastra Test (Gemini)**, kirim sapaan singkat.
-5. Buka tombol `/` atau kirim `/skills`. Coba `/calculate hitung 6 dikali 7` dan `/current_time jam berapa di Asia/Jakarta?`. Agent menentukan penggunaan tools berdasarkan permintaan.
-6. **Pilih model** menampilkan pilihan Google pada integrasi; ketersediaan dan kuota key dikonfirmasi saat pesan dikirim.
+1. Minta kode koneksi `aihub-mastra-v1.` dari pemilik agent yang sudah memasang adapter AI Hub.
+2. Login, pilih **Hubungkan Agent**, lalu tempel kode. Tidak perlu memasukkan URL atau key provider secara terpisah.
+3. Tekan **Periksa koneksi Mastra**, periksa nama agent/provider/model dari server, lalu **Simpan & Hubungkan Agent**.
+4. Pilih agent di Chat dan kirim pesan. `/skills` membaca kemampuan agent; provider dan model ditentukan pemilik server.
 
-Mastra adalah framework TypeScript, bukan penerbit key universal. Integrasi `mastra-test` memakai key Gemini pengguna per permintaan. API key Mastra Cloud bukan pengganti key Google. Instance Mastra lain harus menyediakan kontrak `ai-hub-mastra-v1` yang sama.
+Kode koneksi adalah format AI Hub yang mengemas endpoint, agent ID, dan token akses. Bukan API key universal Mastra; server pihak ketiga harus menyediakan adapter. Key provider tetap di server pemilik. Koneksi BYOK lama tetap didukung, tetapi tidak dipakai untuk setup baru.
 
-[Mastra model router](https://mastra.ai/models) memberi akses ke ribuan model. Setup awal ini memakai Google/Gemini; provider lain membutuhkan key dan konfigurasi sesuai. Detail: [docs/MASTRA.md](docs/MASTRA.md).
+Cara memasang adapter pada agent yang sudah ada, membuat kode, mencoba server lokal, kontrak API, keamanan, dan migrasi: **[Panduan koneksi Mastra](docs/MASTRA-KONEKSI.md)**. `mastra-test` memakai Gemini sebagai contoh; koneksi agent lain tidak dibatasi ke Gemini.
 
 ## Gunakan pada HP Android
 
