@@ -1,5 +1,7 @@
 # Pengujian Speech Realistis — Bukan Hanya Audio Jelas (Audible)
 
+> **Tambahan 20 Oktober 2026:** [Paket siap dipersiapkan](PAKET-UJI-PA/README.md) memuat 12 dialog fiktif, 36 slot rekaman pada tiga kondisi, fakta acuan, penugasan baseline/proposed dan lembar hasil kosong. Ini draf protokol untuk ditinjau, bukan hasil eksperimen. Pada tugas ini tidak ada perubahan prompt/model STT/relabel native. Panduan percakapan web hanya membantu perawat menyampaikan pertanyaan sendiri.
+
 > **Status dokumentasi — 19 Oktober 2026:** Dokumen ini adalah rencana/protokol evaluasi. Progres 2 menyediakan bukti tampilan dan catatan operasional, belum tabel pengukuran speech baru. WER harus memakai acuan manual; pisahkan STT murni dari relabel/koreksi LLM, serta jangan campurkan pertanyaan TTS Anamnesis dengan rekaman perawat. Pipeline tidak diubah pada tugas dokumentasi ini.
 
 > **Pemicu dokumen:** arahan dosen pembimbing — pengujian Bot BPJS (STT + diarization +

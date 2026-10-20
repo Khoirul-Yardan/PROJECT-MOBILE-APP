@@ -1,4 +1,4 @@
-﻿# AI Hub
+# AI Hub
 
 Aplikasi Android hybrid untuk chat multi-provider, agent AI, VPN, dan dokumentasi percakapan perawat–pasien. Flutter (`app/`) memuat SPA vanilla JavaScript (`web/public/`). Supabase menangani akun, riwayat, kredensial terenkripsi, dan RLS pemilik data.
 
@@ -80,16 +80,30 @@ Untuk browser HP lewat LAN, gunakan **HTTPS dengan sertifikat dipercaya HP**. `h
 | Provider | Tools yang terhubung |
 |---|---|
 | Semua | `/system`, `/clear`, `/help`, `/skills` |
-| Gemini langsung | `/search`, `/code`, `/url` |
-| OpenAI langsung | `/search`; `/code` untuk model dalam daftar dukungan aplikasi |
-| OpenRouter | `/search` plugin web |
-| Claude | `/search` pada keluarga model yang mendukung; default baru Haiku 4.5 |
-| Mastra Test | Discovery tools server: `/calculate`, `/current_time` |
-| Hermes A2A | Discovery skills dari agent card dengan token pengguna |
-| Hermes API Server/OpenClaw | Permintaan teks ke agent; tools mengikuti server, discovery belum tersedia dalam adapter |
-| Groq/Nous/custom OpenAI-compatible | Chat/perintah umum; kompatibilitas format bukan dukungan hosted tools OpenAI |
+| Gemini langsung | `/search` (Google Search), `/code` (Python Code Execution), `/url` (URL Context) |
+| OpenAI langsung | `/search` (Web Search); `/code` (Code Interpreter untuk model yang mendukung) |
+| OpenRouter | `/search` (Plugin Web Search) |
+| Claude | `/search` (Web Search 2025 pada model yang mendukung) |
+| Mastra Test | Discovery `/calculate`, `/current_time`; `/computer` jika bridge desktop dikonfigurasi |
+| Hermes A2A | Discovery agent card; hanya skills yang diumumkan server |
+| Hermes API Server / Nous / OpenClaw / Groq | Chat dan perintah umum; tidak mengasumsikan terminal, webhook, atau tools medis |
+| Custom OpenAI-compatible | Perintah umum `/system`, `/clear`, `/help`, `/skills` |
 
-Skills dari aplikasi vendor atau coding assistant tidak otomatis tersedia lewat API. File search, MCP, computer use, unggah file, dan tools yang memerlukan konfigurasi tambahan belum dihubungkan oleh perubahan ini. Tools dapat memakai kuota/biaya tambahan. Model lama yang tersimpan tidak diubah otomatis; gunakan **Pilih model** bila diperlukan.
+Skills dari aplikasi vendor atau coding assistant tidak otomatis tersedia lewat API. File search, MCP dan unggah file belum dihubungkan. Computer use lokal Mastra terbatas pada screenshot dan aksi eksplisit melalui bridge Windows; lihat panduan di bawah. Tools dapat memakai kuota/biaya tambahan. Model lama yang tersimpan tidak diubah otomatis; gunakan **Pilih model** bila diperlukan.
+
+## Screenshot laptop lewat Chat Mastra
+
+Mastra tidak memerlukan API key universal dari situs Mastra: server contoh memakai key Google pemilik dan token agent lokal. Buat kode koneksi dari direktori `mastra-test`:
+
+```powershell
+node --env-file=.env scripts/connection-code.mjs http://localhost:8090/mastra ai-hub laptop.connection.txt
+```
+
+Tempel isi file privat tersebut di **Hubungkan Agent**, periksa, simpan, lalu pilih Mastra di Chat. Model router Mastra menyediakan akses ke ribuan model melalui [katalog resmi](https://mastra.ai/models); provider/key/model tetap perlu dikonfigurasi oleh pemilik server.
+
+Dari root, jalankan `python mastra-test/scripts/desktop_bridge.py --minutes 60`, lalu di terminal kedua `docker compose -f web/docker-compose.yml --profile mastra up -d --build web mastra`. Ketik `/computer screenshot` di Chat. PNG tersimpan pada laptop di `mastra-test/.desktop-captures/`; tidak dikirim ke model atau ditampilkan inline di chat. Ctrl+C menghentikan bridge. Klik/tombol navigasi memerlukan `--allow-control` dan satu perintah eksplisit per aksi.
+
+Panduan lengkap, batas kontrol, dan hasil tes semua bot: [Mastra desktop dan pengujian](docs/MASTRA-DESKTOP-DAN-UJI.md).
 
 ## Mastra Studio dan pengembangan
 
@@ -99,7 +113,7 @@ Studio dapat dibuka untuk melihat agent/tools tanpa key. Untuk generasi langsung
 docker compose -f web/docker-compose.yml --profile mastra up -d --force-recreate mastra
 ```
 
-Chat AI Hub memakai key masing-masing pengguna dan tidak membutuhkan key server tersebut. Memory/traces Mastra dimatikan; riwayat Chat tetap di akun AI Hub.
+Koneksi Mastra baru memakai token agent dan key provider di server pemilik. Hanya jalur BYOK lama yang memakai key provider per permintaan. Memory/traces Mastra dimatikan; riwayat Chat tetap di akun AI Hub.
 
 Alternatif server host (Node.js sesuai `mastra-test/package.json`):
 
@@ -135,6 +149,8 @@ Tes browser memakai fixture tanpa Supabase/API berbayar. Uji Gemini nyata perlu 
 | Tool/model ditolak | Pilih model kompatibel atau matikan tool |
 
 ## Struktur dan dokumentasi
+
+Untuk PA: [telaah dokumen speech dan Drive](docs/TELAAH-SPEECH-DAN-PA-2026-10-20.md) dan [paket pengujian realistis](docs/PAKET-UJI-PA/README.md) berisi 12 dialog fiktif, 36 slot rekaman, fakta acuan, pembagian baseline/proposed, lembar hasil kosong, serta cara menghitung WER. Ini bahan persiapan eksperimen, bukan hasil uji yang sudah dilakukan.
 
 | Lokasi | Isi |
 |---|---|

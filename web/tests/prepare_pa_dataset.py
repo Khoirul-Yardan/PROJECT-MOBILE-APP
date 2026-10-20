@@ -36,7 +36,7 @@ def main():
             for arm, reviewer in [('baseline', row_number % 6 + 1), ('proposed', (row_number + 3) % 6 + 1)]:
                 assignments.append(dict(recording_id=rid, condition=arm, reviewer=f'N{reviewer:02}', order='', status='belum diuji'))
                 measurements.append(dict(recording_id=rid, condition=arm, reviewer=f'N{reviewer:02}', status='belum diuji'))
-    (OUT / 'NASKAH-SIMULASI.md').write_text('\n'.join(text) + '\n', encoding='utf-8')
+    (OUT / 'NASKAH-SIMULASI.md').write_text('\n'.join(text).rstrip() + '\n', encoding='utf-8')
     write_csv('manifest-rekaman.csv', list(manifest[0]), manifest)
     write_csv('penugasan.csv', list(assignments[0]), assignments)
     write_csv('fakta-acuan.csv', list(facts[0]), facts)

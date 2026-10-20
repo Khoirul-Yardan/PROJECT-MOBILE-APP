@@ -1,0 +1,80 @@
+{
+  "version": "2026-10-20-draft-1",
+  "status": "Data simulasi fiktif untuk ditinjau perawat/dosen; bukan hasil eksperimen atau panduan klinis.",
+  "scenarios": [
+    {
+      "id": "S01", "title": "Keluhan terbuka dan negasi", "focus": "keluhan, waktu mulai, tidak muntah",
+      "turns": [["perawat", "Apa yang paling mengganggu saat ini?"], ["pasien", "Saya mual sejak kemarin sore."], ["perawat", "Apakah sampai muntah?"], ["pasien", "Tidak muntah, tetapi makan saya berkurang."], ["perawat", "Ada keluhan lain yang ingin disampaikan?"], ["pasien", "Untuk sekarang mual itu saja."]],
+      "facts": [[2, "Mual"], [2, "Mulai kemarin sore"], [4, "Tidak muntah"], [4, "Makan berkurang"]],
+      "unknown": ["diagnosis", "suhu", "alergi", "obat"], "traps": ["Mengubah tidak muntah menjadi muntah", "Mengisi suhu normal tanpa pengukuran"]
+    },
+    {
+      "id": "S02", "title": "Koreksi angka dan lokasi nyeri", "focus": "koreksi pasien mengalahkan angka awal",
+      "turns": [["perawat", "Bagian mana yang terasa nyeri?"], ["pasien", "Perut sebelah kiri sejak tadi pagi."], ["perawat", "Kalau nol tidak nyeri dan sepuluh nyeri paling berat, berapa sekarang?"], ["pasien", "Tujuh, eh maksud saya empat sekarang."], ["perawat", "Jadi sekarang empat dari sepuluh, benar?"], ["pasien", "Iya, empat. Kalau bergerak lebih terasa."]],
+      "facts": [[2, "Nyeri perut kiri"], [2, "Mulai tadi pagi"], [4, "Skala nyeri saat ini empat dari sepuluh setelah koreksi"], [6, "Nyeri lebih terasa saat bergerak"]],
+      "unknown": ["diagnosis", "skala sebelum percakapan", "obat"], "traps": ["Mencatat skala saat ini tujuh", "Menganggap tujuh sebagai riwayat nyeri sebelumnya"]
+    },
+    {
+      "id": "S03", "title": "Pasien bertanya, perawat menjawab", "focus": "label peran tidak berdasarkan tanda tanya",
+      "turns": [["perawat", "Apa yang Bapak rasakan?"], ["pasien", "Kepala terasa berputar kalau berdiri sejak kemarin."], ["pasien", "Apakah ini pasti penyakit tertentu, Sus?"], ["perawat", "Saya catat keluhannya dahulu untuk ditinjau dokter."], ["perawat", "Pernah sampai jatuh?"], ["pasien", "Tidak pernah jatuh."]],
+      "facts": [[2, "Kepala terasa berputar saat berdiri"], [2, "Mulai kemarin"], [6, "Tidak pernah jatuh"]],
+      "unknown": ["diagnosis", "tekanan darah", "usia"], "traps": ["Memberi diagnosis dari pertanyaan pasien", "Menukar peran pada giliran tiga dan empat"]
+    },
+    {
+      "id": "S04", "title": "Tidak tahu berbeda dengan tidak", "focus": "ketidakpastian riwayat alergi",
+      "turns": [["perawat", "Apa keluhannya?"], ["pasien", "Lengan kanan saya gatal sejak dua hari lalu."], ["perawat", "Apakah punya alergi obat?"], ["pasien", "Saya tidak tahu, belum pernah diperiksa."], ["perawat", "Ada obat yang diminum hari ini?"], ["pasien", "Belum ada."]],
+      "facts": [[2, "Gatal lengan kanan"], [2, "Mulai dua hari lalu"], [4, "Riwayat alergi obat tidak diketahui pasien"], [6, "Belum minum obat hari ini"]],
+      "unknown": ["penyebab gatal", "diagnosis", "alergi terkonfirmasi"], "traps": ["Mencatat tidak ada alergi", "Menyimpulkan penyebab gatal"]
+    },
+    {
+      "id": "S05", "title": "Pengulangan dan kata pengisi", "focus": "disfluensi tanpa hilangnya fakta",
+      "turns": [["perawat", "Silakan ceritakan keluhannya pelan-pelan."], ["pasien", "Eee, saya itu batuk, batuk sejak tiga hari lalu."], ["perawat", "Batuknya lebih sering kapan?"], ["pasien", "Malam, biasanya malam. Tidur jadi terbangun dua kali."], ["perawat", "Dahaknya bagaimana?"], ["pasien", "Tidak ada dahak."]],
+      "facts": [[2, "Batuk sejak tiga hari lalu"], [4, "Lebih sering malam"], [4, "Tidur terbangun dua kali"], [6, "Tidak ada dahak"]],
+      "unknown": ["suhu", "diagnosis", "riwayat merokok"], "traps": ["Mencatat batuk berdahak", "Menghitung pengulangan batuk sebagai dua keluhan"]
+    },
+    {
+      "id": "S06", "title": "Istilah awam dan klarifikasi", "focus": "makna mengikuti penjelasan pasien",
+      "turns": [["perawat", "Apa yang terasa tidak nyaman?"], ["pasien", "Perut saya mules sejak siang."], ["perawat", "Mules yang dimaksud seperti apa?"], ["pasien", "Rasanya melilit, hilang timbul. Buang air besar belum hari ini."], ["perawat", "Ada muntah?"], ["pasien", "Tidak."]],
+      "facts": [[2, "Perut mules sejak siang"], [4, "Rasa melilit hilang timbul"], [4, "Belum buang air besar hari ini"], [6, "Tidak muntah"]],
+      "unknown": ["diagnosis", "frekuensi BAB biasanya", "suhu"], "traps": ["Mules otomatis diubah menjadi diare", "Belum BAB hari ini dianggap diagnosis konstipasi"]
+    },
+    {
+      "id": "S07", "title": "Perawat mengulang tetapi pasien membetulkan", "focus": "fakta akhir dan atribusi",
+      "turns": [["perawat", "Kapan mulai terasa nyeri?"], ["pasien", "Sejak dua hari lalu, di punggung bawah."], ["perawat", "Jadi sejak dua minggu, ya?"], ["pasien", "Bukan minggu, dua hari."], ["perawat", "Baik, dua hari. Apakah terus menerus?"], ["pasien", "Tidak, biasanya saat membungkuk."]],
+      "facts": [[2, "Nyeri punggung bawah"], [4, "Durasi dua hari, bukan dua minggu"], [6, "Nyeri tidak terus menerus"], [6, "Biasanya nyeri saat membungkuk"]],
+      "unknown": ["skala nyeri", "diagnosis", "riwayat cedera"], "traps": ["Mengutamakan konfirmasi perawat yang salah", "Menghapus jejak koreksi di transkrip asli"]
+    },
+    {
+      "id": "S08", "title": "Obat dilaporkan tetapi nama tidak diketahui", "focus": "jangan mengarang nama atau dosis",
+      "turns": [["perawat", "Apa keluhan hari ini?"], ["pasien", "Badan terasa lemas sejak pagi."], ["perawat", "Ada obat yang rutin diminum?"], ["pasien", "Ada obat dari kunjungan sebelumnya, tetapi saya lupa namanya."], ["perawat", "Ingat dosisnya?"], ["pasien", "Tidak ingat. Bungkusnya tidak saya bawa."]],
+      "facts": [[2, "Lemas sejak pagi"], [4, "Melaporkan obat dari kunjungan sebelumnya"], [4, "Nama obat tidak diingat"], [6, "Dosis tidak diingat"]],
+      "unknown": ["nama obat", "dosis obat", "diagnosis", "kepatuhan minum obat"], "traps": ["Mengarang obat atau dosis", "Menyimpulkan pasien rutin patuh minum obat"]
+    },
+    {
+      "id": "S09", "title": "Kronologi keluhan dan negasi waktu", "focus": "keluhan dulu berbeda dengan sekarang",
+      "turns": [["perawat", "Bagaimana keluhannya sekarang?"], ["pasien", "Kemarin mual, tetapi sekarang sudah tidak mual."], ["perawat", "Yang masih dirasakan apa?"], ["pasien", "Masih kurang nafsu makan sejak kemarin."], ["perawat", "Ada muntah sejak kemarin?"], ["pasien", "Tidak ada."]],
+      "facts": [[2, "Mual kemarin"], [2, "Sekarang tidak mual"], [4, "Kurang nafsu makan sejak kemarin masih dirasakan"], [6, "Tidak muntah sejak kemarin"]],
+      "unknown": ["penyebab perubahan", "obat", "diagnosis"], "traps": ["Mual dicatat sebagai keluhan saat ini", "Menyebut sembuh karena obat yang tidak disebutkan"]
+    },
+    {
+      "id": "S10", "title": "Jawaban pendek dan interupsi ringan", "focus": "overlap dua pembicara",
+      "direction": "Pasien mulai giliran empat pada akhir kata muntah perawat; jangan menambah pembicara ketiga. Tandai waktu overlap pada referensi manual.",
+      "turns": [["perawat", "Apa keluhan yang ingin disampaikan?"], ["pasien", "Mual sejak pagi."], ["perawat", "Apakah juga muntah?"], ["pasien", "Tidak, tidak muntah."], ["perawat", "Sudah makan?"], ["pasien", "Sedikit."], ["perawat", "Minum masih bisa?"], ["pasien", "Bisa."]],
+      "facts": [[2, "Mual sejak pagi"], [4, "Tidak muntah"], [6, "Sudah makan sedikit"], [8, "Masih bisa minum"]],
+      "unknown": ["jumlah minum", "diagnosis", "alergi"], "traps": ["Kehilangan negasi saat overlap", "Menambahkan jumlah cairan"]
+    },
+    {
+      "id": "S11", "title": "Teach-back cara menyampaikan pesan", "focus": "dialog edukasi tanpa rekomendasi terapi",
+      "turns": [["perawat", "Di papan ini pilih ikon kebutuhan, lalu tunggu konfirmasi pesan. Ini latihan komunikasi."], ["pasien", "Saya bingung setelah memilih ikonnya."], ["perawat", "Setelah memilih, lihat apakah pesan sudah tercatat. Boleh ceritakan kembali langkahnya?"], ["pasien", "Pilih ikon kebutuhan, lalu lihat apakah pesannya sudah tercatat."], ["perawat", "Bagian mana yang masih ingin ditanyakan?"], ["pasien", "Kalau belum tercatat saya belum paham harus bagaimana."]],
+      "facts": [[2, "Pasien awalnya bingung setelah memilih ikon"], [4, "Pasien dapat mengulang langkah pilih ikon dan lihat pesan tercatat"], [6, "Pasien masih belum memahami tindakan jika pesan belum tercatat"]],
+      "unknown": ["pemahaman seluruh prosedur", "diagnosis", "keluhan klinis"], "traps": ["Menyatakan pasien sudah memahami semua", "AI memberi skor pemahaman klinis otomatis"]
+    },
+    {
+      "id": "S12", "title": "Diam bukan jawaban tidak", "focus": "jeda dan data belum tersedia",
+      "direction": "Setelah giliran tiga, diam lima detik sebelum perawat mengulang. Jeda dicatat sebagai anotasi nonverbal, tidak dimasukkan token WER.",
+      "turns": [["perawat", "Ada keluhan yang terasa sekarang?"], ["pasien", "Bahu kiri pegal sejak tadi malam."], ["perawat", "Apakah sebelumnya pernah seperti ini?"], ["perawat", "Boleh dijawab kalau ingat, apakah pernah sebelumnya?"], ["pasien", "Saya belum ingat."], ["perawat", "Baik, saya catat belum diketahui. Ada yang lain?"], ["pasien", "Tidak ada yang lain."]],
+      "facts": [[2, "Bahu kiri pegal"], [2, "Mulai tadi malam"], [5, "Riwayat keluhan serupa belum diingat"], [7, "Tidak ada keluhan lain yang dilaporkan"]],
+      "unknown": ["pernah atau tidaknya keluhan serupa", "diagnosis", "skala nyeri"], "traps": ["Diam dianggap tidak pernah", "Giliran perawat berurutan dipaksa bergantian"]
+    }
+  ]
+}

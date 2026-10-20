@@ -22,6 +22,9 @@ Dua tambahan mandiri ialah **Papan Komunikasi dan Anamnesis Terpandu**. Pengguna
 
 ## Mulai dari sini / status terkini
 
+- [Mastra desktop, koneksi lokal, dan hasil uji bot — 20 Oktober](MASTRA-DESKTOP-DAN-UJI.md)
+- [Telaah dokumen speech dan naskah PA di Drive](TELAAH-SPEECH-DAN-PA-2026-10-20.md)
+- [Paket pengujian PA: 12 skenario, 36 slot rekaman, lembar penilaian](PAKET-UJI-PA/README.md)
 - [Progres](<Progres.md>)
 - [RINCIAN-SISTEM](<RINCIAN-SISTEM.md>)
 - [diagram-alur](<diagram-alur.md>)

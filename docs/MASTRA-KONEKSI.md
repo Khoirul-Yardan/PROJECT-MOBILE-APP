@@ -2,6 +2,8 @@
 
 Status 20 Oktober 2026: implementasi lokal, belum deployment. Panduan ini menggantikan setup baru dengan key Gemini di dokumentasi lama. Mastra adalah koneksi **Agent**; provider/model adalah konfigurasi pemilik server.
 
+Tambahan: [cara mendapatkan kode lokal, screenshot laptop, kontrol terbatas, dan bukti pengujian bot](MASTRA-DESKTOP-DAN-UJI.md).
+
 Daftar pola key, perbedaan provider/agent/harness, dan sumber resmi: [Kompatibilitas agent](AGENT-KOMPATIBILITAS.md). Versi terbaru sudah dibangun ke Docker lokal; belum dipublikasikan ke Fly.
 
 ## Untuk pengguna AI Hub

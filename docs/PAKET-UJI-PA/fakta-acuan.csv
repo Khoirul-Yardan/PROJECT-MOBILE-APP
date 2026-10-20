@@ -1,0 +1,47 @@
+﻿scenario_id,fact_id,turn,role,fact
+S01,S01-F01,2,pasien,Mual
+S01,S01-F02,2,pasien,Mulai kemarin sore
+S01,S01-F03,4,pasien,Tidak muntah
+S01,S01-F04,4,pasien,Makan berkurang
+S02,S02-F01,2,pasien,Nyeri perut kiri
+S02,S02-F02,2,pasien,Mulai tadi pagi
+S02,S02-F03,4,pasien,Skala nyeri saat ini empat dari sepuluh setelah koreksi
+S02,S02-F04,6,pasien,Nyeri lebih terasa saat bergerak
+S03,S03-F01,2,pasien,Kepala terasa berputar saat berdiri
+S03,S03-F02,2,pasien,Mulai kemarin
+S03,S03-F03,6,pasien,Tidak pernah jatuh
+S04,S04-F01,2,pasien,Gatal lengan kanan
+S04,S04-F02,2,pasien,Mulai dua hari lalu
+S04,S04-F03,4,pasien,Riwayat alergi obat tidak diketahui pasien
+S04,S04-F04,6,pasien,Belum minum obat hari ini
+S05,S05-F01,2,pasien,Batuk sejak tiga hari lalu
+S05,S05-F02,4,pasien,Lebih sering malam
+S05,S05-F03,4,pasien,Tidur terbangun dua kali
+S05,S05-F04,6,pasien,Tidak ada dahak
+S06,S06-F01,2,pasien,Perut mules sejak siang
+S06,S06-F02,4,pasien,Rasa melilit hilang timbul
+S06,S06-F03,4,pasien,Belum buang air besar hari ini
+S06,S06-F04,6,pasien,Tidak muntah
+S07,S07-F01,2,pasien,Nyeri punggung bawah
+S07,S07-F02,4,pasien,"Durasi dua hari, bukan dua minggu"
+S07,S07-F03,6,pasien,Nyeri tidak terus menerus
+S07,S07-F04,6,pasien,Biasanya nyeri saat membungkuk
+S08,S08-F01,2,pasien,Lemas sejak pagi
+S08,S08-F02,4,pasien,Melaporkan obat dari kunjungan sebelumnya
+S08,S08-F03,4,pasien,Nama obat tidak diingat
+S08,S08-F04,6,pasien,Dosis tidak diingat
+S09,S09-F01,2,pasien,Mual kemarin
+S09,S09-F02,2,pasien,Sekarang tidak mual
+S09,S09-F03,4,pasien,Kurang nafsu makan sejak kemarin masih dirasakan
+S09,S09-F04,6,pasien,Tidak muntah sejak kemarin
+S10,S10-F01,2,pasien,Mual sejak pagi
+S10,S10-F02,4,pasien,Tidak muntah
+S10,S10-F03,6,pasien,Sudah makan sedikit
+S10,S10-F04,8,pasien,Masih bisa minum
+S11,S11-F01,2,pasien,Pasien awalnya bingung setelah memilih ikon
+S11,S11-F02,4,pasien,Pasien dapat mengulang langkah pilih ikon dan lihat pesan tercatat
+S11,S11-F03,6,pasien,Pasien masih belum memahami tindakan jika pesan belum tercatat
+S12,S12-F01,2,pasien,Bahu kiri pegal
+S12,S12-F02,2,pasien,Mulai tadi malam
+S12,S12-F03,5,pasien,Riwayat keluhan serupa belum diingat
+S12,S12-F04,7,pasien,Tidak ada keluhan lain yang dilaporkan
