@@ -44,7 +44,9 @@ Di Chat Mastra:
 /computer screenshot
 ```
 
-Balasan menyebut path PNG, dimensi, dan SHA-256. Berkas berada di `mastra-test/.desktop-captures/` dan diabaikan Git serta konteks Docker. Gambar **belum ditampilkan inline di Chat** dan **tidak dikirim ke model**. Ini bukti screenshot OS nyata, bukan screenshot halaman browser fixture.
+Balasan menyebut path PNG, dimensi, dan SHA-256. Berkas berada di `mastra-test/.desktop-captures/` dan diabaikan Git serta konteks Docker. **Pembaruan 20 Oktober: PNG kini dikirim ke Chat**, tampil sebagai gambar yang dapat diperbesar/diunduh, dan mengikuti penyimpanan riwayat akun pada `chat_messages.content`. Bridge lama perlu dimulai ulang; pesan lama yang hanya berisi path tidak otomatis berubah, jadi kirim `/computer screenshot` lagi.
+
+Batas lampiran 4 MiB; gambar lebih besar tetap disimpan lokal dengan pemberitahuan. Gambar dikirim melalui respons terautentikasi, bukan URL publik. Model belum menerima input vision: data base64 diganti penanda sebelum riwayat dikirim pada pertanyaan berikutnya. Ini mencegah batas panjang pesan Mastra terlampaui. Dokumentasi seluruh stack tersedia di [dokumen root](<../Dokumentasi Seluruh sistem.md>).
 
 Untuk mengizinkan klik dan navigasi, hentikan bridge dengan Ctrl+C lalu mulai sendiri dengan:
 

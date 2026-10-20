@@ -101,7 +101,7 @@ node --env-file=.env scripts/connection-code.mjs http://localhost:8090/mastra ai
 
 Tempel isi file privat tersebut di **Hubungkan Agent**, periksa, simpan, lalu pilih Mastra di Chat. Model router Mastra menyediakan akses ke ribuan model melalui [katalog resmi](https://mastra.ai/models); provider/key/model tetap perlu dikonfigurasi oleh pemilik server.
 
-Dari root, jalankan `python mastra-test/scripts/desktop_bridge.py --minutes 60`, lalu di terminal kedua `docker compose -f web/docker-compose.yml --profile mastra up -d --build web mastra`. Ketik `/computer screenshot` di Chat. PNG tersimpan pada laptop di `mastra-test/.desktop-captures/`; tidak dikirim ke model atau ditampilkan inline di chat. Ctrl+C menghentikan bridge. Klik/tombol navigasi memerlukan `--allow-control` dan satu perintah eksplisit per aksi.
+Dari root, jalankan `python mastra-test/scripts/desktop_bridge.py --minutes 60`, lalu di terminal kedua `docker compose -f web/docker-compose.yml --profile mastra up -d --build web mastra`. Ketik `/computer screenshot` di Chat. PNG tersimpan pada laptop dan kini **dikirim sebagai gambar di Chat**, dapat diperbesar/diunduh, serta mengikuti penyimpanan riwayat akun. Batas lampiran 4 MiB. Gambar belum otomatis dianalisis model; data base64 tidak diteruskan sebagai prompt pada pesan berikutnya. Ctrl+C menghentikan bridge. Klik/tombol navigasi memerlukan `--allow-control` dan satu perintah eksplisit per aksi.
 
 Panduan lengkap, batas kontrol, dan hasil tes semua bot: [Mastra desktop dan pengujian](docs/MASTRA-DESKTOP-DAN-UJI.md).
 
@@ -149,6 +149,8 @@ Tes browser memakai fixture tanpa Supabase/API berbayar. Uji Gemini nyata perlu 
 | Tool/model ditolak | Pilih model kompatibel atau matikan tool |
 
 ## Struktur dan dokumentasi
+
+Dokumentasi menyeluruh di root proyek: [Dokumentasi Seluruh sistem.md](<Dokumentasi Seluruh sistem.md>) — arsitektur, tech stack, modul, database, keamanan, Docker/Fly, penggunaan HP dan batas bukti pengujian.
 
 Untuk PA: [telaah dokumen speech dan Drive](docs/TELAAH-SPEECH-DAN-PA-2026-10-20.md) dan [paket pengujian realistis](docs/PAKET-UJI-PA/README.md) berisi 12 dialog fiktif, 36 slot rekaman, fakta acuan, pembagian baseline/proposed, lembar hasil kosong, serta cara menghitung WER. Ini bahan persiapan eksperimen, bukan hasil uji yang sudah dilakukan.
 
