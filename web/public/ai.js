@@ -15,6 +15,7 @@ import { generateGemini, listGeminiModels, normalizeGeminiModel } from './gemini
 import { Native } from './bridge.js';
 import { providerSkills } from './skills.js';
 import { mastraConnectionEntry } from './mastra-connection.js';
+import { textForModel } from './chat-content.js';
 
 export const saveProvider = saveCredential;
 export const listRegisteredProviders = listCredentials;
@@ -62,6 +63,7 @@ async function callWithRotation(entry, callFn, onSlotChange) {
 
 /** history: [{role:'user'|'assistant'|'system', text}], returns the reply text. */
 export async function sendChat(entry, history, { onModelChange, onSlotChange, tools = [] } = {}) {
+  history = history.map(message => ({ ...message, text: textForModel(message.text) }));
   // Do not leak a previous provider/model's toggles into a different API.
   const allowed = new Set(providerSkills(entry).map((s) => s.toggle).filter(Boolean));
   tools = tools.filter((tool) => allowed.has(tool));

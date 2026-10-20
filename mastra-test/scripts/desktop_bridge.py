@@ -1,8 +1,9 @@
-"""Windows bridge, local opt-in. No shell strings, uploaded screenshots or request logs.
+"""Windows bridge, local opt-in. Screenshots returned only over authenticated requests.
 Run: python mastra-test/scripts/desktop_bridge.py [--allow-control] [--minutes 60]
 Ctrl+C stops access. Token is generated in ignored .env; recreate Mastra afterwards.
 """
 import argparse
+import base64
 import ctypes
 import hashlib
 import hmac
@@ -43,9 +44,7 @@ def perform(body, allow_control):
                                 capture_output=True, text=True, timeout=12, creationflags=0x08000000)
         if result.returncode != 0 or not path.exists():
             raise RuntimeError('Capture failed')
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        return {'message': f'Screenshot layar utama laptop tersimpan: {path}\nUkuran: {result.stdout.strip()} piksel. SHA-256: {digest}\nGambar tetap di laptop; tidak dikirim ke model AI.',
-                'file': path.name, 'sha256': digest}
+        return screenshot_result(path, result.stdout.strip())
     if not allow_control:
         raise PermissionError('Control disabled')
     user32 = ctypes.windll.user32
@@ -65,6 +64,19 @@ def perform(body, allow_control):
         user32.keybd_event(key, 0, 2, 0)
         return {'message': f"Tombol {body['key']} dikirim ke Windows."}
     raise ValueError('Unsupported action')
+
+
+def screenshot_result(path, dimensions):
+    raw = path.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    result = {'message': f'Screenshot layar utama laptop tersimpan: {path}\nUkuran: {dimensions} piksel. SHA-256: {digest}',
+              'file': path.name, 'sha256': digest}
+    if len(raw) <= 4 * 1024 * 1024:
+        result['image'] = {'mimeType': 'image/png', 'data': base64.b64encode(raw).decode('ascii')}
+        result['message'] += '\nGambar dikirim ke Chat dan mengikuti riwayat akun. Tidak otomatis dianalisis model AI.'
+    else:
+        result['message'] += '\nGambar melebihi batas lampiran 4 MiB; salinan lengkap tetap tersimpan di laptop.'
+    return result
 
 
 def make_handler(token, expires, allow_control=False):

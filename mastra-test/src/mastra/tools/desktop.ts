@@ -1,5 +1,6 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { createHash } from 'node:crypto';
 
 const inputSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('screenshot') }).strict(),
@@ -8,6 +9,16 @@ const inputSchema = z.discriminatedUnion('action', [
 ]);
 type DesktopInput = z.infer<typeof inputSchema>;
 export const desktopEnabled = () => Boolean(process.env.AI_HUB_DESKTOP_TOKEN);
+
+export function screenshotMarkdown(image: unknown, sha256: unknown) {
+  const parsed = z.object({ mimeType: z.literal('image/png'), data: z.string().max(5592408).regex(/^[A-Za-z0-9+/]+={0,2}$/) }).strict().parse(image);
+  const bytes = Buffer.from(parsed.data, 'base64');
+  if (bytes.length > 4 * 1024 * 1024 || bytes.length < 24
+    || parsed.data !== bytes.toString('base64')
+    || !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+    || createHash('sha256').update(bytes).digest('hex') !== sha256) throw new Error('Lampiran screenshot tidak valid.');
+  return `![Screenshot layar laptop](data:image/png;base64,${parsed.data})`;
+}
 
 export async function runDesktop(input: DesktopInput) {
   inputSchema.parse(input);
@@ -21,9 +32,23 @@ export async function runDesktop(input: DesktopInput) {
       body: JSON.stringify(input), signal: AbortSignal.timeout(15000), redirect: 'error',
     });
     if (!response.ok) throw new Error();
-    const result = await response.json() as { message?: string };
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > 6 * 1024 * 1024) { await reader.cancel(); throw new Error(); }
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+    const result = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { message?: string; image?: unknown; sha256?: string };
     if (typeof result.message !== 'string') throw new Error();
-    return { message: result.message };
+    return { message: result.message + (input.action === 'screenshot' && result.image
+      ? `\n\n${screenshotMarkdown(result.image, result.sha256)}` : '') };
   } catch {
     throw new Error('Desktop tidak tersedia atau kontrol belum diizinkan. Periksa bridge di laptop (masa aktif 60 menit).');
   }
@@ -33,7 +58,7 @@ export async function runDesktop(input: DesktopInput) {
 // LLM-generated calls and the public legacy BYOK endpoint cannot authorize them.
 export const desktopTool = createTool({
   id: 'computer',
-  description: 'Kontrol laptop terbatas. Kirim /computer screenshot, /computer click X Y, atau /computer key TAB|ESC|UP|DOWN|LEFT|RIGHT. Bridge lokal harus aktif; screenshot disimpan di laptop.',
+  description: 'Kontrol laptop terbatas. Kirim /computer screenshot untuk gambar di Chat, /computer click X Y, atau /computer key TAB|ESC|UP|DOWN|LEFT|RIGHT. Bridge lokal harus aktif.',
   inputSchema,
   execute: async () => ({ message: 'Gunakan perintah /computer eksplisit di Chat AI Hub; panggilan otomatis model tidak diizinkan.' }),
 });

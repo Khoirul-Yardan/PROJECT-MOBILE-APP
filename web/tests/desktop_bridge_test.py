@@ -5,6 +5,9 @@ from pathlib import Path
 from threading import Thread
 import time
 import unittest
+import tempfile
+import hashlib
+import base64
 from unittest.mock import patch
 import urllib.request
 import urllib.error
@@ -51,6 +54,20 @@ class BridgeTests(unittest.TestCase):
     def test_control_disabled_before_windows_access(self):
         with self.assertRaises(PermissionError):
             bridge.perform({'action': 'click', 'x': 1, 'y': 2}, False)
+
+    def test_screenshot_bytes_are_returned_with_matching_digest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'fixture.png'
+            raw = b'\x89PNG\r\n\x1a\n' + b'fixture'
+            path.write_bytes(raw)
+            result = bridge.screenshot_result(path, '1x1')
+            self.assertEqual(base64.b64decode(result['image']['data']), raw)
+            self.assertEqual(result['sha256'], hashlib.sha256(raw).hexdigest())
+            self.assertIn('dikirim ke Chat', result['message'])
+            path.write_bytes(b'x' * (4 * 1024 * 1024 + 1))
+            result = bridge.screenshot_result(path, '1x1')
+            self.assertNotIn('image', result)
+            self.assertIn('4 MiB', result['message'])
 
 
 if __name__ == '__main__':

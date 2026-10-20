@@ -38,7 +38,8 @@ def main():
         page.goto(origin + '/#/chat')
         expect(page.locator('#send')).to_be_enabled(timeout=20000)
         for label, prompt, expected in [('calculation', 'Gunakan calculate: 6 dikali 7. Jawab singkat.', '42')] + (
-                [('screenshot', '/computer screenshot', 'Screenshot layar utama laptop tersimpan:')] if args.screenshot else []):
+                [('screenshot', '/computer screenshot', 'Screenshot layar utama laptop tersimpan:'),
+                 ('followup', 'Gunakan calculate untuk 8 dikali 9. Jawab angkanya saja.', '72')] if args.screenshot else []):
             page.locator('#input').fill(prompt)
             with page.expect_response(lambda r: r.url.endswith('/ai-hub/agents/ai-hub/chat'), timeout=120000) as pending:
                 page.locator('#send').click()
@@ -48,6 +49,18 @@ def main():
             report[label + '_correct'] = expected in body.get('text', '')
             expect(page.locator('#messages .bubble.them').last).to_contain_text(expected, timeout=20000)
             expect(page.locator('#send')).to_be_enabled()
+            if label == 'screenshot':
+                image = page.locator('#messages .chat-image').last
+                expect(image).to_be_visible()
+                page.wait_for_function("Array.from(document.querySelectorAll('#messages .chat-image')).some(i => i.complete && i.naturalWidth > 0)")
+                report['screenshot_image_visible'] = image.evaluate('(image) => image.naturalWidth > 0')
+                image.click()
+                expect(page.locator('.image-lightbox')).to_be_visible()
+                page.locator('.image-lightbox-close').click()
+            if label == 'followup':
+                request = response.request.post_data_json
+                report['image_not_resent_as_prompt'] = all('data:image/' not in m['content'] for m in request['messages'])
+                assert report['image_not_resent_as_prompt']
         browser.close()
     print(json.dumps(report))
     assert all(value for key, value in report.items() if key.endswith('_correct'))
