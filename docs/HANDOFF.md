@@ -159,3 +159,11 @@ Format:
 - Permintaan pengguna: hilangkan Panduan percakapan perawat–pasien karena kurang diperlukan. Kartu details interview-guide beserta contoh pertanyaan dihapus dari web/public/views/bots.js; tabel rute pada dokumentasi root diselaraskan.
 - Dasar keputusan: penyederhanaan tampilan atas permintaan langsung pengguna. Dampak PA: tidak mengubah pipeline rekaman, transkrip, ekstraksi, maupun evaluasi; hanya bantuan teks pada Bot Hub yang dihapus.
 - Untuk pemilik docs (Claude): catat keputusan lanjutan terhadap K-011 di KEPUTUSAN.md; catatan penambahan panduan sebelumnya adalah riwayat, bukan kondisi UI terbaru.
+
+
+## 2026-10-21 - Codex: kumpulan kredensial pribadi lokal
+- Otorisasi: permintaan langsung pengguna membuat docs/kumpulan API AI dan Agent.md serta mengecualikannya dari Git; kepemilikan dokumentasi tersebut dialihkan sementara kepada Codex untuk tugas ini.
+- Hasil: dokumen lokal memuat 9 kredensial dari konfigurasi proyek dan HERMES_HOME, sumber, kegunaan, serta penanda provider yang belum ditemukan. Tidak menerbitkan key provider baru, mengganti konfigurasi server, atau menguji validitas/koneksi key.
+- Proteksi: .gitignore mengecualikan /docs/kumpulan API AI dan Agent*; git check-ignore memastikan aturan cocok dan git ls-files memastikan dokumen tidak tracked. Nilai rahasia tidak dicetak maupun dimasukkan ke catatan tracked.
+- Cakupan: tidak menyalin password admin, service key Supabase, profil VPN, atau access/refresh token login Hermes. Tidak ada perubahan pipeline atau fitur akademik.
+- Catatan: dokumen merupakan salinan lokal teks biasa; pembaruan/rotasi pada sumber tidak otomatis memperbarui salinan.

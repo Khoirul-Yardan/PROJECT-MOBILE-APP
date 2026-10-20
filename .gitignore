@@ -12,3 +12,6 @@ TEST VPN/wireguard/out/
 *.connection.txt
 __pycache__/
 *.pyc
+
+# Kumpulan kredensial pribadi dan salinan/cadangan dengan nama yang sama.
+/docs/kumpulan API AI dan Agent*
