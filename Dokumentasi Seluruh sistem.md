@@ -154,7 +154,7 @@ Router menyiapkan halaman dalam container sementara dan memakai token render unt
 |---|---|
 | `#/login`, `#/home` | Akun dan beranda |
 | `#/chat`, `#/history` | Chat per provider/agent, sesi percakapan dan riwayat |
-| `#/bots` | BPJS, Papan Komunikasi, Anamnesis, panduan wawancara |
+| `#/bots` | BPJS, Papan Komunikasi, Anamnesis |
 | `#/bpjs` | Dokumentasi dan riwayat gabungan |
 | `#/papan-komunikasi` | Papan milik pengguna/perawat |
 | `#/p?t=...` | Halaman pasien berbasis token ruangan |

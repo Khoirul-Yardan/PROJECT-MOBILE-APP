@@ -154,3 +154,8 @@ Format:
 - Bukti: typecheck dan 15 tes Mastra, 4 tes bridge, 2 tes chat-content, regresi provider/browser lulus. Live Docker Chat menampilkan screenshot, lightbox terbuka, pertanyaan lanjutan 200/72 dan request tidak berisi data URI. Fixture membuktikan reload riwayat/unduh; bukan bukti penyimpanan Supabase nyata baru.
 - Dokumen root menjelaskan tech stack, arsitektur, modul, tabel/RLS, credential, native bridge, Docker/Fly, HP, test/PA dan batas implementasi. Temuan read-only untuk tindak lanjut: cache lokal Papan memakai key umum; saveMessage belum melaporkan kegagalan cloud; snapshot schema tidak membuktikan migrasi produksi. Tidak mengklaim keamanan/klinis atau semua native flow tervalidasi.
 - Akar masalah: screenshot sebelumnya hanya metadata path. Mengirim gambar sebagai teks base64 tanpa menyaring konteks akan membuat permintaan chat berikutnya melampaui batas pesan Mastra.
+
+## 2026-10-20 — Codex: hapus panduan percakapan dari Bot Hub
+- Permintaan pengguna: hilangkan Panduan percakapan perawat–pasien karena kurang diperlukan. Kartu details interview-guide beserta contoh pertanyaan dihapus dari web/public/views/bots.js; tabel rute pada dokumentasi root diselaraskan.
+- Dasar keputusan: penyederhanaan tampilan atas permintaan langsung pengguna. Dampak PA: tidak mengubah pipeline rekaman, transkrip, ekstraksi, maupun evaluasi; hanya bantuan teks pada Bot Hub yang dihapus.
+- Untuk pemilik docs (Claude): catat keputusan lanjutan terhadap K-011 di KEPUTUSAN.md; catatan penambahan panduan sebelumnya adalah riwayat, bukan kondisi UI terbaru.
