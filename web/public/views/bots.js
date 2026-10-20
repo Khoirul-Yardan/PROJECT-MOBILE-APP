@@ -72,6 +72,25 @@ export default async function render(root) {
   root.appendChild(el);
   el.querySelector('.topbar').after(pageIntro('Bantuan kecil. Dampak besar.', 'Pilih asisten sesuai kondisi pasien: rekam percakapan, papan sentuh, atau anamnesis terpandu.', { art: 'bot', label: 'KOLEKSI BOT', tone: 'intro-mint' }));
 
+  // Spoken by the nurse, not TTS: the recorded object remains an actual
+  // nurse–patient conversation. Basis: docs/TELAAH-SPEECH-DAN-PA-2026-10-20.md.
+  el.querySelector('#grid').after(h(`
+    <details class="card" style="margin-top:14px;" id="interview-guide">
+      <summary style="cursor:pointer;font-weight:600;">Panduan percakapan perawat–pasien</summary>
+      <p class="small muted">Contoh pertanyaan untuk dibaca perawat sendiri. Sesuaikan dengan keadaan pasien dan prosedur tempat pelayanan.</p>
+      <ol>
+        <li>“Apa yang paling mengganggu saat ini?”</li>
+        <li>“Sejak kapan? Apa lagi yang dirasakan?”</li>
+        <li>“Boleh dijelaskan maksudnya?”</li>
+        <li>“Jadi yang saya catat …, apakah sudah sesuai?”</li>
+        <li>“Kalau belum tahu atau belum ingat, boleh disampaikan.”</li>
+        <li>“Boleh ceritakan kembali penjelasan tadi dengan kata-kata sendiri?”</li>
+        <li>“Ada yang ingin ditanyakan atau belum tercatat?”</li>
+      </ol>
+      <p class="small muted">Diam tidak berarti “tidak”. Pertanyaan pasien tetap bagian dari percakapan. Periksa transkrip dan draf sebelum dibagikan kepada dokter.</p>
+    </details>
+  `));
+
   el.querySelector('#bpjs-review-link').onclick = () => navigate('/bpjs');
 
   const gridEl = el.querySelector('#grid');

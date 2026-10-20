@@ -43,6 +43,9 @@ const code = { cmd: '/code', label: 'Jalankan Python (Code Interpreter)', hint: 
 export function providerSkills(entry) {
   if (!entry) return [];
   if (entry.format === 'gemini') return GEMINI_SKILLS;
+  // Agent abilities come from discovery, not the vendor name. A model API
+  // (including Nous/Groq) does not provide a terminal or clinical workflow.
+
   let host;
   try { host = new URL(entry.endpoint).hostname; } catch { return []; }
   if (entry.format === 'openai' && host === 'api.openai.com') {

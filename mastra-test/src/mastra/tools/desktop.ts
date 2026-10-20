@@ -1,0 +1,53 @@
+import { createTool } from '@mastra/core/tools';
+import { z } from 'zod';
+
+const inputSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('screenshot') }).strict(),
+  z.object({ action: z.literal('click'), x: z.number().int().nonnegative(), y: z.number().int().nonnegative() }).strict(),
+  z.object({ action: z.literal('key'), key: z.enum(['TAB', 'ESC', 'UP', 'DOWN', 'LEFT', 'RIGHT']) }).strict(),
+]);
+type DesktopInput = z.infer<typeof inputSchema>;
+export const desktopEnabled = () => Boolean(process.env.AI_HUB_DESKTOP_TOKEN);
+
+export async function runDesktop(input: DesktopInput) {
+  inputSchema.parse(input);
+  if (!desktopEnabled()) throw new Error('Desktop belum diaktifkan. Jalankan scripts/desktop_bridge.py di laptop.');
+  // Fixed destination: caller/model cannot turn this into arbitrary HTTP access.
+  const url = process.env.MASTRA_HOST === '0.0.0.0'
+    ? 'http://host.docker.internal:4112/action' : 'http://127.0.0.1:4112/action';
+  try {
+    const response = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.AI_HUB_DESKTOP_TOKEN}` },
+      body: JSON.stringify(input), signal: AbortSignal.timeout(15000), redirect: 'error',
+    });
+    if (!response.ok) throw new Error();
+    const result = await response.json() as { message?: string };
+    if (typeof result.message !== 'string') throw new Error();
+    return { message: result.message };
+  } catch {
+    throw new Error('Desktop tidak tersedia atau kontrol belum diizinkan. Periksa bridge di laptop (masa aktif 60 menit).');
+  }
+}
+
+// Desktop actions are dispatched from the exact latest user command below.
+// LLM-generated calls and the public legacy BYOK endpoint cannot authorize them.
+export const desktopTool = createTool({
+  id: 'computer',
+  description: 'Kontrol laptop terbatas. Kirim /computer screenshot, /computer click X Y, atau /computer key TAB|ESC|UP|DOWN|LEFT|RIGHT. Bridge lokal harus aktif; screenshot disimpan di laptop.',
+  inputSchema,
+  execute: async () => ({ message: 'Gunakan perintah /computer eksplisit di Chat AI Hub; panggilan otomatis model tidak diizinkan.' }),
+});
+
+export async function handleDesktopCommand(text: string): Promise<string | null> {
+  if (!/^\/computer(?:\s|$)/.test(text)) return null;
+  const words = text.trim().split(/\s+/);
+  let input: DesktopInput;
+  if (words.length === 2 && words[1] === 'screenshot') input = { action: 'screenshot' };
+  else if (words.length === 4 && words[1] === 'click' && words.slice(2).every(w => /^\d{1,5}$/.test(w))) {
+    input = { action: 'click', x: Number(words[2]), y: Number(words[3]) };
+  } else if (words.length === 3 && words[1] === 'key' && /^(TAB|ESC|UP|DOWN|LEFT|RIGHT)$/.test(words[2]!)) {
+    input = inputSchema.parse({ action: 'key', key: words[2] });
+  } else return 'Format: /computer screenshot | /computer click X Y | /computer key TAB|ESC|UP|DOWN|LEFT|RIGHT. Satu aksi per pesan.';
+  try { return (await runDesktop(input)).message; }
+  catch (error) { return (error as Error).message; }
+}

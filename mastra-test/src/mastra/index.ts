@@ -4,10 +4,11 @@ import { agent } from './agents/ai-hub.ts';
 import { agentTools } from './tools/ai-hub.ts';
 import { capabilities, handleChat, protocol } from './http.ts';
 import { connectionRoutes } from './connection-adapter.ts';
+import { desktopTool, desktopEnabled, handleDesktopCommand } from './tools/desktop.ts';
 
 export const mastra = new Mastra({
   agents: { agent },
-  tools: agentTools,
+  tools: { ...agentTools, ...(desktopEnabled() ? { computer: desktopTool } : {}) },
   // Chat history belongs to the signed-in AI Hub account, never a shared
   // Mastra memory or trace store. Even provider errors can contain prompts.
   logger: false,
@@ -18,8 +19,10 @@ export const mastra = new Mastra({
       ...connectionRoutes({
         id: 'ai-hub', name: 'Mastra Test', provider: 'Google', model: 'google/gemini-2.5-flash',
         token: () => process.env.AI_HUB_AGENT_TOKEN,
-        skills: Object.entries(agentTools).map(([name, tool]) => ({ id: tool.id, name, description: tool.description })),
+        skills: Object.entries({ ...agentTools, ...(desktopEnabled() ? { computer: desktopTool } : {}) }).map(([name, tool]) => ({ id: tool.id, name, description: tool.description })),
         generate: async messages => {
+          const desktop = await handleDesktopCommand(messages.at(-1)!.content);
+          if (desktop !== null) return desktop;
           const input = messages.map(m => m.role === 'system' ? { role: 'system' as const, content: m.content }
             : m.role === 'assistant' ? { role: 'assistant' as const, content: m.content }
             : { role: 'user' as const, content: m.content });

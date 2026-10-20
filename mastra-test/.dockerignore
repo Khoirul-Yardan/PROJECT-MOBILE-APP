@@ -8,3 +8,5 @@ node_modules
 *.duckdb*
 tool
 tests
+.desktop-captures
+.desktop-bridge.log
